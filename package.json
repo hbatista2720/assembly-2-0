@@ -1,0 +1,36 @@
+{
+  "name": "assembly-2-0",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "chatbot": "node ./node_modules/ts-node/dist/bin.js --transpile-only --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" src/chatbot/index.ts",
+    "chatbot:dev": "nodemon --watch src/chatbot --exec \"node ./node_modules/ts-node/dist/bin.js --transpile-only --compiler-options '{\\\"module\\\":\\\"CommonJS\\\"}' src/chatbot/index.ts\"",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f web",
+    "docker:restart": "docker compose restart web",
+    "docker:rebuild": "docker compose up -d --build"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.93.1",
+    "dotenv": "^17.2.3",
+    "next": "^15.1.0",
+    "node-telegram-bot-api": "^0.67.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.10",
+    "@types/node-telegram-bot-api": "^0.64.13",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
+    "nodemon": "^3.1.11"
+  }
+}

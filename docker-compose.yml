@@ -1,0 +1,63 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: assembly-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: assembly_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  studio:
+    image: supabase/studio:latest
+    container_name: assembly-studio
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_REST_URL: http://localhost:8000/rest/v1/
+      STUDIO_PG_META_URL: http://localhost:8080
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvY2FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDg3NDg4MzB9.xxx
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: .
+    container_name: assembly-web
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/assembly_db
+      NEXT_PUBLIC_SUPABASE_URL: http://localhost:5432
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: local-development-key
+      MOCK_WEBAUTHN: "true"
+      WEBAUTHN_RP_ID: localhost
+      WEBAUTHN_RP_NAME: Assembly 2.0
+      WEBAUTHN_ORIGIN: http://localhost:3001
+      NODE_ENV: development
+    depends_on:
+      db:
+        condition: service_healthy
+    command: npm run dev
+
+volumes:
+  postgres_data:

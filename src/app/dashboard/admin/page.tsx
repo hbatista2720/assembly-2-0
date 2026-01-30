@@ -1,0 +1,237 @@
+const KPI = [
+  { label: "Funnel Conversión", value: "18.4%", note: "↑ +2.1% esta semana" },
+  { label: "Tickets Urgentes", value: "3", note: "2 requieren escalación" },
+  { label: "Clientes Activos", value: "45", note: "8 demos en curso" },
+];
+
+const FUNNEL_STAGES = [
+  { stage: "New Lead", count: 64, color: "#38bdf8" },
+  { stage: "Qualified", count: 28, color: "#22c55e" },
+  { stage: "Demo Active", count: 12, color: "#f59e0b" },
+  { stage: "Converted", count: 6, color: "#8b5cf6" },
+];
+
+const TICKETS = [
+  { id: "TKT-2026-021", subject: "Error de quórum en PH Costa", priority: "Urgente", sla: "1h", owner: "Chatbot" },
+  { id: "TKT-2026-019", subject: "Facturación Pro Multi-PH", priority: "Alta", sla: "4h", owner: "Email" },
+  { id: "TKT-2026-017", subject: "Acceso demo expira hoy", priority: "Alta", sla: "6h", owner: "Landing" },
+];
+
+const CLIENTS = [
+  { name: "Administradora Panamá", plan: "Pro Multi-PH", buildings: "25", health: "Excelente" },
+  { name: "Urban Tower PH", plan: "Standard", buildings: "1", health: "Bueno" },
+  { name: "Pacific Developments", plan: "Enterprise + CRM", buildings: "12", health: "Atención" },
+];
+
+const CAMPAIGNS = [
+  { name: "Demo 14 días - Admin PH", status: "Activa", next: "Enviar recordatorio día 5" },
+  { name: "Reactivación Leads Fríos", status: "Pausada", next: "Revisar copy de valor" },
+  { name: "Upgrade Pay-Per-Event", status: "Activa", next: "Oferta 50% primer mes" },
+];
+
+export default function AdminInteligenteDashboard() {
+  return (
+    <main className="container">
+      <div className="app-shell">
+        <aside className="sidebar">
+          <div>
+            <span className="pill">Assembly 2.0</span>
+            <h3 style={{ margin: "12px 0 4px" }}>Admin Plataforma</h3>
+            <p className="muted" style={{ margin: 0 }}>
+              Panel maestro de la operacion
+            </p>
+          </div>
+          <nav style={{ display: "grid", gap: "10px" }}>
+            <a className="sidebar-link active" href="/dashboard/admin">
+              📊 Resumen ejecutivo
+            </a>
+            <a className="sidebar-link" href="/dashboard/admin#leads">
+              🎯 Funnel de leads
+            </a>
+            <a className="sidebar-link" href="/dashboard/admin#tickets">
+              🎫 Tickets inteligentes
+            </a>
+            <a className="sidebar-link" href="/dashboard/admin#clientes">
+              👥 Clientes y demos
+            </a>
+            <a className="sidebar-link" href="/dashboard/admin#crm">
+              📣 CRM y campañas
+            </a>
+          </nav>
+          <div style={{ marginTop: "auto", display: "grid", gap: "10px" }}>
+            <a className="btn btn-ghost" href="/">
+              Volver a landing
+            </a>
+            <button className="btn btn-primary">Crear demo</button>
+          </div>
+        </aside>
+
+        <section className="content-area">
+          <div className="card" style={{ padding: "28px" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "16px" }}>
+              <div style={{ flex: 1 }}>
+                <span className="pill">Estado general</span>
+                <h1 style={{ margin: "12px 0 8px" }}>Dashboard Administrativo Inteligente</h1>
+                <p style={{ color: "#cbd5f5", margin: 0 }}>
+                  Seguimiento completo de ventas, soporte y crecimiento de la plataforma.
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <button className="btn">Exportar reporte</button>
+                <button className="btn btn-primary">Activar demo</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="chart-grid">
+            {KPI.map((item) => (
+              <div key={item.label} className="card">
+                <p style={{ margin: 0, color: "#94a3b8" }}>{item.label}</p>
+                <h3 style={{ margin: "10px 0" }}>{item.value}</h3>
+                <p style={{ margin: 0, color: "#a5b4fc", fontSize: "14px" }}>{item.note}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="chart-grid">
+            <div className="chart-card">
+              <h3 style={{ marginTop: 0 }}>Resumen mensual</h3>
+              <p className="muted" style={{ marginTop: 0 }}>
+                Conversion y actividad por semanas
+              </p>
+              <svg width="100%" height="140" viewBox="0 0 360 140" role="img" aria-label="Grafica semanal">
+                <polyline
+                  fill="none"
+                  stroke="#38bdf8"
+                  strokeWidth="3"
+                  points="0,110 60,90 120,95 180,70 240,60 300,65 360,40"
+                />
+                <circle cx="360" cy="40" r="4" fill="#38bdf8" />
+              </svg>
+              <div className="chart-bar">
+                <span style={{ width: "68%" }} />
+              </div>
+              <p className="muted" style={{ margin: "10px 0 0" }}>
+                Meta mensual completada 68%
+              </p>
+            </div>
+            <div className="chart-card">
+              <h3 style={{ marginTop: 0 }}>Vista anual</h3>
+              <p className="muted" style={{ marginTop: 0 }}>
+                Ingresos por mes
+              </p>
+              <div style={{ display: "grid", gap: "12px" }}>
+                {[
+                  { label: "Ene", value: 48 },
+                  { label: "Feb", value: 62 },
+                  { label: "Mar", value: 74 },
+                  { label: "Abr", value: 88 },
+                ].map((item) => (
+                  <div key={item.label} style={{ display: "grid", gap: "6px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>{item.label}</span>
+                      <span className="muted">${item.value}k</span>
+                    </div>
+                    <div className="chart-bar">
+                      <span style={{ width: `${item.value}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <section id="leads" className="section">
+            <h2 className="section-title">Funnel de Leads</h2>
+            <p className="section-subtitle">Conversion automatica con calificacion por chatbot.</p>
+            <div className="grid grid-3">
+              <div className="card" style={{ gridColumn: "span 2" }}>
+                <h3 style={{ marginTop: 0 }}>Pipeline</h3>
+                <div className="card-list">
+                  {FUNNEL_STAGES.map((stage) => (
+                    <div key={stage.stage} className="list-item">
+                      <span style={{ width: "10px", height: "10px", borderRadius: "999px", background: stage.color }} />
+                      <span style={{ flex: 1 }}>{stage.stage}</span>
+                      <strong>{stage.count}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="card">
+                <h3 style={{ marginTop: 0 }}>Ultimos leads</h3>
+                <div className="card-list">
+                  {["Laura Gomez · Administradora", "Carlos Ruiz · Junta", "PH Vista Azul · Promotora"].map((lead) => (
+                    <div key={lead} className="list-item">
+                      <span>👤</span>
+                      <span>{lead}</span>
+                    </div>
+                  ))}
+                </div>
+                <button className="btn" style={{ marginTop: "16px" }}>
+                  Ver lista completa
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section id="tickets" className="section">
+            <h2 className="section-title">Tickets Inteligentes</h2>
+            <p className="section-subtitle">SLA y escalacion automatica cuando es critico.</p>
+            <div className="grid grid-3">
+              {TICKETS.map((ticket) => (
+                <div key={ticket.id} className="card">
+                  <span className="pill">{ticket.priority}</span>
+                  <h3 style={{ margin: "12px 0 6px" }}>{ticket.subject}</h3>
+                  <p style={{ color: "#cbd5f5", margin: 0 }}>
+                    {ticket.id} · SLA {ticket.sla} · Origen {ticket.owner}
+                  </p>
+                  <button className="btn" style={{ marginTop: "16px" }}>
+                    Revisar ticket
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section id="clientes" className="section">
+            <h2 className="section-title">Clientes y Leads</h2>
+            <p className="section-subtitle">Salud de cuentas, upgrades y demos activas.</p>
+            <div className="grid grid-3">
+              {CLIENTS.map((client) => (
+                <div key={client.name} className="card">
+                  <h3 style={{ marginTop: 0 }}>{client.name}</h3>
+                  <p style={{ color: "#cbd5f5", margin: 0 }}>{client.plan}</p>
+                  <div className="card-list" style={{ marginTop: "12px" }}>
+                    <div className="list-item">
+                      <span>🏢</span>
+                      <span>{client.buildings} edificios</span>
+                    </div>
+                    <div className="list-item">
+                      <span>✅</span>
+                      <span>Salud: {client.health}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section id="crm" className="section">
+            <h2 className="section-title">CRM y Campanas Automatizadas</h2>
+            <p className="section-subtitle">Seguimiento automatico por etapa del funnel.</p>
+            <div className="grid grid-3">
+              {CAMPAIGNS.map((campaign) => (
+                <div key={campaign.name} className="card">
+                  <span className="pill">{campaign.status}</span>
+                  <h3 style={{ marginTop: "12px" }}>{campaign.name}</h3>
+                  <p style={{ color: "#cbd5f5" }}>Siguiente accion: {campaign.next}</p>
+                  <button className="btn">Configurar</button>
+                </div>
+              ))}
+            </div>
+          </section>
+        </section>
+      </div>
+    </main>
+  );
+}
