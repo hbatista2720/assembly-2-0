@@ -1,68 +1,107 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
-
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [step, setStep] = useState<"email" | "otp">("email");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [debugOtp, setDebugOtp] = useState("");
   const emailRef = useRef<HTMLInputElement | null>(null);
 
-  const supabase = useMemo(() => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!url || !key) return null;
-    return createClient(url, key);
-  }, []);
-
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSendOtp = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
-    if (!supabase) {
-      setError("Faltan variables de Supabase en el entorno.");
-      return;
-    }
+    setLoading(true);
     const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
-    if (!trimmedEmail || !trimmedPassword) {
-      setError("Ingresa correo y contraseña.");
+    if (!trimmedEmail) {
+      setError("Ingresa tu correo.");
+      setLoading(false);
       return;
     }
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email: trimmedEmail,
-      password: trimmedPassword,
-    });
-
-    if (authError || !data.user) {
-      setError("Credenciales inválidas.");
-      return;
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("users")
-      .select("role, organization_id, is_platform_owner")
-      .eq("id", data.user.id)
-      .single();
-
-    if (profileError || !profile) {
-      setError("No se pudo cargar el perfil.");
-      return;
-    }
-
-    const roleLabel = profile.is_platform_owner ? "admin-inteligente" : "admin-ph";
     try {
-      localStorage.setItem("assembly_role", roleLabel);
-      localStorage.setItem("assembly_email", trimmedEmail);
-      document.cookie = `assembly_role=${roleLabel}; path=/; max-age=604800`;
-    } catch {
-      // ignore storage errors
+      const response = await fetch("/api/auth/request-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmedEmail }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data?.error || "No se pudo enviar el código.");
+        setLoading(false);
+        return;
+      }
+      if (data?.otp) {
+        setDebugOtp(data.otp);
+      }
+      setStep("otp");
+      setLoading(false);
+    } catch (err) {
+      setError("No se pudo enviar el código.");
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+    setLoading(true);
+    const trimmedEmail = email.trim();
+    const trimmedOtp = otp.trim();
+    if (!trimmedEmail || !trimmedOtp) {
+      setError("Ingresa el correo y el código.");
+      setLoading(false);
+      return;
     }
 
-    router.push(profile.is_platform_owner ? "/dashboard/platform-admin" : "/dashboard/admin-ph");
+    try {
+      const response = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmedEmail, code: trimmedOtp }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data?.user) {
+        setError(data?.error || "Código inválido o expirado.");
+        setLoading(false);
+        return;
+      }
+      const user = data.user;
+      const roleLabel = user.is_platform_owner || user.role === "ADMIN_PLATAFORMA" ? "admin-inteligente" : "admin-ph";
+      try {
+        localStorage.setItem("assembly_role", roleLabel);
+        localStorage.setItem("assembly_email", trimmedEmail);
+        document.cookie = `assembly_role=${roleLabel}; path=/; max-age=604800`;
+      } catch {
+        // ignore storage errors
+      }
+
+      if (user.is_platform_owner || user.role === "ADMIN_PLATAFORMA") {
+        router.push("/dashboard/platform-admin");
+        return;
+      }
+      if (user.is_demo) {
+        router.push("/dashboard/admin-ph?mode=demo");
+        return;
+      }
+      router.push("/dashboard/admin-ph");
+    } catch (err) {
+      setError("No se pudo verificar el código.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetEmail = () => {
+    setStep("email");
+    setOtp("");
+    setDebugOtp("");
+    setError("");
+    setTimeout(() => emailRef.current?.focus(), 0);
   };
 
   return (
@@ -138,7 +177,7 @@ export default function LoginPage() {
           <div>
             <h1 style={{ marginTop: 0 }}>Acceso estratégico</h1>
             <p style={{ color: "#cbd5f5" }}>
-              Ingresa con tu correo y contraseña para acceder al dashboard seguro de Assembly 2.0.
+              Ingresa con tu correo y un código OTP para acceder al dashboard seguro de Assembly 2.0.
             </p>
             <div className="card-list" style={{ marginTop: "16px" }}>
               {[
@@ -166,7 +205,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: "grid", gap: "16px" }}>
+          <form onSubmit={step === "email" ? handleSendOtp : handleVerifyOtp} style={{ display: "grid", gap: "16px" }}>
             <label style={{ display: "grid", gap: "8px" }}>
               Correo corporativo
               <input
@@ -175,39 +214,57 @@ export default function LoginPage() {
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="admin@tuempresa.com"
                 required
+                disabled={step === "otp"}
                 style={{
                   padding: "12px 14px",
                   borderRadius: "12px",
                   border: "1px solid rgba(148,163,184,0.3)",
                   background: "rgba(15, 23, 42, 0.6)",
                   color: "#e2e8f0",
+                  opacity: step === "otp" ? 0.7 : 1,
                 }}
               />
             </label>
 
-            <label style={{ display: "grid", gap: "8px" }}>
-              Contraseña
-              <input
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Tu contraseña"
-                type="password"
-                required
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: "12px",
-                  border: "1px solid rgba(148,163,184,0.3)",
-                  background: "rgba(15, 23, 42, 0.6)",
-                  color: "#e2e8f0",
-                }}
-              />
-            </label>
+            {step === "otp" ? (
+              <label style={{ display: "grid", gap: "8px" }}>
+                Código de 6 dígitos
+                <input
+                  value={otp}
+                  onChange={(event) => setOtp(event.target.value)}
+                  placeholder="Ej: 123456"
+                  inputMode="numeric"
+                  required
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: "12px",
+                    border: "1px solid rgba(148,163,184,0.3)",
+                    background: "rgba(15, 23, 42, 0.6)",
+                    color: "#e2e8f0",
+                  }}
+                />
+                {debugOtp ? (
+                  <span className="muted" style={{ fontSize: "12px" }}>
+                    Código enviado (modo local): <strong>{debugOtp}</strong>
+                  </span>
+                ) : null}
+              </label>
+            ) : (
+              <p style={{ margin: 0, color: "#cbd5f5" }}>
+                Te enviaremos un codigo OTP de 6 digitos a tu correo.
+              </p>
+            )}
 
             {error ? <p style={{ margin: 0, color: "#fca5a5" }}>{error}</p> : null}
 
-            <button type="submit" className="btn btn-primary btn-demo">
-              Entrar
+            <button type="submit" className="btn btn-primary btn-demo" disabled={loading}>
+              {loading ? "Procesando..." : step === "email" ? "Enviar codigo" : "Verificar codigo"}
             </button>
+            {step === "otp" ? (
+              <button type="button" className="btn btn-ghost" onClick={handleResetEmail}>
+                Usar otro correo
+              </button>
+            ) : null}
           </form>
         </div>
       </div>

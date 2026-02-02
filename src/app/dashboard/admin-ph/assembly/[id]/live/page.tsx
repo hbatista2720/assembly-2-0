@@ -30,7 +30,7 @@ export default function AdminPhLiveAssembly() {
   };
 
   return (
-    <main className="container">
+    <>
       <div className="card glass" style={{ padding: "28px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
           <div>
@@ -58,7 +58,7 @@ export default function AdminPhLiveAssembly() {
                 </div>
                 <label style={{ display: "grid", gap: "4px" }}>
                   <span className="muted" style={{ fontSize: "12px" }}>
-                    Ubicación
+                    Ubicacion
                   </span>
                   <select
                     value={vote.location}
@@ -87,6 +87,6 @@ export default function AdminPhLiveAssembly() {
           </div>
         </div>
       </section>
-    </main>
+    </>
   );
 }

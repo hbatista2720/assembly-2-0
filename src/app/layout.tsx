@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import AppToaster from "./toaster";
 
 export const metadata = {
   title: "Assembly 2.0",
@@ -10,6 +11,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="es">
       <body>
         {children}
+        <AppToaster />
         <style>{`
           * {
             box-sizing: border-box;
@@ -148,6 +150,48 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             gap: 12px;
           }
 
+          .table {
+            display: grid;
+            gap: 8px;
+            --table-columns: 1fr 1.4fr 1fr 1fr 1fr 1.2fr;
+          }
+
+          .input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            background: rgba(15, 23, 42, 0.6);
+            color: #e2e8f0;
+          }
+
+          .badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            background: rgba(30, 41, 59, 0.6);
+            color: #e2e8f0;
+          }
+
+          .badge-success {
+            border-color: rgba(16, 185, 129, 0.6);
+            color: #34d399;
+          }
+
+          .badge-warning {
+            border-color: rgba(245, 158, 11, 0.6);
+            color: #fbbf24;
+          }
+
+          .badge-muted {
+            border-color: rgba(148, 163, 184, 0.5);
+            color: #94a3b8;
+          }
+
           .list-item {
             display: flex;
             gap: 12px;
@@ -155,6 +199,25 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             border-radius: 16px;
             border: 1px solid rgba(148, 163, 184, 0.12);
             background: rgba(30, 41, 59, 0.6);
+          }
+
+          .table-row {
+            display: grid;
+            grid-template-columns: var(--table-columns);
+            gap: 12px;
+            align-items: center;
+            padding: 14px 12px;
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            background: rgba(15, 23, 42, 0.6);
+          }
+
+          .table-header {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #94a3b8;
+            background: rgba(15, 23, 42, 0.8);
           }
 
           .two-col {
@@ -524,6 +587,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             .sidebar {
               position: relative;
               height: auto;
+            }
+
+            .table-row {
+              grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             }
           }
 

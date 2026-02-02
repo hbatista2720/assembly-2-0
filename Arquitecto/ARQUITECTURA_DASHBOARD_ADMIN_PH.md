@@ -113,14 +113,345 @@ Diseñar el dashboard completo para **administradores de PH** (clientes) que per
 │  🗳️  Votaciones     │
 │  📄 Actas           │
 │  📊 Reportes        │
+│  👨‍💼 Equipo          │ ← 🆕 NUEVO (solo si manage_team = true)
 │  ⚙️  Configuración  │
 │  💬 Soporte         │
 └─────────────────────┘
 ```
 
+**Nota:** La opción "👨‍💼 Equipo" solo es visible para usuarios con permiso `manage_team = true` (típicamente solo el Admin Principal).
+
 ---
 
-## 📱 PANTALLAS PRINCIPALES (8 secciones)
+## 📱 PANTALLAS PRINCIPALES (9 secciones)
+
+---
+
+## 👨‍💼 PANTALLA 0: GESTIÓN DE EQUIPO (NUEVO)
+
+### **⚠️ IMPORTANTE: Sistema de Roles y Permisos**
+
+**Problema identificado:** La arquitectura inicial solo contemplaba **1 administrador por PH**.
+
+**Solución:** Sistema de múltiples administradores con roles y permisos granulares.
+
+---
+
+### **Roles de Administración:**
+
+```
+1. 👑 ADMIN_PRINCIPAL (Dueño del PH)
+   ✅ Acceso total
+   ✅ Gestiona equipo (invita/remueve usuarios)
+   ✅ Gestiona facturación y plan
+   ✅ Puede eliminar organización
+
+2. 📋 ADMIN_ASISTENTE (Apoyo operativo)
+   ✅ Gestiona propietarios
+   ✅ Crea y ejecuta asambleas
+   ✅ Voto manual
+   ❌ NO gestiona facturación
+   ❌ NO gestiona equipo
+   ❌ NO elimina organización
+
+3. 🎙️ OPERADOR_ASAMBLEA (Solo durante asamblea)
+   ✅ Marca asistencia manual
+   ✅ Registra votos manuales
+   ❌ NO crea asambleas
+   ❌ NO ve reportes
+   ❌ Acceso temporal (solo cuando hay asamblea activa)
+
+4. 👁️ VIEWER (Solo lectura)
+   ✅ Ve dashboard y reportes
+   ❌ NO puede modificar nada
+```
+
+---
+
+### **URL:** `/dashboard/admin-ph/team`
+
+**Visible solo si:** `user.permissions.manage_team = true`
+
+---
+
+### **Vista Principal:**
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  👨‍💼 Equipo de Administración                             │
+│                                                           │
+│  Gestiona quién tiene acceso a este PH y sus permisos    │
+│                                                           │
+│  [➕ Invitar Usuario]                                    │
+└──────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────┐
+│  Usuario            │  Rol                │  Estado  │  …│
+├─────────────────────┼─────────────────────┼──────────┼───┤
+│  👑 Juan Pérez      │  Admin Principal    │  ✅ Activo│⚙️│
+│  henry@mail.com     │                     │          │   │
+├─────────────────────┼─────────────────────┼──────────┼───┤
+│  📋 María López     │  Asistente          │  ✅ Activo│⚙️│
+│  maria@mail.com     │                     │          │   │
+├─────────────────────┼─────────────────────┼──────────┼───┤
+│  🎙️ Carlos Ruiz     │  Operador Asamblea  │  ✅ Activo│⚙️│
+│  carlos@mail.com    │                     │          │   │
+├─────────────────────┼─────────────────────┼──────────┼───┤
+│  👁️ Ana Torres      │  Viewer             │  ⏳ Pend.│⚙️│
+│  ana@mail.com       │  (Invitación pend.) │          │   │
+└─────────────────────┴─────────────────────┴──────────┴───┘
+```
+
+**Acciones por fila:**
+- ⚙️ **Ver Permisos:** Modal con lista de permisos específicos
+- ✏️ **Editar:** Cambiar rol o permisos (solo Admin Principal)
+- 🗑️ **Remover:** Eliminar del equipo (no se puede remover Admin Principal)
+
+---
+
+### **Modal: Invitar Usuario**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  ➕ Invitar al Equipo                          [✕]      │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  📧 Email*:                                             │
+│  [_________________________________]                    │
+│                                                         │
+│  👤 Nombre:                                             │
+│  [_________________________________]                    │
+│                                                         │
+│  🎭 Rol:                                                │
+│  ⚪ Asistente (acceso completo operativo)              │
+│  ⚪ Operador Asamblea (solo durante asambleas)         │
+│  ⚪ Viewer (solo lectura, reportes)                    │
+│                                                         │
+│  ⚙️ Permisos personalizados:                           │
+│  ┌───────────────────────────────────────────────────┐ │
+│  │ ☑️ Gestionar propietarios                         │ │
+│  │ ☑️ Crear asambleas                                │ │
+│  │ ☑️ Ejecutar asambleas en vivo                     │ │
+│  │ ☑️ Voto manual                                    │ │
+│  │ ☑️ Ver reportes                                   │ │
+│  │ ☑️ Exportar actas                                 │ │
+│  │ ☐ Gestionar facturación                          │ │
+│  │ ☐ Gestionar equipo                               │ │
+│  │ ☐ Eliminar organización                          │ │
+│  └───────────────────────────────────────────────────┘ │
+│                                                         │
+│  ℹ️ Se enviará un email de invitación con link de      │
+│     activación de cuenta.                               │
+│                                                         │
+│  [Cancelar]  [Enviar Invitación]                       │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+### **Modal: Ver Permisos de Usuario**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  📋 Permisos de María López                    [✕]      │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  Rol: Asistente                                         │
+│  Estado: ✅ Activo desde 15 Ene 2026                    │
+│                                                         │
+│  📊 PERMISOS:                                           │
+│  ┌───────────────────────────────────────────────────┐ │
+│  │ ✅ Gestionar propietarios                         │ │
+│  │ ✅ Crear asambleas                                │ │
+│  │ ✅ Ejecutar asambleas                             │ │
+│  │ ✅ Voto manual                                    │ │
+│  │ ✅ Ver reportes                                   │ │
+│  │ ✅ Exportar actas                                 │ │
+│  │ ❌ Gestionar facturación                          │ │
+│  │ ❌ Gestionar equipo                               │ │
+│  │ ❌ Eliminar organización                          │ │
+│  └───────────────────────────────────────────────────┘ │
+│                                                         │
+│  [Cerrar]  [Editar Permisos]                           │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+### **Tabla de Permisos por Rol:**
+
+| Permiso | Admin Principal | Asistente | Operador | Viewer |
+|---------|----------------|-----------|----------|--------|
+| Ver dashboard | ✅ | ✅ | ✅ | ✅ |
+| Gestionar propietarios | ✅ | ✅ | ❌ | ❌ |
+| Crear asambleas | ✅ | ✅ | ❌ | ❌ |
+| Ejecutar asambleas | ✅ | ✅ | ✅ | ❌ |
+| Voto manual | ✅ | ✅ | ✅ | ❌ |
+| Ver reportes | ✅ | ✅ | ✅ | ✅ |
+| Exportar actas | ✅ | ✅ | ❌ | ✅ |
+| Gestionar facturación | ✅ | ❌ | ❌ | ❌ |
+| Gestionar equipo | ✅ | ❌ | ❌ | ❌ |
+| Eliminar organización | ✅ | ❌ | ❌ | ❌ |
+
+---
+
+### **Schema de BD: `organization_users`**
+
+**Tabla nueva para relación many-to-many:**
+
+```sql
+CREATE TABLE organization_users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Relaciones
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  
+  -- Rol dentro de esta organización
+  role TEXT NOT NULL CHECK (role IN (
+    'ADMIN_PRINCIPAL',
+    'ADMIN_ASISTENTE',
+    'OPERADOR_ASAMBLEA',
+    'VIEWER'
+  )),
+  
+  -- Permisos granulares (JSON)
+  permissions JSONB DEFAULT '{
+    "manage_properties": true,
+    "manage_owners": true,
+    "create_assemblies": true,
+    "execute_assemblies": true,
+    "manual_voting": true,
+    "view_reports": true,
+    "export_acts": true,
+    "manage_billing": false,
+    "manage_team": false,
+    "delete_organization": false
+  }'::jsonb,
+  
+  -- Estado de invitación
+  is_active BOOLEAN DEFAULT TRUE,
+  invited_by UUID REFERENCES users(id),
+  invited_at TIMESTAMPTZ DEFAULT NOW(),
+  accepted_at TIMESTAMPTZ NULL,
+  invitation_token TEXT UNIQUE,
+  
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  UNIQUE(organization_id, user_id)
+);
+
+CREATE INDEX idx_org_users_org ON organization_users(organization_id);
+CREATE INDEX idx_org_users_user ON organization_users(user_id);
+CREATE INDEX idx_org_users_role ON organization_users(role);
+```
+
+---
+
+### **Función SQL: Verificar Permisos**
+
+```sql
+CREATE OR REPLACE FUNCTION user_has_permission(
+  p_user_id UUID,
+  p_organization_id UUID,
+  p_permission TEXT
+) RETURNS BOOLEAN AS $$
+DECLARE
+  v_permissions JSONB;
+BEGIN
+  SELECT permissions INTO v_permissions
+  FROM organization_users
+  WHERE user_id = p_user_id
+    AND organization_id = p_organization_id
+    AND is_active = TRUE;
+  
+  IF NOT FOUND THEN
+    RETURN FALSE;
+  END IF;
+  
+  RETURN COALESCE((v_permissions->>p_permission)::BOOLEAN, FALSE);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Uso: SELECT user_has_permission('user-uuid', 'org-uuid', 'manage_billing');
+```
+
+---
+
+### **Flujo de Invitación:**
+
+```
+1. Admin Principal va a /dashboard/admin-ph/team
+2. Click en [➕ Invitar Usuario]
+3. Ingresa email, nombre, selecciona rol
+4. Ajusta permisos (opcional)
+5. Click en [Enviar Invitación]
+6. Sistema crea usuario en BD con is_active = FALSE
+7. Sistema genera invitation_token (único)
+8. Sistema envía email:
+   ┌─────────────────────────────────────────┐
+   │ 📧 Te han invitado a gestionar          │
+   │    P.H. Urban Tower en Assembly 2.0     │
+   │                                         │
+   │ Rol: Asistente                          │
+   │ Invitado por: Juan Pérez                │
+   │                                         │
+   │ [Aceptar Invitación]                    │
+   └─────────────────────────────────────────┘
+9. Usuario recibe email
+10. Click en link: /invite/[token]
+11. Sistema valida token
+12. Si es primera vez: Configurar OTP + Face ID
+13. is_active → TRUE, accepted_at → NOW()
+14. Usuario ya tiene acceso al dashboard
+```
+
+---
+
+### **Restricciones de Seguridad:**
+
+**En todas las páginas del dashboard Admin PH:**
+
+```typescript
+// Middleware de permisos
+async function checkPermission(userId: string, orgId: string, permission: string) {
+  const result = await sql`
+    SELECT user_has_permission(${userId}::UUID, ${orgId}::UUID, ${permission})
+  `;
+  
+  if (!result[0].user_has_permission) {
+    throw new Error('No tienes permiso para esta acción');
+  }
+}
+
+// Ejemplo de uso en API:
+// Página de facturación
+await checkPermission(userId, orgId, 'manage_billing');
+
+// Página de equipo
+await checkPermission(userId, orgId, 'manage_team');
+
+// Eliminar organización
+await checkPermission(userId, orgId, 'delete_organization');
+```
+
+---
+
+### **Indicador Visual en Navbar:**
+
+```typescript
+// Mostrar rol del usuario actual en navbar
+┌───────────────────────────────────────────────────────────┐
+│  🏢 Urban Tower  |  Dashboard  Propietarios  Asambleas... │
+│                                                            │
+│  📋 María López (Asistente)  |  [👤 Perfil]              │
+└───────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📱 PANTALLAS PRINCIPALES (resto de secciones)
 
 ---
 
@@ -1105,7 +1436,246 @@ Tipos de reportes:
 
 ---
 
-## ⚙️ PANTALLA 7: CONFIGURACIÓN
+## 💳 PANTALLA 7: SUSCRIPCIÓN Y FACTURACIÓN
+
+### **URL:** `/dashboard/admin-ph/subscription`
+
+**Objetivo:** Sistema de suscripción **automático (TC) + manual (ACH/Yappy)** estilo Cursor/Vercel.
+
+**Métodos de pago:**
+- ✅ **Automático con TC (Stripe)** - Activación instantánea, sin intervención de Henry
+- ⚠️ **Manual (ACH/Yappy/Transferencia)** - Requiere aprobación de Henry (1-2 días)
+
+---
+
+### **7.1 Vista Principal - Dashboard de Suscripción**
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  💳 Suscripción y Facturación                            │
+├──────────────────────────────────────────────────────────┤
+│                                                           │
+│  📦 Plan Actual: Standard                                │
+│  💰 $189/mes                                              │
+│  ✅ Estado: Activo                                        │
+│  📅 Próximo pago: 15 Feb 2026                            │
+│                                                           │
+│  [⬆️ Actualizar Plan]  [❌ Cancelar Suscripción]        │
+└──────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────┐
+│  🎫 Créditos de Asamblea                                 │
+├──────────────────────────────────────────────────────────┤
+│  📊 Disponibles: 5 créditos                              │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ ████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │   │
+│  │ 5 de 12 créditos usados este ciclo                │   │
+│  └──────────────────────────────────────────────────┘   │
+│  • Recibes 2 créditos/mes (acumulables 6 meses)         │
+│  • Próxima recarga: 1 Feb 2026 (+2 créditos)            │
+│  [➕ Comprar Créditos ($75/crédito)]                    │
+└──────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────┐
+│  💳 Método de Pago                                       │
+│  🔒 Visa •••• 4242  Vence: 12/2027                      │
+│  [✏️ Actualizar Tarjeta]  [➕ Agregar Método]          │
+└──────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────┐
+│  📄 Facturas (últimas 3)                                 │
+│  15 Ene 2026  │  $189.00  │  ✅ Pagado  │  [📥 PDF]     │
+│  15 Dic 2025  │  $189.00  │  ✅ Pagado  │  [📥 PDF]     │
+│  15 Nov 2025  │  $189.00  │  ✅ Pagado  │  [📥 PDF]     │
+└──────────────────────────────────────────────────────────┘
+```
+
+---
+
+### **7.2 Flujo de Suscripción (Nuevos Clientes)**
+
+#### **Paso 1: Selección de Plan**
+```
+⚪ Evento Único - $225 (1 asamblea, válido 12 meses)
+⚪ Dúo Pack - $389 (2 asambleas, válido 12 meses)
+🔵 Standard - $189/mes ⭐ (2 créditos/mes, compromiso 2 meses)
+⚪ Multi-PH - $699/mes (asambleas ilimitadas, 30 edificios)
+⚪ Enterprise - $2,499/mes (todo ilimitado + soporte 24/7)
+```
+
+#### **Paso 2: Método de Pago**
+```
+🔵 Tarjeta de Crédito/Débito (Automático con Stripe)
+   ✅ Activación instantánea
+   ✅ Renovación automática
+   [🔒 Pagar con Stripe]
+
+───────── o ─────────
+
+⚪ Transferencia/Yappy/ACH (Manual)
+   ⚠️ Requiere aprobación (1-2 días hábiles)
+   [📄 Solicitar Pago Manual]
+```
+
+#### **Paso 3A: Pago Automático (Stripe)**
+```
+[Stripe Checkout embed]
+Número de tarjeta: [____-____-____-____]
+Vencimiento: [MM / AA]  CVV: [___]
+Nombre: [_________________________]
+
+☑️ Acepto términos y condiciones
+☑️ Autorizo cargo recurrente de $189/mes
+
+[💳 Pagar $189.00]
+```
+**→ Activación inmediata, sin intervención de Henry**
+
+#### **Paso 3B: Pago Manual**
+```
+Método: ⚪ ACH  ⚪ Yappy  ⚪ Transferencia
+Email: [________________]
+Teléfono: [________________]
+
+[📤 Enviar Solicitud]
+```
+**→ Henry recibe notificación → Envía instrucciones → Cliente adjunta comprobante → Henry activa manualmente**
+
+---
+
+### **7.3 Actualizar Plan (Upgrade/Downgrade)**
+```
+Plan Actual: Standard ($189/mes)
+
+Selecciona nuevo plan:
+🔵 Multi-PH - $699/mes (Upgrade) ⭐
+   💰 Cargo prorrateado hoy: $510
+
+⚪ Dúo Pack - $389 (Downgrade)
+   ⚠️ Cambio efectivo: 15 Feb 2026
+
+[⬆️ Actualizar a Multi-PH]
+```
+
+---
+
+### **7.4 Comprar Créditos Adicionales**
+```
+Créditos Disponibles: 3
+
+¿Cuántos necesitas?
+⚪ 1 crédito - $75
+🔵 3 créditos - $200 (ahorra $25) ⭐
+⚪ 5 créditos - $325 (ahorra $50)
+
+💳 Visa •••• 4242
+[💳 Pagar $200.00]
+```
+
+---
+
+### **7.5 Cancelar Suscripción**
+```
+⚠️ Si cancelas:
+• Puedes usar hasta: 15 Feb 2026
+• Créditos expiran: 15 Feb 2026
+• Histórico archivado (30 días)
+
+⚠️ COMPROMISO MÍNIMO:
+Has estado: 1 mes
+Mínimo: 2 meses
+Aún debes: $189 (1 mes adicional)
+
+[❌ Sí, cancelar]  [⬅️ Mantener plan]
+```
+
+---
+
+### **Schema BD - Suscripciones (Resumen)**
+
+```sql
+-- Tabla principal
+CREATE TABLE subscriptions (
+  id UUID PRIMARY KEY,
+  organization_id UUID REFERENCES organizations(id),
+  plan_tier TEXT, -- DEMO, EVENTO_UNICO, STANDARD, etc.
+  status TEXT,    -- TRIAL, ACTIVE, PAST_DUE, CANCELLED, PENDING_MANUAL
+  payment_method TEXT, -- STRIPE_CARD, MANUAL_ACH, MANUAL_YAPPY
+  
+  -- Stripe (solo automático)
+  stripe_subscription_id TEXT,
+  stripe_customer_id TEXT,
+  
+  -- Créditos
+  credits_per_period INT,
+  
+  -- Fechas
+  current_period_end TIMESTAMPTZ,
+  cancelled_at TIMESTAMPTZ
+);
+
+-- Créditos de asamblea
+CREATE TABLE organization_credits (
+  organization_id UUID,
+  credits_available INT,
+  credits_expire_at TIMESTAMPTZ
+);
+
+-- Pagos manuales
+CREATE TABLE manual_payment_requests (
+  id UUID PRIMARY KEY,
+  organization_id UUID,
+  amount NUMERIC(10,2),
+  payment_method TEXT, -- ACH, YAPPY, TRANSFER
+  status TEXT, -- PENDING, APPROVED, REJECTED
+  proof_file_url TEXT,
+  reviewed_by UUID,
+  reviewed_at TIMESTAMPTZ
+);
+
+-- Facturas
+CREATE TABLE invoices (
+  id UUID PRIMARY KEY,
+  organization_id UUID,
+  invoice_number TEXT UNIQUE,
+  amount NUMERIC(10,2),
+  status TEXT, -- DRAFT, OPEN, PAID, VOID
+  stripe_invoice_id TEXT,
+  pdf_url TEXT
+);
+```
+
+---
+
+### **API Routes Necesarias**
+
+```
+Suscripción:
+POST   /api/subscription/create           (crear suscripción)
+GET    /api/subscription                  (obtener actual)
+PUT    /api/subscription/update-plan      (cambiar plan)
+DELETE /api/subscription/cancel           (cancelar)
+
+Créditos:
+GET    /api/credits                       (obtener disponibles)
+POST   /api/credits/purchase              (comprar adicionales)
+
+Pagos:
+POST   /api/payment/create-stripe-checkout  (Stripe Checkout)
+POST   /api/payment/update-card              (actualizar tarjeta)
+POST   /api/payment/manual-request           (solicitud manual)
+POST   /api/webhooks/stripe                  (webhook Stripe)
+
+Facturas:
+GET    /api/invoices                      (listar)
+GET    /api/invoices/:id/download         (descargar PDF)
+```
+
+**Instrucciones completas:** `Coder/INSTRUCCIONES_IMPLEMENTACION_VPS_ALL_IN_ONE.md` → **FASE 7**
+
+---
+
+## ⚙️ PANTALLA 8: CONFIGURACIÓN
 
 ```
 ┌──────────────────────────────────────────────────────────┐

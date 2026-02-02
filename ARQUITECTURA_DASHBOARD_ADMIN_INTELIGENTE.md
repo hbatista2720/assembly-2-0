@@ -3,6 +3,25 @@
 
 ---
 
+## 🏛️ ZONA DEL ARQUITECTO (Requerimientos de Marketing & UX)
+*Arquitecto: Por favor, valida e integra estas funcionalidades críticas en el diseño técnico antes de pasar la estafeta al Coder.*
+
+### **1. Operatividad y Soporte (Modo Dios):**
+- **Impersonation Layer:** Diseñar el sistema para que Henry pueda "Entrar como Admin" a cualquier PH sin pedir credenciales (auditable y con expiración de 1h).
+- **Consola de Intervención Lex:** Crear el flujo para que un humano pueda pausar al bot y tomar el chat manualmente en situaciones críticas.
+
+### **2. Inteligencia de Negocio (Health Check):**
+- **Algoritmo de Churn Risk:** Calcular automáticamente la "Salud del Cliente" basada en: (Última asamblea > 90 días) O (Pago atrasado) O (Bajo quórum persistente).
+- **Integración SQL Real:** Eliminar todo dato estático del frontend. Los widgets deben consumir las Vistas SQL definidas en los módulos inferiores.
+
+### **3. Gestión de Ingresos (Finanzas):**
+- **Visor Stripe:** Integrar estados de suscripción reales (Active, Past Due, Canceled) y permitir "Upgrades" manuales desde el admin.
+
+### **4. UI Dinámica:**
+- **Sub-rutas Dinámicas:** Asegurar que cada tarjeta de ticket, lead o cliente tenga una página de detalle `/platform-admin/[modulo]/[id]`.
+
+---
+
 ## 🎯 OBJETIVO DEL DASHBOARD
 
 Crear un **centro de comando inteligente** para el dueño de la plataforma que:

@@ -1,63 +1,184 @@
-version: "3.9"
+version: "3.8"
 
 services:
-  db:
+  # === PostgreSQL 15 ===
+  postgres:
     image: postgres:15-alpine
     container_name: assembly-db
-    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: assembly_db
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: assembly
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./sql_snippets:/docker-entrypoint-initdb.d
+      - ./backups:/backups
+    command: >
+      postgres
+      -c max_connections=200
+      -c shared_buffers=1GB
+      -c effective_cache_size=3GB
+      -c work_mem=16MB
+      -c maintenance_work_mem=512MB
+      -c checkpoint_completion_target=0.9
+      -c random_page_cost=1.1
+      -c effective_io_concurrency=200
+      -c shared_preload_libraries=pg_stat_statements
+    networks:
+      - assembly-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  studio:
-    image: supabase/studio:latest
-    container_name: assembly-studio
-    restart: unless-stopped
+  # === PgBouncer ===
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: assembly-pgbouncer
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/assembly
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 25
+      RESERVE_POOL_SIZE: 10
+    ports:
+      - "6432:5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - assembly-network
+
+  # === Redis 7 ===
+  redis:
+    image: redis:7-alpine
+    container_name: assembly-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    networks:
+      - assembly-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # === Next.js App ===
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: assembly-app
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@pgbouncer:5432/assembly
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      OTP_SECRET: ${OTP_SECRET}
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      NODE_ENV: development
     ports:
       - "3000:3000"
-    environment:
-      SUPABASE_URL: http://kong:8000
-      SUPABASE_REST_URL: http://localhost:8000/rest/v1/
-      STUDIO_PG_META_URL: http://localhost:8080
-      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvY2FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDg3NDg4MzB9.xxx
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
-
-  web:
-    build: .
-    container_name: assembly-web
-    restart: unless-stopped
-    ports:
-      - "3001:3001"
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
     volumes:
       - .:/app
       - /app/node_modules
       - /app/.next
+    networks:
+      - assembly-network
+
+  # === Telegram Bot ===
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.telegram
+    container_name: assembly-telegram-bot
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/assembly_db
-      NEXT_PUBLIC_SUPABASE_URL: http://localhost:5432
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: local-development-key
-      MOCK_WEBAUTHN: "true"
-      WEBAUTHN_RP_ID: localhost
-      WEBAUTHN_RP_NAME: Assembly 2.0
-      WEBAUTHN_ORIGIN: http://localhost:3001
-      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@pgbouncer:5432/assembly
+      REDIS_URL: redis://redis:6379
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    ports:
+      - "3001:3001"
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
-    command: npm run dev
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+    networks:
+      - assembly-network
+    restart: unless-stopped
+
+  # === WhatsApp Bot (pendiente fase posterior) ===
+  whatsapp-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.whatsapp
+    container_name: assembly-whatsapp-bot
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@pgbouncer:5432/assembly
+      REDIS_URL: redis://redis:6379
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN}
+    ports:
+      - "3002:3002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+    networks:
+      - assembly-network
+    restart: unless-stopped
+
+  # === Web Chatbot ===
+  web-chatbot:
+    build:
+      context: .
+      dockerfile: Dockerfile.webchat
+    container_name: assembly-web-chatbot
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@pgbouncer:5432/assembly
+      REDIS_URL: redis://redis:6379
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    ports:
+      - "3003:3003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+    networks:
+      - assembly-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+  redis_data:
+
+networks:
+  assembly-network:
+    driver: bridge

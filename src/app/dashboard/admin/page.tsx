@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 const KPI = [
   { label: "Funnel Conversión", value: "18.4%", note: "↑ +2.1% esta semana" },
   { label: "Tickets Urgentes", value: "3", note: "2 requieren escalación" },
@@ -30,6 +34,27 @@ const CAMPAIGNS = [
 ];
 
 export default function AdminInteligenteDashboard() {
+  const [userEmail, setUserEmail] = useState("");
+  const [userRole, setUserRole] = useState("Admin Plataforma");
+
+  useEffect(() => {
+    const storedEmail = localStorage.getItem("assembly_email") || "";
+    const storedRole = localStorage.getItem("assembly_role") || "";
+    setUserEmail(storedEmail);
+    setUserRole(storedRole === "admin-ph" ? "Admin PH" : "Admin Plataforma");
+  }, []);
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("assembly_role");
+      localStorage.removeItem("assembly_email");
+      document.cookie = "assembly_role=; path=/; max-age=0";
+    } catch {
+      // ignore
+    }
+    window.location.href = "/login";
+  };
+
   return (
     <main className="container">
       <div className="app-shell">
@@ -67,6 +92,39 @@ export default function AdminInteligenteDashboard() {
         </aside>
 
         <section className="content-area">
+          <div className="card" style={{ padding: "20px", marginBottom: "20px" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "center" }}>
+              <div
+                className="icon-badge"
+                style={{
+                  width: "52px",
+                  height: "52px",
+                  borderRadius: "16px",
+                  background:
+                    "radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.8), transparent 55%), linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.95))",
+                  border: "1px solid rgba(99, 102, 241, 0.7)",
+                  boxShadow: "0 10px 24px rgba(99, 102, 241, 0.35)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <span style={{ fontSize: "18px" }}>👤</span>
+              </div>
+              <div style={{ flex: 1 }}>
+                <strong>{userEmail || "admin@assembly2.com"}</strong>
+                <div className="muted" style={{ fontSize: "13px" }}>
+                  {userRole} · Suscripción Plataforma
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <button className="btn btn-ghost">Editar perfil</button>
+                <button className="btn btn-primary" onClick={handleLogout}>
+                  Cerrar sesión
+                </button>
+              </div>
+            </div>
+          </div>
           <div className="card" style={{ padding: "28px" }}>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "16px" }}>
               <div style={{ flex: 1 }}>
@@ -77,8 +135,12 @@ export default function AdminInteligenteDashboard() {
                 </p>
               </div>
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                <button className="btn">Exportar reporte</button>
-                <button className="btn btn-primary">Activar demo</button>
+                <a className="btn" href="/platform-admin/leads">
+                  Exportar reporte
+                </a>
+                <a className="btn btn-primary" href="/platform-admin/leads?stage=demo_active">
+                  Activar demo
+                </a>
               </div>
             </div>
           </div>
@@ -167,9 +229,9 @@ export default function AdminInteligenteDashboard() {
                     </div>
                   ))}
                 </div>
-                <button className="btn" style={{ marginTop: "16px" }}>
+                <a className="btn" style={{ marginTop: "16px" }} href="/platform-admin/leads">
                   Ver lista completa
-                </button>
+                </a>
               </div>
             </div>
           </section>
@@ -185,9 +247,9 @@ export default function AdminInteligenteDashboard() {
                   <p style={{ color: "#cbd5f5", margin: 0 }}>
                     {ticket.id} · SLA {ticket.sla} · Origen {ticket.owner}
                   </p>
-                  <button className="btn" style={{ marginTop: "16px" }}>
+                  <a className="btn" style={{ marginTop: "16px" }} href={`/platform-admin/tickets/${ticket.id}`}>
                     Revisar ticket
-                  </button>
+                  </a>
                 </div>
               ))}
             </div>
@@ -225,7 +287,9 @@ export default function AdminInteligenteDashboard() {
                   <span className="pill">{campaign.status}</span>
                   <h3 style={{ marginTop: "12px" }}>{campaign.name}</h3>
                   <p style={{ color: "#cbd5f5" }}>Siguiente accion: {campaign.next}</p>
-                  <button className="btn">Configurar</button>
+                  <a className="btn" href="/platform-admin/crm">
+                    Configurar
+                  </a>
                 </div>
               ))}
             </div>

@@ -1,10 +1,121 @@
 # 📚 Índice de Documentación - Assembly 2.0
 
 **Arquitectura Técnica Completa**  
-**Versión:** 1.3 (Precios v3.0 ✅ APROBADO)  
-**Última actualización:** 28 Enero 2026  
-**Archivos totales:** 26 documentos principales + 3 backups  
-**Status:** 🟢 LISTO PARA IMPLEMENTAR
+**Versión:** 1.4 (Docker + VPS ✅ DECISIÓN FINAL)  
+**Última actualización:** 30 Enero 2026  
+**Archivos totales:** 30 documentos principales  
+**Status:** 🟢 ARQUITECTURA APROBADA - LISTO PARA DATABASE AGENT
+
+---
+
+## ⭐ DECISIÓN CRÍTICA DE INFRAESTRUCTURA (30 Enero 2026)
+
+### **✅ APROBADO v2.0: VPS ALL-IN-ONE (Frontend + Backend + PostgreSQL + Chatbots)**
+
+**CAMBIO IMPORTANTE:** Henry decidió tener TODO en un solo VPS (sin Supabase Cloud) debido a:
+- Supabase Pro ($25/mes) es limitado (500 conexiones, 8GB storage)
+- Supabase Team ($599/mes) es un salto de 24x en precio ❌
+- **Mejor: Un solo pago, control total, sin límites**
+
+**Documentos clave de la decisión:**
+1. **[ARQUITECTURA_FINAL_DOCKER_VPS.md](Arquitecto/ARQUITECTURA_FINAL_DOCKER_VPS.md)** ⭐ ACTUALIZADO v2.0
+   - VPS All-in-One: PostgreSQL + Next.js + Chatbots en un solo servidor
+   - Docker local para desarrollo (igual setup que producción)
+   - Hetzner CX51 ($32/mes) para producción
+   - Auth self-hosted (Email + OTP + WebAuthn con Redis)
+   - Realtime self-hosted (Socket.io + Redis Pub/Sub)
+   - Backups con pg_dump automático
+
+2. **[ANALISIS_SUPABASE_VS_VPS.md](Arquitecto/ANALISIS_SUPABASE_VS_VPS.md)** (v3.0)
+   - Prueba real de Henry: Railway falló
+   - VPS es confiable para chatbots always-on
+
+3. **[ANALISIS_CLOUD_VS_VPS.md](Arquitecto/ANALISIS_CLOUD_VS_VPS.md)** (v2.0)
+   - AWS/GCP/Azure vs VPS
+   - Escenario real: 30 asambleas/mes, 500 concurrentes, $7k ingresos
+   - VPS es 6x más barato
+
+**Costos aprobados (ACTUALIZADO):**
+```
+Desarrollo: $20/mes (solo Cursor)
+Producción: $32/mes (VPS CX51 + dominio)
+Total Año 1: $537 (29% más barato que con Supabase)
+```
+
+**Próximo paso:** Database Agent debe revisar arquitectura, diseñar tablas de auth self-hosted, y validar schema para 500-1,000 concurrentes.
+
+**Implicaciones técnicas:**
+- ✅ Coder implementa Auth (Email + OTP con Redis, JWT para sesiones)
+- ✅ Coder implementa Realtime (Socket.io + Redis Pub/Sub)
+- ✅ Backups manuales con pg_dump (cron diario + S3 opcional)
+- ✅ Más trabajo inicial, pero control total y sin límites
+
+---
+
+## ⭐ INICIO RÁPIDO
+
+### **¿Quieres ver el progreso del proyecto?**
+
+👉 **Lee `PROGRESO.md` primero** (5 min) 🎯
+
+Este documento te muestra:
+- ✅ Qué está listo
+- 🔄 Qué está en progreso
+- ⏸️ Qué está pendiente
+- 📊 Métricas actualizadas
+- 📅 Próximos pasos
+
+**Actualizado diariamente por el Coder.**
+
+---
+
+## 🤖 EQUIPO DE AGENTES IA
+
+### **👉 Lee `EQUIPO_AGENTES_CURSOR.md` primero** (20 min) 🎯
+
+**Documento maestro que define:**
+- ✅ 6 agentes especializados (Arquitecto, Contralor, Database, Coder, Marketing, QA)
+- ✅ Modelo de IA óptimo para cada uno (Sonnet 4.5, Opus 4.5, GPT-5.2 Codex)
+- ✅ Responsabilidades específicas de cada agente
+- ✅ Tareas típicas y ejemplos prácticos
+- ✅ Documentos que crea, consulta y NO toca
+- ✅ Prompts completos para configurar en Cursor
+- ✅ Matriz de coordinación (quién colabora con quién)
+- ✅ Flujo de trabajo completo (ejemplo real)
+- ✅ Matriz RACI (Responsible, Accountable, Consulted, Informed)
+- ✅ Reglas de oro del equipo
+
+**Beneficios:**
+- 🚀 Especialización: Cada agente domina su área
+- 🎯 No solapamiento: Responsabilidades claras
+- ⚡ Eficiencia: Modelo IA óptimo por tarea
+- 🔗 Coordinación: Flujo de trabajo definido
+
+---
+
+## 🏗️ ROL DEL ARQUITECTO
+
+### **Responsabilidades Principales:**
+
+1. ✅ Diseñar arquitectura técnica robusta y escalable
+2. ✅ Garantizar cumplimiento legal (Ley 284 Panamá y otras)
+3. ✅ Definir estructura de datos (multi-tenant, RLS)
+4. ✅ Especificar flujos de seguridad (Yappy Style, WebAuthn)
+5. ✅ Crear roadmap de implementación para el Coder
+6. ✅ Auditar cumplimiento de arquitectura por el Coder
+7. 🆕 **Analizar estructura del proyecto assembly-2-0**
+8. 🆕 **Dockerizar entorno de desarrollo completo (Supabase local)**
+9. 🆕 **Diseñar sistema de Plugins Legales** (agregar países sin refactorizar core)
+10. 🆕 **Evaluar alta concurrencia** (muchos usuarios votando simultáneamente)
+
+**Modelo recomendado:** 🟣 Sonnet 4.5
+
+**Documentos clave del rol:**
+- `EQUIPO_AGENTES_CURSOR.md` 🆕 (Configuración completa del equipo)
+- `ANALISIS_ARQUITECTURA_AVANZADA.md` 🆕 (Dockerización, Plugins, Concurrencia)
+- `ARQUITECTURA_ASSEMBLY_2.0.md` (Base técnica)
+- `ARQUITECTURA_LOGIN_AUTENTICACION.md` (Seguridad)
+- `ARQUITECTURA_REGISTRO_VOTACION_RESIDENTES.md` (Votación)
 
 ---
 
@@ -240,6 +351,214 @@ Abril 2026
 ---
 
 ## 📂 Descripción de Documentos
+
+### ⭐ PROGRESO.md 🎯 (TRACKER PRINCIPAL)
+**Tipo:** Tracker de Progreso en Tiempo Real  
+**Audiencia:** Todos (Coder, QA, Henry, Arquitecto)  
+**Tiempo de lectura:** 5 minutos  
+**Actualización:** Diaria (por el Coder)  
+
+**Contenido:**
+- Resumen ejecutivo de todas las fases (0-6)
+- Status visual: ✅ Completado / 🔄 En Progreso / ⏸️ Pendiente
+- Checklist detallado de cada fase con checkboxes
+- Métricas de progreso (44% completado)
+- Cronograma visual (Enero-Abril 2026)
+- Próximos pasos inmediatos (Coder, QA, Henry)
+- Bloqueadores e issues activos
+- Aprobaciones QA
+- Instrucciones para actualizar el documento
+
+**Por qué es crítico:**
+- Vista rápida del estado del proyecto
+- Evita preguntar "¿Qué está listo?"
+- Sincroniza a todo el equipo
+- Actualizado diariamente = siempre vigente
+
+**Cuándo leerlo:**  
+🎯 **LEER PRIMERO** - Antes de cualquier otro documento  
+🎯 Cada día al empezar  
+🎯 Antes de reuniones de status  
+🎯 Para planificar próximos pasos  
+
+**Quién lo actualiza:** Coder (al final de cada día)  
+**Quién lo revisa:** QA (al aprobar fases), Henry (monitoring)
+
+---
+
+### 💰 GESTION_COSTOS_PROYECTO.md 🆕 (PRESUPUESTO Y OPTIMIZACIÓN)
+**Tipo:** Gestión Financiera y Optimización de Recursos  
+**Audiencia:** Henry (Product Owner), Contralor  
+**Tiempo de lectura:** 30 minutos  
+**Responsable:** Contralor  
+**Actualización:** Semanal (cada lunes)
+
+**Contenido:**
+- **Resumen ejecutivo de costos:**
+  - Desarrollo: $60 (3 meses)
+  - Producción: $51/mes ($612/año)
+  - Inversión total primer año: $672 USD
+
+- **Costos de plataformas detallados:**
+  - Cursor Pro: $20/mes (necesario, unlimited)
+  - Supabase: Free dev, Pro producción ($25/mes)
+  - GitHub: Free (suficiente)
+  - Vercel: Free (hosting Next.js)
+  - Gemini IA: Free demo, $5/mes producción
+  - Dominio: $12/año
+
+- **Optimización de recursos:**
+  - Estrategia de uso de modelos IA (óptimo por costo/beneficio)
+  - Evitar reprocesos (70% ahorro en tokens)
+  - Prácticas que desperdician vs optimizan
+  - Límites y alertas por plataforma
+
+- **ROI del proyecto:**
+  - Break-even: 1 cliente Standard = suficiente
+  - ROI con 3 clientes: 10,220%
+  - ROI con 10 clientes: 59,240%
+  - Tiempo de recuperación: 1 mes
+
+- **Estrategia de escala:**
+  - 1-2 clientes: Supabase Pro ($25/mes)
+  - 3-20 clientes: Mantener Pro
+  - 20-80 clientes: Upgrade a Team ($599/mes)
+  - 80+ clientes: Enterprise (custom)
+
+- **Dashboard de monitoreo:**
+  - Métricas clave: Requests, Storage, Bandwidth, Conexiones
+  - Sistema de alertas (🟢 Verde, 🟡 Amarillo, 🔴 Rojo)
+  - Checklist semanal para Contralor
+
+**Por qué es crítico:**
+- Visibilidad total de costos (desarrollo + producción)
+- Optimización de uso de tokens/recursos
+- Evitar gastos innecesarios (reprocesos, modelos inadecuados)
+- Decisiones informadas de upgrade de planes
+- ROI claro para justificar inversión
+
+**Cuándo consultarlo:**  
+✅ Antes de aprobar presupuesto de desarrollo  
+✅ Semanalmente: revisar uso vs límites  
+✅ Antes de agregar nuevas features (calcular costo)  
+✅ Al decidir upgrade de plan (Supabase, Cursor)  
+✅ Para reportar ROI a stakeholders  
+
+**Responsable de actualizar:** Contralor (semanalmente)
+
+---
+
+### 🤖 EQUIPO_AGENTES_CURSOR.md 🆕 (CONFIGURACIÓN DE AGENTES)
+**Tipo:** Guía de Configuración de Equipo IA  
+**Audiencia:** Todos (Henry, Arquitecto, Contralor, Database, Coder, Marketing, QA)  
+**Tiempo de lectura:** 20 minutos  
+**Fecha:** 30 Enero 2026
+
+**Contenido:**
+- **Visión general del equipo** (estructura organizacional, principios)
+- **6 Agentes especializados:**
+  1. **Arquitecto** (Sonnet 4.5): Diseño de arquitectura, análisis de sistemas
+  2. **Contralor** (Opus 4.5): Supervisión, auditoría, gestión de riesgos
+  3. **Database** (Sonnet 4.5): SQL avanzado, schema, optimización
+  4. **Coder** (GPT-5.2 Codex): Next.js, React, API routes, frontend/backend
+  5. **Marketing B2B** (GPT-5.2): Pricing, copywriting, estrategia
+  6. **QA Calidad** (Sonnet 4.5): Testing, validación, bugs
+- **Para cada agente:**
+  - Modelo de IA recomendado (con justificación)
+  - Responsabilidades principales detalladas
+  - Tareas típicas con ejemplos
+  - Documentos que CREA, CONSULTA y NO TOCA
+  - Prompt completo para configurar en Cursor (copy-paste)
+- **Matriz de coordinación** (quién colabora con quién y para qué)
+- **Flujo de trabajo completo** (ejemplo: "Implementar sistema de votación")
+- **Matriz RACI** (Responsible, Accountable, Consulted, Informed)
+- **Reglas de oro del equipo** (no solapamiento, comunicación, trazabilidad)
+
+**Por qué es crítico:**
+- Especialización = cada agente domina su área
+- Modelos óptimos = máxima eficiencia (Sonnet para SQL, Codex para código)
+- No solapamiento = evita conflictos y reprocesos
+- Coordinación clara = flujo de trabajo sin bloqueos
+- Prompts listos = configurar en 5 minutos
+
+**Cuándo leerlo:**  
+🎯 **LEER ANTES DE CONFIGURAR CURSOR**  
+✅ Para entender responsabilidades de cada agente  
+✅ Antes de asignar tareas  
+✅ Para resolver conflictos entre agentes  
+✅ Para optimizar modelos IA según tarea  
+
+**Cómo usarlo:**
+1. Lee la sección de tu agente
+2. Copia el prompt de configuración
+3. Configura el modelo recomendado en Cursor
+4. Sigue las responsabilidades definidas
+5. Coordina con otros agentes según matriz
+
+---
+
+### 🏗️ ANALISIS_ARQUITECTURA_AVANZADA.md 🆕 (ARQUITECTURA AVANZADA)
+**Tipo:** Análisis Técnico Profundo  
+**Audiencia:** Arquitecto, Coder, DevOps, Henry  
+**Tiempo de lectura:** 40 minutos  
+**Fecha:** 30 Enero 2026
+
+**Contenido:**
+- **1. Análisis de estructura actual del proyecto**
+  - Estado de documentación, código, Docker
+  - Fortalezas y áreas de mejora
+  - Evaluación técnica completa
+
+- **2. Dockerización completa de Supabase**
+  - Problema: docker-compose incompleto (falta Auth, Storage, Realtime)
+  - Opción A: Supabase CLI (recomendada - 5 min setup)
+  - Opción B: docker-compose manual (150 líneas, control total)
+  - Stack completo: PostgreSQL, GoTrue, PostgREST, Kong, Realtime, Storage
+  - Archivo kong.yml incluido
+  - Comandos de migración
+
+- **3. Sistema de Plugins Legales**
+  - Objetivo: Agregar países sin refactorizar código core
+  - Tablas: `legal_contexts` + `legal_rules` (JSONB)
+  - Plugin loader dinámico (TypeScript)
+  - Seed de Ley 284 (Panamá)
+  - Seed de Ley 675 (Colombia) como ejemplo
+  - Ejemplo: Agregar México sin código
+  - Dashboard UI para configurar reglas legales
+  - Métodos: calculateQuorum(), canVote(), getVoteWeight()
+
+- **4. Evaluación de Concurrencia**
+  - Escenario: 250 usuarios votando simultáneamente
+  - Análisis de bottlenecks (DB, Realtime, API)
+  - Plan Gratuito: Soporta ~100 usuarios
+  - Plan Pro ($25/mes): Soporta 250-500 usuarios
+  - 3 optimizaciones críticas:
+    * Debouncing de WebSocket (62x menos mensajes)
+    * Caching de reglas legales (1,250x menos queries)
+    * Batch inserts (50x menos INSERTs)
+  - Scripts de pruebas de carga (autocannon, socket.io)
+  - Métricas objetivo (latencia, throughput, error rate)
+
+**Por qué es importante:**
+- Dockerización completa = desarrollo idéntico a producción
+- Plugins legales = internacionalización sin refactorizar
+- Evaluación de concurrencia = preparación para asambleas grandes
+- Evita colapsos en producción
+
+**Cuándo leerlo:**  
+✅ Antes de implementar Supabase local completo  
+✅ Antes de agregar nuevos países (Colombia, México)  
+✅ Antes de pruebas con >100 usuarios  
+✅ Para decisión de upgrade a Plan Pro  
+✅ Para entender límites técnicos del sistema  
+
+**Próximos pasos:**
+1. Implementar Supabase CLI local
+2. Crear tablas de plugins legales
+3. Seed de Panamá y Colombia
+4. Pruebas de carga básicas
+
+---
 
 ### 🆕 NUEVOS - Marketing y Estrategia Comercial (27 Enero 2026)
 

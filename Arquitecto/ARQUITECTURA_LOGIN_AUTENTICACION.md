@@ -1,10 +1,38 @@
 # 🔐 ARQUITECTURA LOGIN Y AUTENTICACIÓN
 ## Assembly 2.0 - Sistema de Roles y Acceso
 
-**Versión:** 1.0  
-**Fecha:** 29 Enero 2026  
+**Versión:** 2.0 (OTP desde inicio)  
+**Fecha:** 29 Enero 2026 (Actualizado)  
 **Autor:** Arquitecto Assembly 2.0  
 **Audiencia:** Henry, Coder, QA
+
+---
+
+## ⚡ CAMBIO IMPORTANTE - LEER PRIMERO
+
+### **🔴 NO HAY PASSWORDS**
+
+**Decisión:** Todo el login es **Email + OTP (6 dígitos)** desde el inicio, incluso en pruebas.
+
+**Razón:**
+- ✅ Más seguro
+- ✅ Mismo flujo en test y producción
+- ✅ Supabase envía OTP automáticamente
+- ✅ Sin problemas de contraseñas olvidadas
+- ✅ Más fácil de mantener
+
+**Flujo:**
+```
+1. Usuario ingresa email
+2. Supabase envía OTP al correo (automático)
+3. Usuario ingresa código de 6 dígitos
+4. ✅ Acceso al dashboard
+```
+
+**Aplica para:**
+- ✅ Admin Principal (Henry)
+- ✅ Admin PH DEMO
+- ✅ Admin PH Activo
 
 ---
 
@@ -271,10 +299,19 @@ CREATE INDEX idx_credits_org ON organization_credits(organization_id);
 
 ---
 
-## 🧪 FLUJO DE LOGIN - FASE TEST
+## 🧪 FLUJO DE LOGIN - UNIFICADO (TEST Y PRODUCCIÓN)
 
-### **Objetivo:**
-Testing local con usuarios hardcodeados en Supabase.
+### **CAMBIO IMPORTANTE:**
+**No usamos passwords.** Todo es **Email + OTP (6 dígitos)** desde el inicio, incluso en pruebas.
+
+### **¿Por qué?**
+- ✅ Más seguro desde el día 1
+- ✅ Mismo flujo en test y producción
+- ✅ Sin problemas de passwords olvidadas
+- ✅ Supabase envía OTP automáticamente
+- ✅ Más fácil de mantener
+
+---
 
 ### **Setup Inicial (Coder ejecuta 1 vez):**
 
@@ -285,14 +322,12 @@ Testing local con usuarios hardcodeados en Supabase.
 INSERT INTO auth.users (
   id, 
   email, 
-  encrypted_password, 
   email_confirmed_at,
   created_at,
   updated_at
 ) VALUES (
   '00000000-0000-0000-0000-000000000001',
   'henry.batista27@gmail.com',
-  crypt('TestPassword123!', gen_salt('bf')),
   NOW(),
   NOW(),
   NOW()
@@ -320,12 +355,15 @@ INSERT INTO users (
 );
 ```
 
-**Credenciales TEST:**
+**Login TEST:**
 ```
-Email: henry.batista27@gmail.com
-Password: TestPassword123!
-Rol: ADMIN_PLATAFORMA
+1. Ingresa: henry.batista27@gmail.com
+2. Supabase envía OTP al correo
+3. Ingresa código de 6 dígitos
+4. ✅ Acceso al dashboard
 ```
+
+---
 
 ---
 
@@ -368,14 +406,12 @@ INSERT INTO subscriptions (
 INSERT INTO auth.users (
   id, 
   email, 
-  encrypted_password, 
   email_confirmed_at,
   created_at,
   updated_at
 ) VALUES (
   '11111111-1111-1111-1111-111111111113',
   'demo@assembly2.com',
-  crypt('Demo123!', gen_salt('bf')),
   NOW(),
   NOW(),
   NOW()
@@ -401,11 +437,12 @@ INSERT INTO users (
 );
 ```
 
-**Credenciales TEST:**
+**Login TEST:**
 ```
-Email: demo@assembly2.com
-Password: Demo123!
-Rol: ADMIN_PH (DEMO)
+1. Ingresa: demo@assembly2.com
+2. Supabase envía OTP al correo
+3. Ingresa código de 6 dígitos
+4. ✅ Acceso al dashboard DEMO
 ```
 
 ---
@@ -464,14 +501,12 @@ INSERT INTO organization_credits (
 INSERT INTO auth.users (
   id, 
   email, 
-  encrypted_password, 
   email_confirmed_at,
   created_at,
   updated_at
 ) VALUES (
   '22222222-2222-2222-2222-222222222224',
   'admin@torresdelpacifico.com',
-  crypt('Active123!', gen_salt('bf')),
   NOW(),
   NOW(),
   NOW()
@@ -497,22 +532,25 @@ INSERT INTO users (
 );
 ```
 
-**Credenciales TEST:**
+**Login TEST:**
 ```
-Email: admin@torresdelpacifico.com
-Password: Active123!
-Rol: ADMIN_PH (STANDARD - ACTIVO)
+1. Ingresa: admin@torresdelpacifico.com
+2. Supabase envía OTP al correo
+3. Ingresa código de 6 dígitos
+4. ✅ Acceso al dashboard
 ```
 
 ---
 
 ### **Resumen Usuarios TEST:**
 
-| Email | Password | Rol | Plan | Dashboard |
-|-------|----------|-----|------|-----------|
-| `henry.batista27@gmail.com` | `TestPassword123!` | ADMIN_PLATAFORMA | N/A | `/dashboard/platform-admin` |
-| `demo@assembly2.com` | `Demo123!` | ADMIN_PH | DEMO | `/dashboard/admin-ph?mode=demo` |
-| `admin@torresdelpacifico.com` | `Active123!` | ADMIN_PH | STANDARD | `/dashboard/admin-ph` |
+| Email | Login | Rol | Plan | Dashboard |
+|-------|-------|-----|------|-----------|
+| `henry.batista27@gmail.com` | Email + OTP | ADMIN_PLATAFORMA | N/A | `/dashboard/platform-admin` |
+| `demo@assembly2.com` | Email + OTP | ADMIN_PH | DEMO | `/dashboard/admin-ph?mode=demo` |
+| `admin@torresdelpacifico.com` | Email + OTP | ADMIN_PH | STANDARD | `/dashboard/admin-ph` |
+
+**Nota:** No hay passwords. Todos usan **Email + OTP (6 dígitos)** que Supabase envía automáticamente al correo.
 
 ---
 
@@ -1135,16 +1173,13 @@ bot.on('message', async (msg) => {
 
 ---
 
-## 🚀 FLUJO DE LOGIN - PRODUCCIÓN
+## 🚀 COMPONENTE DE LOGIN (Para el Coder)
 
-### **Diferencias con TEST:**
+### **Flujo Único (TEST y PRODUCCIÓN):**
 
-1. **No hay usuarios hardcodeados** (excepto Henry)
-2. **Registro via Landing Page** con validación de email
-3. **Integración con Stripe** para pagos
-4. **WebAuthn obligatorio** después del primer login
+Siempre: **Email → OTP → Dashboard** (WebAuthn opcional para futuro)
 
-### **Flujo Completo:**
+### **Implementación Completa:**
 
 #### **1. Nuevo Usuario (DEMO)**
 
@@ -1221,91 +1256,159 @@ export async function POST(req: Request) {
 
 ---
 
-#### **2. Login Existente (Password en TEST, WebAuthn en PROD)**
+#### **2. Login Existente (Email + OTP)**
 
-**Fase TEST (Email + Password):**
+**Flujo Unificado (TEST y PRODUCCIÓN):**
 ```typescript
 // app/login/page.tsx
-const handleLogin = async () => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  });
-  
-  if (error) {
-    toast.error('Credenciales inválidas');
-    return;
-  }
-  
-  // Obtener perfil del usuario
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, organization_id, is_platform_owner')
-    .eq('id', data.user.id)
-    .single();
-  
-  // Redirect según rol
-  if (profile.is_platform_owner) {
-    router.push('/dashboard/platform-admin');
-  } else {
-    router.push('/dashboard/admin-ph');
-  }
-};
-```
+'use client';
 
-**Fase PRODUCCIÓN (Email + OTP → WebAuthn):**
-```typescript
-// Paso 1: Email → OTP
-const handleLoginStart = async () => {
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      shouldCreateUser: false
-    }
-  });
-  
-  if (!error) {
-    setStep('verify-otp');
-  }
-};
+import { useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 
-// Paso 2: Verificar OTP
-const handleVerifyOtp = async () => {
-  const { data, error } = await supabase.auth.verifyOtp({
-    email,
-    token: otpCode,
-    type: 'email'
-  });
-  
-  if (!error) {
-    // Verificar si tiene WebAuthn configurado
-    const hasWebAuthn = await checkWebAuthnCredentials(data.user.id);
-    
-    if (!hasWebAuthn) {
-      setStep('setup-webauthn');
+export default function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [step, setStep] = useState<'email' | 'otp'>('email');
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const supabase = createClient();
+
+  // Paso 1: Enviar OTP al email
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: false // No crear usuario si no existe
+      }
+    });
+
+    if (error) {
+      alert('Error: ' + error.message);
     } else {
-      setStep('verify-webauthn');
+      alert('Revisa tu correo! Te enviamos un código de 6 dígitos.');
+      setStep('otp');
     }
-  }
-};
 
-// Paso 3: WebAuthn (Face ID / Touch ID)
-const handleWebAuthnVerify = async () => {
-  const credential = await navigator.credentials.get({
-    publicKey: {
-      challenge: Uint8Array.from(challenge, c => c.charCodeAt(0)),
-      rpId: window.location.hostname,
-      userVerification: 'required'
+    setLoading(false);
+  };
+
+  // Paso 2: Verificar OTP
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token: otp,
+      type: 'email'
+    });
+
+    if (error) {
+      alert('Código inválido o expirado');
+      setLoading(false);
+      return;
     }
-  });
-  
-  // Verificar credencial en backend
-  const verified = await verifyWebAuthnCredential(credential);
-  
-  if (verified) {
-    router.push(getDashboardUrl());
-  }
-};
+
+    // Obtener perfil del usuario
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role, organization_id, is_platform_owner')
+      .eq('id', data.user!.id)
+      .single();
+
+    // Actualizar último login
+    await supabase
+      .from('users')
+      .update({ 
+        last_login_at: new Date().toISOString(),
+        login_count: profile.login_count + 1 
+      })
+      .eq('id', data.user!.id);
+
+    // Redirect según rol
+    if (profile.is_platform_owner) {
+      router.push('/dashboard/platform-admin');
+    } else if (profile.organization?.is_demo) {
+      router.push('/dashboard/admin-ph?mode=demo');
+    } else {
+      router.push('/dashboard/admin-ph');
+    }
+
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg">
+        <h1 className="text-2xl font-bold mb-6">Assembly 2.0</h1>
+
+        {step === 'email' ? (
+          <form onSubmit={handleSendOtp}>
+            <label className="block mb-4">
+              <span className="text-gray-700">Email</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                placeholder="tu@email.com"
+                required
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+            >
+              {loading ? 'Enviando...' : 'Enviar código'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleVerifyOtp}>
+            <p className="mb-4 text-sm text-gray-600">
+              Te enviamos un código de 6 dígitos a <strong>{email}</strong>
+            </p>
+
+            <label className="block mb-4">
+              <span className="text-gray-700">Código de verificación</span>
+              <input
+                type="text"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-center text-2xl tracking-widest"
+                placeholder="000000"
+                maxLength={6}
+                required
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+            >
+              {loading ? 'Verificando...' : 'Verificar código'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStep('email')}
+              className="w-full mt-2 text-sm text-blue-600 hover:underline"
+            >
+              ← Usar otro email
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
 ```
 
 ---

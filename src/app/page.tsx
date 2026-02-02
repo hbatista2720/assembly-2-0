@@ -1,29 +1,112 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { PLANS } from "../lib/types/pricing";
 
 export default function HomePage() {
+  const router = useRouter();
   const [chatbotOpen, setChatbotOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatStep, setChatStep] = useState(0);
   const [chatRole, setChatRole] = useState<"admin" | "junta" | "residente" | "demo" | "">("");
   const [chatMessages, setChatMessages] = useState<Array<{ from: "bot" | "user"; text: string }>>([]);
+  const [webPrompt, setWebPrompt] = useState("Hola, soy Lex. Antes de continuar, ¿que perfil tienes?");
   const [leadData, setLeadData] = useState({
     email: "",
     role: "",
     demoEmail: "",
   });
   const [assembliesPerYear, setAssembliesPerYear] = useState(2);
+  const [unitsCount, setUnitsCount] = useState(311);
+  const [showMonthly, setShowMonthly] = useState(true);
+  const planSuggestion = useMemo(() => {
+    const baseUnits = 250;
+    const extraBlocks = Math.max(0, Math.ceil((unitsCount - baseUnits) / 100));
+    const monthlyStandard = 189 + extraBlocks * 50;
+    const duoPackCost = 389 + extraBlocks * 50;
+
+    if (assembliesPerYear <= 1) {
+      return {
+        label: "Evento Único",
+        planType: "one_time",
+        annualCost: 225,
+        monthlyCost: 225 / 12,
+        note: "Pago único por asamblea",
+      };
+    }
+    if (assembliesPerYear === 2) {
+      return {
+        label: "Dúo Pack",
+        planType: "one_time",
+        annualCost: duoPackCost,
+        monthlyCost: duoPackCost / 12,
+        note: "2 asambleas/año con ahorro",
+      };
+    }
+    if (assembliesPerYear === 3) {
+      return {
+        label: "Dúo Pack + 1 Evento Único",
+        planType: "one_time",
+        annualCost: duoPackCost + 225,
+        monthlyCost: (duoPackCost + 225) / 12,
+        note: "Mejor opción para 3 asambleas",
+      };
+    }
+    return {
+      label: "Standard",
+      planType: "subscription",
+      annualCost: monthlyStandard * 12,
+      monthlyCost: monthlyStandard,
+      note: `Base 250 unidades + ${extraBlocks} bloque(s) extra`,
+    };
+  }, [assembliesPerYear, unitsCount]);
+
   const roiCalculations = useMemo(() => {
     const manualCost = assembliesPerYear * 1500;
     const legalRisk = assembliesPerYear * 3300;
     const timeWasted = assembliesPerYear * 40 * 30;
-    const standardCost = 189 * 12;
-    const totalSavings = manualCost + legalRisk + timeWasted - standardCost;
-    const roi = Math.round((totalSavings / standardCost) * 100);
-    return { manualCost, legalRisk, timeWasted, standardCost, totalSavings, roi };
-  }, [assembliesPerYear]);
+    const planAnnualCost = planSuggestion.annualCost;
+    const totalSavings = manualCost + legalRisk + timeWasted - planAnnualCost;
+    const roi = Math.round((totalSavings / planAnnualCost) * 100);
+    const costPerUnitMonthly =
+      planSuggestion.planType === "subscription"
+        ? planSuggestion.monthlyCost / Math.max(1, unitsCount)
+        : planAnnualCost / Math.max(1, unitsCount) / Math.max(1, assembliesPerYear);
+    return {
+      manualCost,
+      legalRisk,
+      timeWasted,
+      planAnnualCost,
+      totalSavings,
+      roi,
+      costPerUnitMonthly,
+    };
+  }, [assembliesPerYear, planSuggestion, unitsCount]);
+
+  useEffect(() => {
+    if (planSuggestion.planType === "one_time" && showMonthly) {
+      setShowMonthly(false);
+    }
+  }, [planSuggestion.planType, showMonthly]);
+
+  const planDisplayCost =
+    planSuggestion.planType === "one_time"
+      ? planSuggestion.annualCost
+      : showMonthly
+        ? planSuggestion.monthlyCost
+        : planSuggestion.annualCost;
+  const planDisplayLabel =
+    planSuggestion.planType === "one_time"
+      ? "Pago único por eventos"
+      : showMonthly
+        ? "Costo mensual de suscripción"
+        : "Costo anual de suscripción";
+  const periodLabel = showMonthly ? "mes" : "año";
+  const periodDivisor = showMonthly ? 12 : 1;
+  const traditionalDisplay =
+    (roiCalculations.manualCost + roiCalculations.legalRisk + roiCalculations.timeWasted) / periodDivisor;
+  const savingsDisplay = roiCalculations.totalSavings / periodDivisor;
 
   useEffect(() => {
     const timer = setTimeout(() => setChatbotOpen(true), 20000);
@@ -32,12 +115,17 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!chatbotOpen || chatMessages.length > 0) return;
-    setChatMessages([
-      {
-        from: "bot",
-        text: "Hola, soy Lex. Antes de continuar, ¿que perfil tienes?",
-      },
-    ]);
+    fetch("/api/chatbot/config")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const webConfig = Array.isArray(data) ? data.find((item) => item.bot_name === "web") : null;
+        const prompt = webConfig?.prompts?.landing || webPrompt;
+        setWebPrompt(prompt);
+        setChatMessages([{ from: "bot", text: prompt }]);
+      })
+      .catch(() => {
+        setChatMessages([{ from: "bot", text: webPrompt }]);
+      });
   }, [chatbotOpen, chatMessages.length]);
 
   const pushBotMessage = (text: string) => {
@@ -46,6 +134,18 @@ export default function HomePage() {
 
   const pushUserMessage = (text: string) => {
     setChatMessages((prev) => [...prev, { from: "user", text }]);
+  };
+
+  const handleQuickAction = (label: string, response: string) => {
+    pushUserMessage(label);
+    pushBotMessage(response);
+  };
+
+  const handleQuickNav = (label: string, response: string, path: string) => {
+    handleQuickAction(label, response);
+    setTimeout(() => {
+      router.push(path);
+    }, 200);
   };
 
   const getRoleEmailPrompt = (role: typeof chatRole) => {
@@ -229,7 +329,7 @@ export default function HomePage() {
             Compliance legal
           </a>
           <a className="menu-pill" href="#casos">
-            Clientes en piloto
+            Simulaciones de impacto
           </a>
           <a className="menu-pill" href="#precios-completos">
             Planes oficiales
@@ -249,6 +349,14 @@ export default function HomePage() {
               Asamblea virtual con quorum en tiempo real, votacion ponderada y actas certificadas. Reduce 80%
               del trabajo operativo con trazabilidad legal completa.
             </p>
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "14px" }}>
+              <span className="pill" style={{ background: "rgba(16,185,129,0.2)", borderColor: "rgba(16,185,129,0.4)" }}>
+                PROGRAMA EARLY ADOPTER · CUPOS LIMITADOS 2026
+              </span>
+              <span className="pill" style={{ background: "rgba(99,102,241,0.2)", borderColor: "rgba(99,102,241,0.5)" }}>
+                3 de 5 cupos disponibles
+              </span>
+            </div>
             <div className="hero-cta">
               <button className="btn btn-primary btn-demo" onClick={() => setChatbotOpen(true)}>
                 Agendar demo con Lex
@@ -258,7 +366,7 @@ export default function HomePage() {
               </a>
             </div>
             <div className="logo-row">
-              <span>Confiado por administradoras y promotoras</span>
+              <span>Diseñado para administradoras pro en Panama</span>
               {[
                 { accent: "rgba(99, 102, 241, 0.9)", glow: "rgba(99, 102, 241, 0.35)" },
                 { accent: "rgba(56, 189, 248, 0.9)", glow: "rgba(56, 189, 248, 0.35)" },
@@ -347,15 +455,15 @@ export default function HomePage() {
       </section>
 
       <section id="beneficios" className="section">
-        <h2 className="section-title">Operacion legal, fluida y rentable</h2>
+        <h2 className="section-title">Blindaje legal total (Ley 284)</h2>
         <p className="section-subtitle">
-          Centraliza convocatorias, validacion de poderes y actas certificadas en un solo flujo.
+          Cumple articulo por articulo con trazabilidad legal, actas certificadas y control de poderes.
         </p>
         <div className="two-col">
           {[
             { title: "Actas certificadas en minutos", desc: "PDF legal con firmas y auditoria instantanea." },
             { title: "Quorum automatico y sin errores", desc: "Cumplimiento estricto de Ley 284 con trazabilidad total." },
-            { title: "Operacion multi-PH en un panel", desc: "Carteras consolidadas, KPIs y seguimiento comercial." },
+            { title: "Validacion legal de poderes", desc: "OCR + evidencias para evitar impugnaciones." },
           ].map((item) => (
             <div key={item.title} className="list-item">
               <div>
@@ -368,30 +476,41 @@ export default function HomePage() {
       </section>
 
       <section id="casos" className="section">
-        <h2 className="section-title">Clientes en piloto</h2>
-        <p className="section-subtitle">Mas de 300 copropietarios ya votan con seguridad y actas certificadas.</p>
-        <div style={{ display: "flex", gap: "12px" }}>
+        <h2 className="section-title">Simulaciones de impacto</h2>
+        <p className="section-subtitle">
+          Disenado para resolver los problemas criticos de administradoras en Panama, basado en el analisis de
+          mas de 20 asambleas tradicionales de alta densidad.
+        </p>
+        <div className="two-col">
           {[
-            { accent: "rgba(99, 102, 241, 0.9)", glow: "rgba(99, 102, 241, 0.35)" },
-            { accent: "rgba(56, 189, 248, 0.9)", glow: "rgba(56, 189, 248, 0.35)" },
-            { accent: "rgba(34, 197, 94, 0.9)", glow: "rgba(34, 197, 94, 0.35)" },
-            { accent: "rgba(236, 72, 153, 0.9)", glow: "rgba(236, 72, 153, 0.35)" },
-          ].map((item, index) => (
-            <span
-              key={`casos-avatar-${index}`}
-              className="icon-badge"
-              style={{
-                width: "44px",
-                height: "44px",
-                borderRadius: "999px",
-                background: `radial-gradient(circle at 30% 30%, ${item.accent}, transparent 55%), linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.95))`,
-                border: `1px solid ${item.accent}`,
-                boxShadow: `0 12px 28px ${item.glow}`,
-              }}
-            >
-              <span style={{ fontSize: "16px" }}>👤</span>
-            </span>
+            {
+              title: "El costo del silencio",
+              desc: "Hasta $15k anuales en tiempo perdido, riesgo legal y costos manuales.",
+            },
+            {
+              title: "Antes vs. despues",
+              desc: "Quorum y votacion en tiempo real con trazabilidad total.",
+            },
+            {
+              title: "Sandbox en vivo",
+              desc: "Explora una asamblea demo con datos simulados y KPIs reales.",
+            },
+          ].map((item) => (
+            <div key={item.title} className="list-item">
+              <div>
+                <h3 style={{ margin: "0 0 6px" }}>{item.title}</h3>
+                <p style={{ margin: 0, color: "#cbd5f5" }}>{item.desc}</p>
+              </div>
+            </div>
           ))}
+        </div>
+        <div style={{ marginTop: "16px", display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+          <a className="btn btn-ghost" href="#ahorro">
+            Ver calculadora de ahorro
+          </a>
+          <span className="muted" style={{ fontSize: "13px" }}>
+            Demo activa con datos simulados para validar el impacto.
+          </span>
         </div>
       </section>
 
@@ -425,6 +544,212 @@ export default function HomePage() {
               <p style={{ color: "#cbd5f5" }}>{item.desc}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section id="ahorro" className="section">
+        <h2 className="section-title">Calculadora de ahorro</h2>
+        <p className="section-subtitle">
+          Compara el costo tradicional vs Assembly 2.0 segun tus asambleas anuales.
+        </p>
+        <div className="card" style={{ display: "grid", gap: "18px" }}>
+          <div className="two-col" style={{ gap: "16px" }}>
+            <label style={{ display: "grid", gap: "10px" }}>
+              ¿Cuántas asambleas haces al año? <strong>{assembliesPerYear}</strong>
+              <input
+                type="range"
+                min={1}
+                max={12}
+                value={assembliesPerYear}
+                onChange={(event) => setAssembliesPerYear(Number(event.target.value))}
+              />
+            </label>
+            <label style={{ display: "grid", gap: "10px" }}>
+              ¿Cuántas unidades/casas tiene tu PH? <strong>{unitsCount}</strong>
+              <input
+                type="range"
+                min={50}
+                max={1200}
+                step={10}
+                value={unitsCount}
+                onChange={(event) => setUnitsCount(Number(event.target.value))}
+              />
+            </label>
+          </div>
+          <div
+            className="card"
+            style={{
+              padding: "12px 16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              background: "rgba(15,23,42,0.5)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span className="icon-badge" style={{ width: "32px", height: "32px", borderRadius: "10px" }}>
+                <span style={{ fontSize: "14px" }}>💡</span>
+              </span>
+              <div>
+                <strong>Vista de costo</strong>
+                <div className="muted" style={{ fontSize: "12px" }}>
+                  Cambia entre mensual y anual
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setShowMonthly((prev) => !prev)}
+              disabled={planSuggestion.planType === "one_time"}
+              style={{
+                borderRadius: "999px",
+                padding: "8px 14px",
+                border: "1px solid rgba(148, 163, 184, 0.3)",
+                background: showMonthly
+                  ? "linear-gradient(135deg, rgba(56,189,248,0.4), rgba(99,102,241,0.35))"
+                  : "rgba(15,23,42,0.6)",
+                opacity: planSuggestion.planType === "one_time" ? 0.6 : 1,
+              }}
+            >
+              {showMonthly ? "Mensual" : "Anual"}
+            </button>
+          </div>
+          <div className="chart-grid">
+            <div className="chart-card">
+              <h3 style={{ marginTop: 0 }}>Costo tradicional/{periodLabel}</h3>
+              <p style={{ fontSize: "26px", margin: "10px 0" }}>
+                ${traditionalDisplay.toLocaleString()}
+              </p>
+              <p className="muted" style={{ margin: 0 }}>
+                Tiempo + riesgo legal + costo manual
+              </p>
+            </div>
+            <div className="chart-card">
+              <h3 style={{ marginTop: 0 }}>Plan sugerido</h3>
+              <p style={{ fontSize: "26px", margin: "10px 0" }}>
+                {planSuggestion.label} · ${planDisplayCost.toLocaleString()}
+              </p>
+              <p className="muted" style={{ margin: 0 }}>
+                {planDisplayLabel} · {planSuggestion.note}
+              </p>
+              <p className="muted" style={{ margin: "8px 0 0" }}>
+                Costo por unidad{" "}
+                {planSuggestion.planType === "subscription" ? "/mes" : "/asamblea"}:{" "}
+                <span style={{ color: "#34d399", fontWeight: 600 }}>
+                  ${roiCalculations.costPerUnitMonthly.toFixed(2)}
+                </span>
+              </p>
+              {planSuggestion.planType === "one_time" && (
+                <p className="muted" style={{ margin: "8px 0 0" }}>
+                  Este plan no requiere suscripción mensual.
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="chart-grid">
+            <div className="chart-card">
+              <h3 style={{ marginTop: 0 }}>Ahorro total/{periodLabel}</h3>
+              <p style={{ fontSize: "26px", margin: "10px 0" }}>
+                ${savingsDisplay.toLocaleString()}
+              </p>
+              <p className="muted" style={{ margin: 0 }}>
+                ROI estimado {roiCalculations.roi}%
+              </p>
+            </div>
+          </div>
+          <div className="two-col">
+            <div className="card-list">
+              <h4 style={{ margin: "0 0 8px" }}>Consecuencias del modelo tradicional</h4>
+              {[
+                {
+                  label: `Tiempo perdido/${periodLabel}: $${(roiCalculations.timeWasted / periodDivisor).toLocaleString()}`,
+                  icon: "⏱️",
+                  accent: "rgba(56, 189, 248, 0.9)",
+                  glow: "rgba(56, 189, 248, 0.35)",
+                },
+                {
+                  label: `Riesgo legal/${periodLabel}: $${(roiCalculations.legalRisk / periodDivisor).toLocaleString()}`,
+                  icon: "⚖️",
+                  accent: "rgba(99, 102, 241, 0.9)",
+                  glow: "rgba(99, 102, 241, 0.35)",
+                },
+                {
+                  label: `Costo manual/${periodLabel}: $${(roiCalculations.manualCost / periodDivisor).toLocaleString()}`,
+                  icon: "💼",
+                  accent: "rgba(236, 72, 153, 0.9)",
+                  glow: "rgba(236, 72, 153, 0.35)",
+                },
+              ].map((item) => (
+                <div key={item.label} className="list-item">
+                  <span
+                    className="icon-badge"
+                    style={{
+                      width: "28px",
+                      height: "28px",
+                      borderRadius: "10px",
+                      background: `radial-gradient(circle at 30% 30%, ${item.accent}, transparent 55%), linear-gradient(135deg, rgba(15,23,42,0.85), rgba(30,41,59,0.95))`,
+                      border: `1px solid ${item.accent}`,
+                      boxShadow: `0 10px 24px ${item.glow}`,
+                    }}
+                  >
+                    <span style={{ fontSize: "12px" }}>{item.icon}</span>
+                  </span>
+                  <span>{item.label}</span>
+                </div>
+              ))}
+              <p className="muted" style={{ margin: "8px 0 0", fontSize: "12px" }}>
+                <span
+                  className="icon-badge"
+                  style={{ width: "20px", height: "20px", borderRadius: "8px", marginRight: "8px" }}
+                  title="Cálculo basado en 15% de impugnación y $5,000 promedio en abogados + repetición de asamblea."
+                >
+                  <span style={{ fontSize: "10px" }}>i</span>
+                </span>
+                Riesgo legal calculado con probabilidad histórica.
+              </p>
+            </div>
+            <div className="card-list">
+              <h4 style={{ margin: "0 0 8px" }}>Ahorro con Assembly 2.0</h4>
+              {[
+                {
+                  label: `Inversión Assembly/${periodLabel}: -$${(roiCalculations.planAnnualCost / periodDivisor).toLocaleString()}`,
+                  icon: "📌",
+                  accent: "rgba(34, 197, 94, 0.9)",
+                  glow: "rgba(34, 197, 94, 0.35)",
+                },
+                {
+                  label: `Ahorro neto/${periodLabel}: $${savingsDisplay.toLocaleString()}`,
+                  icon: "✅",
+                  accent: "rgba(16, 185, 129, 0.9)",
+                  glow: "rgba(16, 185, 129, 0.35)",
+                },
+                {
+                  label: `ROI estimado: ${roiCalculations.roi}%`,
+                  icon: "📈",
+                  accent: "rgba(99, 102, 241, 0.9)",
+                  glow: "rgba(99, 102, 241, 0.35)",
+                },
+              ].map((item) => (
+                <div key={item.label} className="list-item">
+                  <span
+                    className="icon-badge"
+                    style={{
+                      width: "28px",
+                      height: "28px",
+                      borderRadius: "10px",
+                      background: `radial-gradient(circle at 30% 30%, ${item.accent}, transparent 55%), linear-gradient(135deg, rgba(15,23,42,0.85), rgba(30,41,59,0.95))`,
+                      border: `1px solid ${item.accent}`,
+                      boxShadow: `0 10px 24px ${item.glow}`,
+                    }}
+                  >
+                    <span style={{ fontSize: "12px" }}>{item.icon}</span>
+                  </span>
+                  <span>{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -791,12 +1116,63 @@ export default function HomePage() {
               </div>
             ) : (
               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "14px" }}>
-                <a className="btn btn-primary btn-demo" href="/login">
-                  Agendar demo
-                </a>
-                <a className="btn btn-ghost" href="/administraciones">
-                  Ver planes
-                </a>
+                {chatRole === "residente" ? (
+                  <>
+                    <button
+                      className="btn btn-primary btn-demo"
+                      onClick={() =>
+                        handleQuickNav("Votación", "Abriendo votación activa del día.", "/residentes/votacion")
+                      }
+                    >
+                      Votación
+                    </button>
+                    <button
+                      className="btn btn-ghost"
+                      onClick={() =>
+                        handleQuickNav("Asambleas", "Te muestro el listado de asambleas activas.", "/residentes/asambleas")
+                      }
+                    >
+                      Asambleas
+                    </button>
+                    <button
+                      className="btn btn-ghost"
+                      onClick={() =>
+                        handleQuickNav("Calendario", "Aquí tienes el calendario de tu PH.", "/residentes/calendario")
+                      }
+                    >
+                      Calendario
+                    </button>
+                    <button
+                      className="btn btn-ghost"
+                      onClick={() =>
+                        handleQuickNav(
+                          "Tema del día",
+                          "Tema activo: aprobación de presupuesto.",
+                          "/residentes/tema-del-dia",
+                        )
+                      }
+                    >
+                      Tema del día
+                    </button>
+                    <button
+                      className="btn btn-ghost"
+                      onClick={() =>
+                        handleQuickNav("Ceder poder", "Cede el poder y lo validamos en minutos.", "/residentes/poder")
+                      }
+                    >
+                      Ceder poder
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <a className="btn btn-primary btn-demo" href="/login">
+                      Agendar demo
+                    </a>
+                    <a className="btn btn-ghost" href="/administraciones">
+                      Ver planes
+                    </a>
+                  </>
+                )}
               </div>
             )}
             <p style={{ marginTop: "12px", fontSize: "12px", color: "#94a3b8" }}>

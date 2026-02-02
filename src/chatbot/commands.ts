@@ -1,5 +1,4 @@
 import TelegramBot from "node-telegram-bot-api";
-import { saveMessage } from "./utils/supabase";
 
 export function registerCommands(bot: TelegramBot) {
   bot.onText(/\/mivoto/, async (msg) => {
@@ -20,7 +19,7 @@ Si votas manual:
 
     try {
       await bot.sendMessage(chatId, reply, { parse_mode: "Markdown" });
-      await saveMessage(telegramId, "/mivoto", reply);
+      console.log("Mensaje enviado", { telegramId, command: "/mivoto" });
     } catch (error) {
       console.error("Error en /mivoto:", error);
     }
