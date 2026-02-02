@@ -33,6 +33,11 @@ const NAV_ITEMS: NavItem[] = [
     match: (pathname) => pathname.startsWith("/dashboard/admin-ph/votations"),
   },
   {
+    href: "/dashboard/admin-ph/monitor/demo",
+    label: "🖥️ Monitor",
+    match: (pathname) => pathname.startsWith("/dashboard/admin-ph/monitor"),
+  },
+  {
     href: "/dashboard/admin-ph/acts",
     label: "📄 Actas",
     match: (pathname) => pathname.startsWith("/dashboard/admin-ph/acts"),

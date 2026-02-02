@@ -1181,7 +1181,59 @@ docker-compose logs -f app
 [ ] Testing: Visitor → solo chat normal, sin botones
 ```
 
-### **FASE 5: Configuración Chatbots para Admin** ⭐ NUEVO CRÍTICO
+### **FASE 5: Vista Monitor de Votación en Tiempo Real** 🔥 CRÍTICO PARA MVP
+
+**Documento de referencia:** `Arquitecto/VISTA_PRESENTACION_TIEMPO_REAL.md`
+
+```
+Base de Datos:
+[ ] Crear tabla presenter_tokens (SQL en doc de referencia)
+[ ] Crear función get_units_matrix() en PostgreSQL
+[ ] Testing: Función retorna unidades con todos los estados
+
+Backend API:
+[ ] Crear /api/monitor/units-matrix?assembly_id=X
+[ ] Crear /api/monitor/summary?assembly_id=X
+[ ] Testing: APIs retornan datos correctos
+
+Frontend - Vista Monitor:
+[ ] Crear page /dashboard/admin-ph/monitor/[assemblyId]/page.tsx
+[ ] Implementar 2 vistas: "Resumen" y "Matriz de Unidades"
+[ ] Vista Resumen: 5 tarjetas con estadísticas (total, presentes, votaron, mora, Face ID)
+[ ] Vista Matriz: Grid adaptativo con todas las unidades
+[ ] Componente UnitCell con:
+    [ ] Color de fondo según estado (verde, amarillo, gris claro, gris oscuro)
+    [ ] Iconos de voto (✅ SI, ❌ NO, ⚪ Abstención)
+    [ ] Icono de método (🔒 Face ID, 📱 Manual)
+    [ ] Tooltip al hover con info completa
+    [ ] Animación pulsing si pendiente de votar
+[ ] Filtros:
+    [ ] Por torre/edificio
+    [ ] Zoom (compacto/normal/grande)
+[ ] Estilos CSS:
+    [ ] Grid adaptativo (16-40 columnas según cantidad)
+    [ ] Responsive para 200-600 unidades
+    [ ] Animación @keyframes pulse
+[ ] Leyenda de colores
+
+WebSocket (Tiempo Real):
+[ ] Emitir 'vote_cast' desde API de votación
+[ ] Emitir 'attendance_updated' desde API asistencia
+[ ] Cliente escucha eventos y actualiza grid SIN reload
+[ ] Testing: Grid se actualiza en <2 segundos
+
+Testing Visual:
+[ ] Testing con 200 unidades (Torre A)
+[ ] Testing con 311 unidades (3 torres)
+[ ] Testing con 600 unidades (Multi-PH)
+[ ] Verificar colores correctos en cada estado
+[ ] Verificar animación en unidades pendientes
+[ ] Verificar tooltip muestra info completa
+[ ] Testing en proyector (1920x1080)
+[ ] Testing: Cliente vota → grid cambia color inmediatamente
+```
+
+### **FASE 6: Configuración Chatbots para Admin** ⭐ NUEVO CRÍTICO
 ```
 [ ] Crear tabla chatbot_config en PostgreSQL (si no existe)
 [ ] Crear página /platform-admin/chatbot-config
@@ -1787,6 +1839,11 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     'PENDING_MANUAL'      -- Esperando aprobación manual (ACH/Yappy)
   )) DEFAULT 'TRIAL',
   
+  -- 🆕 LÍMITES DE UNIDADES (según plan)
+  max_units_included INT DEFAULT 250,     -- Unidades incluidas en el precio base
+  units_addon_purchased INT DEFAULT 0,    -- Paquetes adicionales comprados (ej: 2x100 = 200)
+  max_units_total INT GENERATED ALWAYS AS (max_units_included + units_addon_purchased) STORED,
+  
   -- Método de pago
   payment_method TEXT CHECK (payment_method IN (
     'STRIPE_CARD',        -- TC automática (recomendado)
@@ -2007,6 +2064,92 @@ BEGIN
   END IF;
 END;
 $$ LANGUAGE plpgsql;
+
+-- 🆕 Función para validar límite de unidades
+CREATE OR REPLACE FUNCTION check_units_limit(
+  p_organization_id UUID,
+  p_units_count INT
+) RETURNS JSONB AS $$
+DECLARE
+  v_subscription RECORD;
+  v_result JSONB;
+BEGIN
+  -- Obtener suscripción activa
+  SELECT 
+    plan_tier,
+    max_units_included,
+    units_addon_purchased,
+    max_units_total
+  INTO v_subscription
+  FROM subscriptions
+  WHERE organization_id = p_organization_id
+    AND status = 'ACTIVE'
+  ORDER BY created_at DESC
+  LIMIT 1;
+  
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'allowed', false,
+      'reason', 'No active subscription',
+      'max_units', 0
+    );
+  END IF;
+  
+  -- Enterprise: ilimitado
+  IF v_subscription.plan_tier = 'ENTERPRISE' THEN
+    RETURN jsonb_build_object(
+      'allowed', true,
+      'max_units', 999999,
+      'units_count', p_units_count,
+      'overage', 0
+    );
+  END IF;
+  
+  -- Verificar si excede el límite
+  IF p_units_count > v_subscription.max_units_total THEN
+    RETURN jsonb_build_object(
+      'allowed', false,
+      'reason', 'Exceeded unit limit',
+      'max_units', v_subscription.max_units_total,
+      'units_count', p_units_count,
+      'overage', p_units_count - v_subscription.max_units_total,
+      'addon_required', CEIL((p_units_count - v_subscription.max_units_total)::NUMERIC / 100)
+    );
+  END IF;
+  
+  -- Dentro del límite
+  RETURN jsonb_build_object(
+    'allowed', true,
+    'max_units', v_subscription.max_units_total,
+    'units_count', p_units_count,
+    'remaining', v_subscription.max_units_total - p_units_count
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+-- 🆕 Tabla para tracking de cargos adicionales por unidades
+CREATE TABLE IF NOT EXISTS units_addon_charges (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id),
+  subscription_id UUID NOT NULL REFERENCES subscriptions(id),
+  
+  -- Cantidad de unidades
+  units_addon INT NOT NULL,  -- Cantidad de unidades adicionales (ej: 100, 200)
+  price_per_100_units NUMERIC(10,2) NOT NULL,  -- Precio por cada 100 unidades
+  total_amount NUMERIC(10,2) NOT NULL,
+  
+  -- Stripe (si es pago automático)
+  stripe_payment_intent_id TEXT,
+  
+  -- Estado
+  status TEXT CHECK (status IN ('PENDING', 'PAID', 'FAILED')) DEFAULT 'PENDING',
+  
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  paid_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_units_addon_org ON units_addon_charges(organization_id);
+CREATE INDEX idx_units_addon_status ON units_addon_charges(status);
 
 -- Función para recargar créditos mensuales
 CREATE OR REPLACE FUNCTION refill_monthly_credits() RETURNS VOID AS $$

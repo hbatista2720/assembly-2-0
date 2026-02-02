@@ -62,3 +62,46 @@ localStorage.setItem("assembly_email", "qa@assembly2.com")
 
 ## Veredicto
 - Pendiente de QA.
+
+---
+
+# QA Feedback · Fase 05 (Votación + Vista Monitor)
+
+**Fecha:** 02 Febrero 2026  
+**Estado:** ⏳ En revisión QA  
+
+## Acceso para QA
+- Monitor: `http://localhost:3000/dashboard/admin-ph/monitor/demo`
+- Presentación: `http://localhost:3000/presenter/demo-token`
+- En asamblea en vivo: botón **Abrir vista de presentación**
+
+## APIs disponibles (backend)
+- `GET /api/monitor/summary?assemblyId=demo`
+- `GET /api/monitor/units?assemblyId=demo`
+- `POST /api/presenter/token`
+- `GET /api/presenter/view?token=demo-token`
+
+## Checklist QA
+- Monitor actualiza KPIs y grilla sin recargar (polling cada 4-8s)
+- Vista Presentación carga sin login y actualiza datos
+- Botón “Abrir vista de presentación” genera URL válida
+- UI/UX consistente con arquitectura (colores/leyendas)
+
+## Artefactos de votación (entregados)
+- Listado de asambleas: `http://localhost:3000/dashboard/admin-ph/assemblies`
+- Detalle + temas: `/dashboard/admin-ph/assemblies/[id]`
+- Flujo de voto admin: `/dashboard/admin-ph/assemblies/[id]/vote`
+- Flujo residente: `/assembly/[id]/vote`
+- Persistencia temporal vía `localStorage` (QA puede crear asambleas/temas y votar).
+
+## Pasos sugeridos QA (votación básica)
+1) Crear asamblea nueva (botón “Crear asamblea”).
+2) Entrar al detalle y agregar 1-2 temas.
+3) Iniciar votación y emitir votos (sí/no/abstención).
+4) Verificar que el contador se actualiza y que el Monitor refleja cambios.
+
+## Veredicto
+- ✅ **FASE 5 APROBADA** (30 Enero 2026)
+- Monitor y Votación funcionan correctamente
+- UI/UX consistente con arquitectura
+- Coder puede avanzar a FASE 6 (Actas y Reportes)

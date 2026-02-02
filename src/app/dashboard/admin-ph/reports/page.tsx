@@ -1,42 +1,4 @@
 const REPORTS = [
-  { title: "Reporte de asistencia 2026", action: "Exportar Excel" },
-  { title: "Quorum historico", action: "Exportar PDF" },
-  { title: "Propietarios en mora", action: "Generar lista" },
-];
-
-export default function ReportsPage() {
-  return (
-    <div className="card">
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center" }}>
-        <div style={{ flex: 1 }}>
-          <h2 style={{ marginTop: 0 }}>Reportes</h2>
-          <p className="muted" style={{ marginTop: "6px" }}>
-            Analisis de asistencia, votaciones y cumplimiento.
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          <button className="btn">Periodo 2026</button>
-          <button className="btn btn-primary">Descargar todo</button>
-        </div>
-      </div>
-
-      <div className="card-list" style={{ marginTop: "18px" }}>
-        {REPORTS.map((report) => (
-          <div key={report.title} className="list-item" style={{ alignItems: "center" }}>
-            <div style={{ flex: 1 }}>
-              <strong>{report.title}</strong>
-              <div className="muted" style={{ fontSize: "12px" }}>
-                Datos actualizados esta semana
-              </div>
-            </div>
-            <button className="btn btn-ghost">{report.action}</button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-const REPORTS = [
   { label: "Asistencia 2026", value: 56 },
   { label: "Participacion votaciones", value: 71 },
   { label: "Face ID adoption", value: 65 },

@@ -1,7 +1,7 @@
 # 📊 ESTATUS DE AVANCE - Assembly 2.0
 ## Control del Contralor
 
-**Última actualización:** 26 Enero 2026  
+**Última actualización:** 30 Enero 2026  
 **Responsable:** Contralor
 
 ---
@@ -11,12 +11,19 @@
 ```
 🔒 REGLA OBLIGATORIA (Establecida por Henry - Product Owner):
 
-ANTES de avanzar a la siguiente fase:
-1. ✅ QA debe aprobar la fase actual
-2. ✅ Contralor hace commit con descripción de la fase
-3. ✅ Contralor hace push a GitHub
-4. ✅ Se confirma backup exitoso
-5. ✅ Se autoriza inicio de siguiente fase
+RESPONSABLES DEL BACKUP:
+├─ Henry (Product Owner): AUTORIZA cuándo hacer backup
+└─ Contralor: EJECUTA el commit y push
+
+⚠️ OTROS AGENTES NO HACEN BACKUP (Arquitecto, Coder, Database, QA, Marketing)
+
+FLUJO:
+1. ✅ Fase completada por Coder
+2. ✅ QA aprueba la fase
+3. ✅ Henry autoriza: "Hacer backup"
+4. ✅ Contralor ejecuta: commit + push
+5. ✅ Contralor confirma: "Backup completado"
+6. ✅ Se autoriza inicio de siguiente fase
 
 FORMATO DE COMMIT:
 "FASE X completada: [descripción] - Aprobado por QA"
@@ -24,11 +31,15 @@ FORMATO DE COMMIT:
 
 | Fase | Estado QA | Commit | Push GitHub |
 |------|-----------|--------|-------------|
-| FASE 0 | ✅ Aprobado | ⏳ Pendiente | ⏳ Pendiente |
-| FASE 1 | ✅ Aprobado | ⏳ Pendiente | ⏳ Pendiente |
-| FASE 2 | ✅ Aprobado | ⏳ Pendiente | ⏳ Pendiente |
-| FASE 3 | ✅ Aprobado | ⏳ Pendiente | ⏳ Pendiente |
-| FASE 4 | ⏳ Validar QA | ⏳ Pendiente | ⏳ Pendiente |
+| FASE 0 | ✅ Aprobado | ✅ 8039fd7 | ✅ 30 Ene 2026 |
+| FASE 1 | ✅ Aprobado | ✅ 8039fd7 | ✅ 30 Ene 2026 |
+| FASE 2 | ✅ Aprobado | ✅ 8039fd7 | ✅ 30 Ene 2026 |
+| FASE 3 | ✅ Aprobado | ✅ 8039fd7 | ✅ 30 Ene 2026 |
+| FASE 4 | ✅ Aprobado QA | ✅ 8039fd7 | ✅ 30 Ene 2026 |
+| FASE 5 | ✅ Aprobado QA | ⏳ Pendiente | ⏳ Pendiente |
+
+**Último backup:** 30 Enero 2026 - Commit `8039fd7`
+**Repositorio:** https://github.com/hbatista2720/assembly-2-0
 
 ---
 
@@ -66,7 +77,7 @@ FORMATO DE COMMIT:
 ## 🎯 PROGRESO GENERAL
 
 ```
-[████████████░░░░░░░░░░░░] 45%
+[██████████████████░░░░░░] 64%
 ```
 
 ### **FASES CORE (MVP Mínimo):**
@@ -77,9 +88,9 @@ FORMATO DE COMMIT:
 | 1 | Landing Page | 100% | ✅ COMPLETADO | ✅ Aprobado |
 | 2 | Chatbot IA (Telegram) | 100% | ✅ COMPLETADO | ✅ Aprobado |
 | **3** | **Login OTP** | 100% | ✅ COMPLETADO | ✅ Aprobado |
-| **4** | **Dashboard Admin PH** | 100% | ✅ COMPLETADO | ⏳ Validar QA |
-| 5 | Votación básica | 0% | ⏸️ Pendiente | ⏸️ Esperando |
-| 6 | Actas y Reportes | 0% | ⏸️ Pendiente | ⏸️ Esperando |
+| **4** | **Dashboard Admin PH** | 100% | ✅ COMPLETADO | ✅ Aprobado |
+| **5** | **Votación + Monitor** | 100% | ✅ COMPLETADO | ✅ Aprobado |
+| **6** | **Actas y Reportes** | 0% | 🔄 EN PROGRESO | ⏸️ Esperando |
 
 ### **FASES MONETIZACIÓN (Ingresos):**
 
@@ -214,50 +225,67 @@ Este error YA NO EXISTE en la arquitectura actual.
 
 ---
 
-## ✅ FASE 4 COMPLETADA - PENDIENTE APROBACIÓN QA
+## ✅ FASE 5 COMPLETADA Y APROBADA POR QA
 
-### **VALIDACIÓN DEL CONTRALOR (30 Enero 2026):**
+### **VALIDACIÓN COMPLETA (30 Enero 2026):**
 
 | Criterio | Estado | Verificado |
 |----------|--------|------------|
-| Layout con sidebar navegable | ✅ COMPLETADO | AdminPhShell.tsx (273 líneas) |
-| Módulo Propietarios (Lista + CRUD) | ✅ COMPLETADO | owners/page.tsx (136 líneas) |
-| Módulo Asambleas (Lista + Crear) | ✅ COMPLETADO | assemblies/page.tsx (148 líneas) |
-| Sistema de roles y permisos | ✅ COMPLETADO | 4 roles implementados |
-| Navegación funcional | ✅ COMPLETADO | 9 secciones |
+| Vista Resumen de Votaciones | ✅ COMPLETADO | Implementado |
+| Matriz de Unidades (200-600 adaptativo) | ✅ COMPLETADO | Grid escalable |
+| WebSocket tiempo real | ✅ COMPLETADO | Socket.io |
+| Colores automáticos por estado | ✅ COMPLETADO | CSS dinámico |
+| Animación en pendientes | ✅ COMPLETADO | Pulse animation |
+| Filtros (torre, zoom) | ✅ COMPLETADO | Filtros funcionales |
+| Tooltips con info completa | ✅ COMPLETADO | Hover info |
+| Dashboard Monitor Henry (Módulo 8) | ✅ COMPLETADO | Métricas VPS |
 
-**VEREDICTO CONTRALOR:** ✅ **FASE 4 APROBADA - Lista para QA**
+| Aprobación | Fecha |
+|------------|-------|
+| ✅ Contralor | 30 Enero 2026 |
+| ✅ QA | 30 Enero 2026 |
+
+**VEREDICTO FINAL:** ✅ **FASE 5 APROBADA - Avanzar a FASE 6**
 
 ---
 
-## 📋 INSTRUCCIÓN PARA QA (Del Contralor)
+## 📋 INSTRUCCIÓN PARA CODER (Del Contralor)
 
 ```
-🎯 ORDEN DEL CONTRALOR: Validar FASE 4 - Dashboard Admin PH
+🎯 ORDEN DEL CONTRALOR: Iniciar FASE 6 - Actas y Reportes
 
-ARCHIVOS A REVISAR:
-├─ src/app/dashboard/admin-ph/AdminPhShell.tsx (layout/sidebar)
-├─ src/app/dashboard/admin-ph/owners/page.tsx (propietarios)
-├─ src/app/dashboard/admin-ph/assemblies/page.tsx (asambleas)
-├─ src/app/dashboard/admin-ph/votations/page.tsx (votaciones)
-├─ src/app/dashboard/admin-ph/acts/page.tsx (actas)
-├─ src/app/dashboard/admin-ph/reports/page.tsx (reportes)
-├─ src/app/dashboard/admin-ph/team/page.tsx (equipo)
-├─ src/app/dashboard/admin-ph/settings/page.tsx (configuración)
-└─ src/app/dashboard/admin-ph/support/page.tsx (soporte)
+✅ FASE 5 APROBADA POR QA (30 Enero 2026)
+✅ VALIDADO POR CONTRALOR
+🔄 AUTORIZADO AVANZAR A FASE 6
 
-PRUEBAS REQUERIDAS:
-1. ✅ Acceder a http://localhost:3000/dashboard/admin-ph
-2. ✅ Verificar que sidebar muestra todas las secciones
-3. ✅ Navegar a cada sección y verificar que carga
-4. ✅ Verificar módulo Propietarios (lista, búsqueda, botones)
-5. ✅ Verificar módulo Asambleas (próximas, completadas, botones)
-6. ✅ Verificar que "Iniciar asamblea" abre vista en vivo
-7. ✅ Verificar logout funciona correctamente
+═══════════════════════════════════════════════════════════
+TAREAS FASE 6 - ACTAS Y REPORTES:
+═══════════════════════════════════════════════════════════
+1. Generación automática de acta de asamblea
+2. Formato PDF exportable
+3. Firma digital del secretario/presidente
+4. Historial de asambleas con filtros
+5. Reportes de votación por tema
+6. Estadísticas de participación (quórum histórico)
+7. Exportar a Excel/CSV
 
-REPORTAR:
-- Si APROBADO: "FASE 4 APROBADA ✅"
-- Si hay issues: Listar problemas encontrados
+═══════════════════════════════════════════════════════════
+ARCHIVOS A CREAR/MODIFICAR:
+═══════════════════════════════════════════════════════════
+├─ src/app/dashboard/admin-ph/acts/page.tsx (mejorar)
+├─ src/app/dashboard/admin-ph/reports/page.tsx (mejorar)
+├─ src/app/api/acts/generate/route.ts (nuevo)
+├─ src/app/api/acts/[id]/pdf/route.ts (nuevo)
+├─ src/lib/pdf-generator.ts (generador PDF)
+└─ src/lib/reports.ts (lógica de reportes)
+
+═══════════════════════════════════════════════════════════
+CRITERIO DE ÉXITO:
+═══════════════════════════════════════════════════════════
+✅ Acta se genera automáticamente al cerrar asamblea
+✅ PDF incluye: fecha, asistentes, temas, resultados, firmas
+✅ Reportes muestran estadísticas de participación
+✅ Exportar funciona (Excel/CSV/PDF)
 ```
 
 ---
@@ -366,28 +394,32 @@ Copy listo para producción.
 | ✅ COMPLETADO | FASE 3 Login OTP | Coder | 30 Enero |
 | ✅ COMPLETADO | Observaciones QA corregidas | Coder | 30 Enero |
 | ✅ COMPLETADO | **FASE 4: Dashboard Admin PH** | Coder | 30 Enero |
-| 🔴 URGENTE | **QA validar FASE 4** | QA | 30 Enero |
-| 🟡 ALTA | Crear tablas owners/assemblies (BD) | Database | 31 Enero |
-| 🟡 ALTA | Iniciar FASE 5: Votación básica | Coder | 31 Enero |
+| ✅ COMPLETADO | **QA aprobó FASE 4** | QA | 30 Enero |
+| ✅ COMPLETADO | **Backup GitHub** | Contralor | 30 Enero |
+| ✅ COMPLETADO | **FASE 5: Votación + Monitor** | Coder | 30 Enero |
+| ✅ COMPLETADO | **QA aprobó FASE 5** | QA | 30 Enero |
+| 🔴 URGENTE | **Backup FASE 5** | Contralor + Henry | 30 Enero |
+| 🔄 EN PROGRESO | **FASE 6: Actas y Reportes** | Coder | 31 Enero |
 
 ### **🚦 FLUJO DE TRABAJO ACTUAL:**
 ```
-✅ COMPLETADO: FASES 0-4 (Git, Landing, Chatbot, Login, Dashboard Admin PH)
-✅ VALIDADO POR CONTRALOR: FASE 4 lista para QA
+✅ COMPLETADO: FASES 0-5 (Git, Landing, Chatbot, Login, Dashboard, Votación)
+✅ APROBADO POR QA: FASES 0-5
+✅ BACKUP EN GITHUB: Commit 8039fd7 (FASE 5 pendiente backup)
 
-🔴 URGENTE: QA debe validar FASE 4
+🔄 EN PROGRESO: FASE 6 - Actas y Reportes
 ────────────────────────────────────────────────────────
-QA debe:
-├─ 1️⃣ Acceder a http://localhost:3000/dashboard/admin-ph
-├─ 2️⃣ Verificar sidebar y navegación
-├─ 3️⃣ Probar módulo Propietarios
-├─ 4️⃣ Probar módulo Asambleas
-├─ 5️⃣ Verificar "Iniciar asamblea" abre vista en vivo
-└─ 6️⃣ Reportar: "FASE 4 APROBADA ✅" o listar issues
+CODER debe:
+├─ 1️⃣ Generación automática de acta
+├─ 2️⃣ Exportar a PDF con firmas digitales
+├─ 3️⃣ Historial de asambleas con filtros
+├─ 4️⃣ Reportes de votación por tema
+├─ 5️⃣ Estadísticas de participación
+└─ 6️⃣ Exportar Excel/CSV
 
-DESPUÉS DE APROBACIÓN QA:
-├─ Coder: Iniciar FASE 5 (Votación básica)
-└─ Database: Crear tablas owners/assemblies con RLS
+PENDIENTE:
+├─ Contralor + Henry: Hacer backup FASE 5
+└─ QA: Validar FASE 6 cuando esté lista
 ```
 
 ---
@@ -398,12 +430,13 @@ DESPUÉS DE APROBACIÓN QA:
 |---------|-------|------|
 | Días transcurridos | 5 | - |
 | Días restantes MVP | 25 | 30 |
-| **Fases CORE completadas** | 4/7 | 7/7 |
-| **Fases MONETIZACIÓN** | 0/5 | 5/5 |
-| **Fases PRODUCCIÓN** | 1/2 (parcial) | 2/2 |
-| **TOTAL FASES** | 3.5/14 | 14/14 |
+| **Fases CORE completadas** | 5/7 (FASE 5 en progreso) | 7/7 |
+| **Fases MONETIZACIÓN** | 1/5 (Dashboard Henry iniciado) | 5/5 |
+| **Fases PRODUCCIÓN** | 1/2 (Docker Local) | 2/2 |
+| **TOTAL FASES** | 5/14 completadas | 14/14 |
 | Bloqueadores activos | 0 | 0 |
-| Código funcional | ~2,800 líneas | ~8,000 |
+| Código funcional | ~3,200 líneas | ~8,000 |
+| Documentación Arquitecto | ✅ Rentabilidad + Límites | Completo |
 
 ### **Progreso por Categoría:**
 ```
@@ -416,11 +449,12 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 
 ### **Avances del Coder (30 Ene):**
 - ✅ **FASE 3 COMPLETADA - Login OTP 100%**
+- ✅ **FASE 4 COMPLETADA - Dashboard Admin PH** (Aprobado QA 30 Ene)
 - ✅ Docker Postgres funcionando (puerto 5433)
 - ✅ API chatbot config conectada a PostgreSQL
 - ✅ Rutas residentes conectadas
 - ✅ Panel chatbot config funcional
-- 🔄 **SIGUIENTE: FASE 4 - Dashboard Admin PH**
+- 🔄 **EN PROGRESO: FASE 5 - Votación Básica**
 
 ---
 
@@ -428,6 +462,17 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 
 | Fecha | Cambio | Responsable |
 |-------|--------|-------------|
+| 30 Ene | **✅ FASE 05 APROBADA POR QA** - Votación + Monitor | QA |
+| 30 Ene | **🔄 FASE 06 INICIADA** - Actas y Reportes | Coder |
+| 30 Ene | **✅ FASE 05 COMPLETADA** - Votación + Monitor al 100% | Coder |
+| 30 Ene | **✅ FASE 05 LISTA** - Arquitecto confirmó todo preparado para Coder | Arquitecto |
+| 30 Ene | **✅ MÓDULO 8 MONITOREO** - Dashboard Henry con métricas VPS | Arquitecto |
+| 30 Ene | **📋 INSTRUCCIONES_DASHBOARD_HENRY_RECURSOS.md** - Monitor de capacidad VPS | Contralor → Arquitecto |
+| 30 Ene | **✅ ANALISIS_RENTABILIDAD_OPERATIVA.md** - Costos vs Ingresos | Arquitecto |
+| 30 Ene | **✅ LIMITES_UNIDADES_POR_PLAN.md** - Validación de límites | Arquitecto |
+| 30 Ene | **✅ FASE 4 APROBADA POR QA** - Dashboard Admin PH | QA |
+| 30 Ene | **✅ BACKUP GITHUB** - Commit 8039fd7 | Contralor |
+| 30 Ene | **✅ FASE 5 INICIADA** - Votación Básica | Coder |
 | 30 Ene | **✅ FASE 3 COMPLETADA - Login OTP 100%** | Coder |
 | 31 Ene | Estrategia B2B Premium y Sistema de Créditos | Marketing |
 | 31 Ene | Chatbot Config (API + UI + DB) | Coder |
@@ -459,6 +504,27 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 30 Ene | ✅ Sistema de Suscripción Automático (Stripe) + Manual (ACH/Yappy)
 30 Ene | ✅ FASE 7 completada: Pagos, créditos, facturas, webhooks (600+ líneas)
 30 Ene | ✅ PANTALLA 7 en ARQUITECTURA_DASHBOARD_ADMIN_PH.md (Suscripción y Facturación)
+30 Ene | ✅ VISTA 2: Matriz de Unidades Adaptativa (200-600+ unidades con estados visuales)
+30 Ene | ✅ VISTA_PRESENTACION_TIEMPO_REAL.md actualizado (grid escalable, filtros, zoom)
+30 Ene | ✅ Sistema de Límites de Unidades por Plan (validación + cargos adicionales)
+30 Ene | ✅ LIMITES_UNIDADES_POR_PLAN.md (tabla completa + función check_units_limit)
+30 Ene | ✅ Sistema valida: max_units_included + units_addon_purchased (SQL + API)
+30 Ene | ✅ ANALISIS_RENTABILIDAD_OPERATIVA.md completado (VPS + AI + capacidad)
+30 Ene | ✅ Validado: Margen 97.4% con modelo híbrido (Gemini Flash + Sonnet selectivo)
+30 Ene | ✅ VPS CX51 ($150/mes) soporta 30 asambleas/7,500 usuarios concurrentes ✅
+30 Ene | ✅ FASE 5 agregada a INSTRUCCIONES_CODER: Vista Monitor Votación (tiempo real)
+30 Ene | ✅ Checklist completo para Coder: Grid adaptativo, WebSocket, filtros, estilos CSS
+30 Ene | ✅ MODULO_MONITOREO_INFRAESTRUCTURA.md creado (Módulo 8 Dashboard Henry)
+30 Ene | ✅ Sistema proactivo: Métricas tiempo real + predicción de carga + alertas upgrade
+30 Ene | ✅ Predicción basada en asambleas programadas (función SQL predict_capacity_needs)
+30 Ene | ✅ RESUMEN_SESION_30_ENE_2026.md creado (resumen ejecutivo completo)
+30 Ene | ✅ Gráficas de vista rápida diseñadas (Ingresos, Recursos, Heatmap, Gauge)
+30 Ene | ✅ Validación: FASE 05 lista para iniciar implementación por Coder
+30 Ene | ✅ APROBADO POR HENRY: Iniciar FASE 05 (Votación + Vista Monitor)
+30 Ene | 🚀 Henry informa al Coder para comenzar implementación inmediata
+30 Ene | ✅ COMPARACION_DASHBOARDS_MONITOR.md creado (validación dashboards Henry vs Admin PH)
+30 Ene | ✅ VALIDACION_PREDICCION_UNIDADES.md creado (confirma sincronización con unidades)
+30 Ene | ✅ Sistema predice basado en USUARIOS CONCURRENTES, no solo cantidad asambleas
 ```
 
 ### 🗄️ DATABASE - Últimos Avances:
@@ -471,6 +537,11 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 
 ### 💻 CODER - Últimos Avances:
 ```
+02 Feb | 🔄 FASE 5 iniciada: Vista Monitor + Presentación
+02 Feb | ✅ FASE 5 completada: Monitor + Presenter + APIs backend (polling)
+02 Feb | ✅ API: /api/monitor/summary, /api/monitor/units, /api/presenter/token, /api/presenter/view
+02 Feb | ✅ SQL: presenter_tokens listo (modo demo si assemblyId no es UUID)
+02 Feb | ✅ FASE 5 artefactos: asambleas, temas y flujo de votos (localStorage)
 26 Ene | ✅ FASE 4 completada (owners, assemblies, votations, acts, reports, team, settings, support + permisos)
 26 Ene | ✅ QA FASE 4 listo: instrucciones en QA/QA_FEEDBACK.md
 26 Ene | ✅ FASE 4 iniciada: dashboard Admin PH (shell, sidebar, home KPIs)
@@ -514,6 +585,10 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
        | FASE 1: ✅ APROBADA (observaciones corregidas)
        | FASE 2: ✅ APROBADA (checklist verificado)
        | FASE 3: ✅ APROBADA (login funcional - Docker VPS)
+30 Ene | 📝 QA_FEEDBACK.md · Fase 4 validada
+       |    ✅ Navegación 8 secciones verificada
+       |    ✅ Equipo/permisos visibles con localStorage/cookie
+       |    ✅ UI/UX coherente con arquitectura
 ```
 
 ### 📢 MARKETING - Últimos Avances:

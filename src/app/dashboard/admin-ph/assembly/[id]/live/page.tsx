@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useParams } from "next/navigation";
 
 type ManualVote = {
   id: string;
@@ -17,7 +18,11 @@ const INITIAL_VOTES: ManualVote[] = [
 ];
 
 export default function AdminPhLiveAssembly() {
+  const params = useParams();
+  const assemblyId = typeof params?.id === "string" ? params.id : "demo";
   const [manualVotes, setManualVotes] = useState(INITIAL_VOTES);
+  const [presenterUrl, setPresenterUrl] = useState<string | null>(null);
+  const [loadingPresenter, setLoadingPresenter] = useState(false);
 
   const handleLocationChange = (id: string, location: ManualVote["location"]) => {
     setManualVotes((prev) => prev.map((vote) => (vote.id === id ? { ...vote, location } : vote)));
@@ -27,6 +32,24 @@ export default function AdminPhLiveAssembly() {
     setManualVotes((prev) =>
       prev.map((vote) => (vote.id === id ? { ...vote, status: "registrado" } : vote)),
     );
+  };
+
+  const handlePresenterToken = async () => {
+    setLoadingPresenter(true);
+    try {
+      const res = await fetch("/api/presenter/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assemblyId }),
+      });
+      const data = await res.json();
+      if (data?.presenter_url) {
+        setPresenterUrl(data.presenter_url);
+        window.open(data.presenter_url, "_blank");
+      }
+    } finally {
+      setLoadingPresenter(false);
+    }
   };
 
   return (
@@ -40,7 +63,17 @@ export default function AdminPhLiveAssembly() {
               Registrar votantes presenciales o por Zoom cuando Face ID no está disponible.
             </p>
           </div>
-          <span className="pill">ID: LIVE</span>
+          <div style={{ display: "grid", gap: "10px", justifyItems: "end" }}>
+            <span className="pill">ID: LIVE</span>
+            <button className="btn btn-ghost" onClick={handlePresenterToken} disabled={loadingPresenter}>
+              {loadingPresenter ? "Generando..." : "Abrir vista de presentación"}
+            </button>
+            {presenterUrl && (
+              <span className="muted" style={{ fontSize: "12px" }}>
+                URL: {presenterUrl}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 const VOTATIONS = [
-  { topic: "Aprobacion presupuesto 2026", status: "Activa", participation: "67/95", result: "63% SI" },
-  { topic: "Eleccion junta directiva", status: "Programada", participation: "0/170", result: "Pendiente" },
+  { topic: "Aprobación presupuesto 2026", status: "Activa", participation: "67/95", result: "63% SI" },
+  { topic: "Elección junta directiva", status: "Programada", participation: "0/170", result: "Pendiente" },
   { topic: "Acta anterior", status: "Cerrada", participation: "95/95", result: "92% SI" },
 ];
 
@@ -15,9 +15,9 @@ export default function VotationsPage() {
           </p>
         </div>
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          <button className="btn">Nueva votacion</button>
-          <a className="btn btn-primary" href="/dashboard/admin-ph/assembly/123/live">
-            Ir a asamblea en vivo
+          <button className="btn">Nueva votación</button>
+          <a className="btn btn-primary" href="/dashboard/admin-ph/assemblies">
+            Ir a asambleas
           </a>
         </div>
       </div>

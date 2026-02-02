@@ -367,76 +367,608 @@ function QuorumHistoryChart({ history }) {
 
 ## Mejoras Visuales Sugeridas
 
-### Basado en la imagen de referencia del usuario:
+### **VISTA 2: MATRIZ DE UNIDADES (Escalable hasta 600+ unidades)**
 
-1. **Matriz de Unidades (Color Coding)**
-   - Verde: Al día y presente con voto
-   - Amarillo: Al día pero ausente
-   - Rojo: En mora
-   - Gris: No registrado
+**Escenarios reales:**
+- 🏢 1 torre: 200 unidades
+- 🏢🏢 2 torres: 400 unidades
+- 🏢🏢🏢 3 torres: 600 unidades
+- 🏘️ Complejo: 311 unidades (múltiples edificios)
+
+---
+
+#### **Sistema de Estados y Colores:**
+
+```
+ESTADOS DE LA UNIDAD:
+
+📊 ASISTENCIA:
+├─ 🟢 PRESENTE + VOTÓ          (verde brillante)
+├─ 🟡 PRESENTE + NO HA VOTADO  (amarillo)
+├─ ⚪ AUSENTE                   (gris claro)
+└─ ⚫ EN MORA (sin derecho)    (gris oscuro)
+
+🔐 MÉTODO DE ACCESO:
+├─ ✅ Face ID configurado
+├─ 📱 Voto manual (admin marcó)
+└─ ❌ Sin registro
+
+🗳️ VOTACIÓN:
+├─ ✅ Votó SÍ (verde + check)
+├─ ❌ Votó NO (rojo + X)
+├─ ⚪ Votó ABSTENCIÓN (naranja)
+└─ ⏳ No ha votado (amarillo pulsante)
+```
+
+---
+
+#### **Layout Adaptativo:**
 
 ```typescript
-function UnitsGrid({ units }) {
+'use client';
+
+import { useState, useEffect } from 'react';
+
+interface Unit {
+  id: string;
+  code: string;
+  tower?: string;
+  owner_name: string;
+  payment_status: 'AL_DIA' | 'MORA';
+  is_present: boolean;
+  has_face_id: boolean;
+  vote_value?: 'SI' | 'NO' | 'ABSTENCION' | null;
+  vote_method?: 'FACE_ID' | 'MANUAL' | null;
+}
+
+export default function UnitsMonitorView() {
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [viewMode, setViewMode] = useState<'summary' | 'grid'>('summary');
+  const [filterTower, setFilterTower] = useState<string>('all');
+  const [zoomLevel, setZoomLevel] = useState<'compact' | 'normal' | 'large'>('normal');
+
+  // Toggle entre vistas
   return (
-    <div className="units-grid">
-      {units.map(unit => (
-        <div 
-          key={unit.id} 
-          className={`unit-cell ${getUnitStatus(unit)}`}
-          title={`${unit.code} - ${unit.owner_name}`}
-        >
-          {unit.code}
+    <div className="monitor-container">
+      {/* Header con controles */}
+      <div className="monitor-header">
+        <div className="view-toggle">
+          <button 
+            className={viewMode === 'summary' ? 'active' : ''}
+            onClick={() => setViewMode('summary')}
+          >
+            📊 Vista Resumen
+          </button>
+          <button 
+            className={viewMode === 'grid' ? 'active' : ''}
+            onClick={() => setViewMode('grid')}
+          >
+            📋 Vista Unidades
+          </button>
         </div>
-      ))}
+
+        {viewMode === 'grid' && (
+          <>
+            {/* Filtro por torre */}
+            <select 
+              value={filterTower} 
+              onChange={(e) => setFilterTower(e.target.value)}
+              className="tower-filter"
+            >
+              <option value="all">🏢 Todas las Torres</option>
+              <option value="A">Torre A (200 unidades)</option>
+              <option value="B">Torre B (150 unidades)</option>
+              <option value="C">Torre C (161 unidades)</option>
+            </select>
+
+            {/* Zoom */}
+            <div className="zoom-controls">
+              <button onClick={() => setZoomLevel('compact')}>
+                🔍- Compacto
+              </button>
+              <button onClick={() => setZoomLevel('normal')}>
+                🔍 Normal
+              </button>
+              <button onClick={() => setZoomLevel('large')}>
+                🔍+ Grande
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Contenido */}
+      {viewMode === 'summary' ? (
+        <SummaryView units={units} />
+      ) : (
+        <UnitsGridView 
+          units={units} 
+          filterTower={filterTower}
+          zoomLevel={zoomLevel}
+        />
+      )}
     </div>
   );
 }
 
-function getUnitStatus(unit) {
-  if (unit.attendance && unit.payment_status === 'AL_DIA') return 'present-vote';
-  if (!unit.attendance && unit.payment_status === 'AL_DIA') return 'absent';
-  if (unit.payment_status === 'MORA') return 'mora';
-  return 'unregistered';
+// ============================================
+// VISTA 2: GRID DE UNIDADES (ADAPTATIVO)
+// ============================================
+
+function UnitsGridView({ units, filterTower, zoomLevel }: {
+  units: Unit[];
+  filterTower: string;
+  zoomLevel: 'compact' | 'normal' | 'large';
+}) {
+  const filteredUnits = filterTower === 'all' 
+    ? units 
+    : units.filter(u => u.tower === filterTower);
+
+  // Calcular columnas según cantidad de unidades y zoom
+  const getGridColumns = () => {
+    const total = filteredUnits.length;
+    
+    if (zoomLevel === 'compact') {
+      if (total > 400) return 40; // 600 unidades: 40 columnas
+      if (total > 200) return 30; // 400 unidades: 30 columnas
+      return 25; // 200 unidades: 25 columnas
+    }
+    
+    if (zoomLevel === 'large') {
+      if (total > 400) return 20;
+      if (total > 200) return 15;
+      return 12;
+    }
+    
+    // Normal
+    if (total > 400) return 30;
+    if (total > 200) return 20;
+    return 16;
+  };
+
+  return (
+    <div className="units-grid-container">
+      {/* Leyenda */}
+      <div className="legend">
+        <div className="legend-item">
+          <span className="legend-color" style={{ background: '#10b981' }}></span>
+          🟢 Presente + Votó
+        </div>
+        <div className="legend-item">
+          <span className="legend-color" style={{ background: '#fbbf24' }}></span>
+          🟡 Presente + No votó
+        </div>
+        <div className="legend-item">
+          <span className="legend-color" style={{ background: '#e5e7eb' }}></span>
+          ⚪ Ausente
+        </div>
+        <div className="legend-item">
+          <span className="legend-color" style={{ background: '#6b7280' }}></span>
+          ⚫ En mora
+        </div>
+        <div className="legend-item">
+          <span className="legend-icon">✅</span> Votó SÍ
+        </div>
+        <div className="legend-item">
+          <span className="legend-icon">❌</span> Votó NO
+        </div>
+        <div className="legend-item">
+          <span className="legend-icon">⚪</span> Abstención
+        </div>
+        <div className="legend-item">
+          <span className="legend-icon">📱</span> Voto manual
+        </div>
+      </div>
+
+      {/* Grid de unidades */}
+      <div 
+        className={`units-grid zoom-${zoomLevel}`}
+        style={{ 
+          gridTemplateColumns: `repeat(${getGridColumns()}, 1fr)` 
+        }}
+      >
+        {filteredUnits.map(unit => (
+          <UnitCell key={unit.id} unit={unit} zoomLevel={zoomLevel} />
+        ))}
+      </div>
+
+      {/* Estadísticas rápidas */}
+      <div className="grid-stats">
+        <div className="stat">
+          Total: <strong>{filteredUnits.length}</strong>
+        </div>
+        <div className="stat">
+          Presentes: <strong>{filteredUnits.filter(u => u.is_present).length}</strong>
+        </div>
+        <div className="stat">
+          Votaron: <strong>{filteredUnits.filter(u => u.vote_value).length}</strong>
+        </div>
+        <div className="stat">
+          En mora: <strong>{filteredUnits.filter(u => u.payment_status === 'MORA').length}</strong>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// CELDA DE UNIDAD (con tooltip y animación)
+// ============================================
+
+function UnitCell({ unit, zoomLevel }: { unit: Unit; zoomLevel: string }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  // Determinar color de fondo
+  const getBackgroundColor = () => {
+    // En mora: gris oscuro (sin derecho a voto)
+    if (unit.payment_status === 'MORA') return '#6b7280';
+    
+    // Ausente: gris claro
+    if (!unit.is_present) return '#e5e7eb';
+    
+    // Presente + Votó: verde
+    if (unit.vote_value) return '#10b981';
+    
+    // Presente + No ha votado: amarillo (pulsante)
+    return '#fbbf24';
+  };
+
+  // Determinar icono de voto
+  const getVoteIcon = () => {
+    if (!unit.vote_value) return null;
+    
+    if (unit.vote_value === 'SI') return '✅';
+    if (unit.vote_value === 'NO') return '❌';
+    if (unit.vote_value === 'ABSTENCION') return '⚪';
+    
+    return null;
+  };
+
+  // Determinar icono de método
+  const getMethodIcon = () => {
+    if (unit.vote_method === 'MANUAL') return '📱';
+    if (unit.has_face_id) return '🔒';
+    return null;
+  };
+
+  const isPending = unit.is_present && !unit.vote_value;
+
+  return (
+    <div 
+      className={`unit-cell ${isPending ? 'pending-vote' : ''}`}
+      style={{ backgroundColor: getBackgroundColor() }}
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      {/* Código de unidad */}
+      <div className="unit-code">
+        {unit.code}
+      </div>
+
+      {/* Iconos */}
+      <div className="unit-icons">
+        {getVoteIcon()}
+        {getMethodIcon()}
+      </div>
+
+      {/* Tooltip al hover */}
+      {showTooltip && (
+        <div className="unit-tooltip">
+          <div className="tooltip-header">
+            <strong>{unit.code}</strong>
+          </div>
+          <div className="tooltip-body">
+            <div>👤 {unit.owner_name}</div>
+            <div>
+              {unit.payment_status === 'AL_DIA' ? '✅ Al día' : '⚠️ En mora'}
+            </div>
+            <div>
+              {unit.is_present ? '✅ Presente' : '❌ Ausente'}
+            </div>
+            {unit.is_present && (
+              <>
+                <div>
+                  {unit.has_face_id ? '🔒 Face ID configurado' : '📱 Voto manual'}
+                </div>
+                <div>
+                  {unit.vote_value 
+                    ? `Votó: ${unit.vote_value}` 
+                    : '⏳ Esperando voto...'}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 ```
 
+---
+
+#### **Estilos CSS (Responsive):**
+
 ```css
-.units-grid {
-  display: grid;
-  grid-template-columns: repeat(25, 1fr);
-  gap: 4px;
-  padding: 1rem;
+/* ============================================
+   CONTENEDOR PRINCIPAL
+   ============================================ */
+
+.monitor-container {
+  width: 100%;
+  height: 100vh;
+  background: #0f172a;
+  color: white;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.unit-cell {
-  aspect-ratio: 1;
+.monitor-header {
+  padding: 1rem 2rem;
+  background: #1e293b;
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  border-bottom: 2px solid #334155;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.view-toggle button {
+  padding: 0.5rem 1.5rem;
+  background: #334155;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.view-toggle button.active {
+  background: #3b82f6;
+  transform: scale(1.05);
+}
+
+.tower-filter {
+  padding: 0.5rem 1rem;
+  background: #334155;
+  color: white;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.zoom-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.zoom-controls button {
+  padding: 0.5rem 1rem;
+  background: #334155;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/* ============================================
+   GRID DE UNIDADES (ADAPTATIVO)
+   ============================================ */
+
+.units-grid-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+.legend {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #1e293b;
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.5rem;
+  font-size: 14px;
+}
+
+.legend-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.legend-icon {
+  font-size: 18px;
+}
+
+/* ============================================
+   GRID (Tamaños adaptativos)
+   ============================================ */
+
+.units-grid {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+/* Zoom Compacto (600+ unidades) */
+.units-grid.zoom-compact .unit-cell {
+  min-width: 24px;
+  min-height: 24px;
+  font-size: 8px;
+}
+
+/* Zoom Normal (200-400 unidades) */
+.units-grid.zoom-normal .unit-cell {
+  min-width: 40px;
+  min-height: 40px;
   font-size: 10px;
-  font-weight: 600;
+}
+
+/* Zoom Grande (detalle) */
+.units-grid.zoom-large .unit-cell {
+  min-width: 60px;
+  min-height: 60px;
+  font-size: 12px;
+}
+
+/* ============================================
+   CELDA DE UNIDAD
+   ============================================ */
+
+.unit-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   border-radius: 4px;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  font-weight: 600;
 }
 
 .unit-cell:hover {
-  transform: scale(1.1);
+  transform: scale(1.15);
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-.unit-cell.present-vote {
-  background: #10b981;
+/* Animación para unidades pendientes de voto */
+.unit-cell.pending-vote {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.unit-code {
+  font-weight: 700;
+  text-align: center;
+  line-height: 1;
+}
+
+.unit-icons {
+  display: flex;
+  gap: 2px;
+  font-size: 0.8em;
+  margin-top: 2px;
+}
+
+/* ============================================
+   TOOLTIP (Información detallada)
+   ============================================ */
+
+.unit-tooltip {
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.95);
   color: white;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 1000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.unit-cell.absent {
-  background: #fbbf24;
-  color: #000;
+.unit-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.95);
 }
 
-.unit-cell.mora {
-  background: #ef4444;
+.tooltip-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 14px;
+}
+
+.tooltip-body > div {
+  margin: 0.25rem 0;
+  line-height: 1.4;
+}
+
+/* ============================================
+   ESTADÍSTICAS RÁPIDAS
+   ============================================ */
+
+.grid-stats {
+  display: flex;
+  gap: 2rem;
+  padding: 1rem 2rem;
+  background: #1e293b;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.grid-stats .stat {
+  font-size: 16px;
+  color: #94a3b8;
+}
+
+.grid-stats .stat strong {
   color: white;
+  font-size: 20px;
+  margin-left: 0.5rem;
+}
+```
+
+---
+
+#### **Ejemplo de uso con 311 unidades (Complejo):**
+
+```typescript
+// Datos simulados
+const complexUnits = [
+  // Torre A (200 unidades)
+  ...generateUnits('A', 1, 200),
+  // Torre B (111 unidades)
+  ...generateUnits('B', 1, 111),
+];
+
+function generateUnits(tower: string, start: number, count: number): Unit[] {
+  return Array.from({ length: count }, (_, i) => ({
+    id: `${tower}-${start + i}`,
+    code: `${tower}${start + i}`,
+    tower,
+    owner_name: `Propietario ${tower}${start + i}`,
+    payment_status: Math.random() > 0.15 ? 'AL_DIA' : 'MORA',
+    is_present: Math.random() > 0.3,
+    has_face_id: Math.random() > 0.2,
+    vote_value: Math.random() > 0.4 
+      ? ['SI', 'NO', 'ABSTENCION'][Math.floor(Math.random() * 3)] as any
+      : null,
+    vote_method: Math.random() > 0.8 ? 'MANUAL' : 'FACE_ID',
+  }));
 }
 ```
 
