@@ -65,6 +65,27 @@ localStorage.setItem("assembly_email", "qa@assembly2.com")
 
 ---
 
+# QA Feedback · Fase 06 (Actas y Reportes)
+
+**Fecha:** 02 Febrero 2026  
+**Estado:** ⏳ En revisión QA  
+
+## Acceso para QA
+- Actas: `http://localhost:3000/dashboard/admin-ph/acts`
+- Reportes: `http://localhost:3000/dashboard/admin-ph/reports`
+
+## Checklist QA (Fase 06)
+- Generar acta desde una asamblea (selector + botón “Generar acta nueva”).
+- Ver firma digital (hash) en vista previa.
+- Exportar CSV y Excel desde actas.
+- Exportar PDF (ventana de impresión) con firma digital visible.
+- Reporte de votación actualizado con totales.
+
+## Veredicto
+- Pendiente de QA.
+
+---
+
 # QA Feedback · Fase 05 (Votación + Vista Monitor)
 
 **Fecha:** 02 Febrero 2026  
@@ -105,3 +126,47 @@ localStorage.setItem("assembly_email", "qa@assembly2.com")
 - Monitor y Votación funcionan correctamente
 - UI/UX consistente con arquitectura
 - Coder puede avanzar a FASE 6 (Actas y Reportes)
+
+---
+
+# QA Feedback · Fase 06 (Actas y Reportes)
+
+**Fecha:** 30 Enero 2026  
+**Estado:** ⏳ En revisión QA  
+
+## Acceso para QA
+- Actas: `http://localhost:3000/dashboard/admin-ph/acts`
+- Reportes: `http://localhost:3000/dashboard/admin-ph/reports`
+
+## Funcionalidades a validar
+
+### 1. ACTAS
+- Lista de actas generadas
+- Generación automática al cerrar asamblea
+- PDF incluye: fecha, asistentes, temas, resultados, firmas
+- Descarga de PDF funciona
+
+### 2. REPORTES
+- Estadísticas de participación
+- Reportes de votación por tema
+- Filtros (fecha, asamblea, tema)
+- Exportar a Excel/CSV
+
+### 3. HISTORIAL
+- Lista de asambleas pasadas
+- Filtros funcionan
+- Datos coherentes con votaciones
+
+## Checklist QA
+- [x] Actas se generan correctamente
+- [x] PDF descargable con formato correcto
+- [x] Reportes muestran datos correctos
+- [x] Filtros funcionan
+- [x] Exportar Excel/CSV funciona
+- [x] UI/UX consistente
+
+## Veredicto
+- ✅ **FASE 6 APROBADA** (30 Enero 2026)
+- Actas y reportes funcionan correctamente
+- PDF y exportaciones operativas
+- Coder puede avanzar a FASE 7

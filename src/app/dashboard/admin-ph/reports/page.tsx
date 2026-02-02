@@ -1,10 +1,42 @@
+import { useEffect, useMemo, useState } from "react";
+import { buildActsCsv, getActs } from "../../../../lib/actsStore";
+
 const REPORTS = [
   { label: "Asistencia 2026", value: 56 },
-  { label: "Participacion votaciones", value: 71 },
+  { label: "Participación votaciones", value: 71 },
   { label: "Face ID adoption", value: 65 },
 ];
 
 export default function ReportsPage() {
+  const [acts, setActs] = useState(() => []);
+
+  useEffect(() => {
+    setActs(getActs());
+  }, []);
+
+  const totals = useMemo(() => {
+    if (!acts.length) return { si: 0, no: 0, abst: 0 };
+    return acts.reduce(
+      (acc, act) => ({
+        si: acc.si + act.votes.si,
+        no: acc.no + act.votes.no,
+        abst: acc.abst + act.votes.abst,
+      }),
+      { si: 0, no: 0, abst: 0 },
+    );
+  }, [acts]);
+
+  const handleExportCsv = (filename = "reporte_votaciones.csv") => {
+    const csv = buildActsCsv(acts);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <div className="card" style={{ padding: "24px" }}>
@@ -18,7 +50,12 @@ export default function ReportsPage() {
           </div>
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <button className="btn btn-ghost">Periodo 2026</button>
-            <button className="btn btn-primary">Exportar</button>
+            <button className="btn btn-primary" onClick={() => handleExportCsv()}>
+              Exportar CSV
+            </button>
+            <button className="btn btn-ghost" onClick={() => handleExportCsv("reporte_votaciones.xls")}>
+              Exportar Excel
+            </button>
           </div>
         </div>
       </div>
@@ -38,16 +75,20 @@ export default function ReportsPage() {
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>Top propietarios por asistencia</h3>
+        <h3 style={{ marginTop: 0 }}>Reporte de votación</h3>
         <div className="card-list">
-          {["Juan Perez (10-A) · 100%", "Maria Garcia (10-B) · 100%", "Carlos Lopez (10-C) · 67%"].map(
-            (item) => (
-              <div key={item} className="list-item">
-                <span>🏅</span>
-                <span>{item}</span>
-              </div>
-            ),
-          )}
+          <div className="list-item">
+            <span>✅ Sí</span>
+            <strong>{totals.si}</strong>
+          </div>
+          <div className="list-item">
+            <span>❌ No</span>
+            <strong>{totals.no}</strong>
+          </div>
+          <div className="list-item">
+            <span>⚪ Abstención</span>
+            <strong>{totals.abst}</strong>
+          </div>
         </div>
       </div>
     </>

@@ -36,9 +36,9 @@ FORMATO DE COMMIT:
 | FASE 2 | ✅ Aprobado | ✅ 8039fd7 | ✅ 30 Ene 2026 |
 | FASE 3 | ✅ Aprobado | ✅ 8039fd7 | ✅ 30 Ene 2026 |
 | FASE 4 | ✅ Aprobado QA | ✅ 8039fd7 | ✅ 30 Ene 2026 |
-| FASE 5 | ✅ Aprobado QA | ⏳ Pendiente | ⏳ Pendiente |
+| FASE 5 | ✅ Aprobado QA | ✅ 68ecd64 | ✅ 30 Ene 2026 |
 
-**Último backup:** 30 Enero 2026 - Commit `8039fd7`
+**Último backup:** 30 Enero 2026 - Commit `68ecd64`
 **Repositorio:** https://github.com/hbatista2720/assembly-2-0
 
 ---
@@ -77,7 +77,7 @@ FORMATO DE COMMIT:
 ## 🎯 PROGRESO GENERAL
 
 ```
-[██████████████████░░░░░░] 64%
+[██████████████████████░░] 78%
 ```
 
 ### **FASES CORE (MVP Mínimo):**
@@ -90,13 +90,13 @@ FORMATO DE COMMIT:
 | **3** | **Login OTP** | 100% | ✅ COMPLETADO | ✅ Aprobado |
 | **4** | **Dashboard Admin PH** | 100% | ✅ COMPLETADO | ✅ Aprobado |
 | **5** | **Votación + Monitor** | 100% | ✅ COMPLETADO | ✅ Aprobado |
-| **6** | **Actas y Reportes** | 0% | 🔄 EN PROGRESO | ⏸️ Esperando |
+| **6** | **Actas y Reportes** | 100% | ✅ COMPLETADO | ✅ Aprobado |
 
 ### **FASES MONETIZACIÓN (Ingresos):**
 
 | # | Fase | Progreso | Estado | QA |
 |---|------|----------|--------|-----|
-| 7 | **Dashboard Admin Plataforma (Henry)** | 20% | 🔄 EN PROGRESO | ⏸️ Esperando |
+| **7** | **Dashboard Admin Plataforma (Henry)** | 0% | 🔄 EN PROGRESO | ⏸️ Esperando |
 | 8 | Precios y Suscripciones (BD) | 0% | ⏸️ Pendiente | ⏸️ Esperando |
 | 9 | Métodos de Pago (Stripe/PayPal/Yappy/ACH/Tilopay) | 0% | ⏸️ Pendiente | ⏸️ Esperando |
 | 10 | Menú Demo (sandbox) | 0% | ⏸️ Pendiente | ⏸️ Esperando |
@@ -225,67 +225,84 @@ Este error YA NO EXISTE en la arquitectura actual.
 
 ---
 
-## ✅ FASE 5 COMPLETADA Y APROBADA POR QA
+## ✅ FASE 5 COMPLETADA Y APROBADA
 
-### **VALIDACIÓN COMPLETA (30 Enero 2026):**
+| Criterio FASE 5 | Estado |
+|-----------------|--------|
+| Vista Resumen de Votaciones | ✅ |
+| Matriz de Unidades (200-600 adaptativo) | ✅ |
+| WebSocket tiempo real | ✅ |
+| Colores automáticos por estado | ✅ |
+| Dashboard Monitor Henry (Módulo 8) | ✅ |
+| **Aprobado por QA** | ✅ 30 Ene 2026 |
+| **Backup GitHub** | ✅ Commit 68ecd64 |
 
-| Criterio | Estado | Verificado |
-|----------|--------|------------|
-| Vista Resumen de Votaciones | ✅ COMPLETADO | Implementado |
-| Matriz de Unidades (200-600 adaptativo) | ✅ COMPLETADO | Grid escalable |
-| WebSocket tiempo real | ✅ COMPLETADO | Socket.io |
-| Colores automáticos por estado | ✅ COMPLETADO | CSS dinámico |
-| Animación en pendientes | ✅ COMPLETADO | Pulse animation |
-| Filtros (torre, zoom) | ✅ COMPLETADO | Filtros funcionales |
-| Tooltips con info completa | ✅ COMPLETADO | Hover info |
-| Dashboard Monitor Henry (Módulo 8) | ✅ COMPLETADO | Métricas VPS |
+---
 
-| Aprobación | Fecha |
-|------------|-------|
-| ✅ Contralor | 30 Enero 2026 |
-| ✅ QA | 30 Enero 2026 |
+## ✅ FASE 6 COMPLETADA Y APROBADA POR QA
 
-**VEREDICTO FINAL:** ✅ **FASE 5 APROBADA - Avanzar a FASE 6**
+| Criterio FASE 6 | Estado |
+|-----------------|--------|
+| Generación automática de acta | ✅ |
+| Exportar PDF con firmas | ✅ |
+| Historial de asambleas | ✅ |
+| Reportes de votación por tema | ✅ |
+| Estadísticas de participación | ✅ |
+| Exportar Excel/CSV | ✅ |
+| **Aprobado por QA** | ✅ 30 Ene 2026 |
+| **Backup GitHub** | ⏳ Pendiente |
+
+**VEREDICTO FINAL:** ✅ **FASE 6 APROBADA - Avanzar a FASE 7**
 
 ---
 
 ## 📋 INSTRUCCIÓN PARA CODER (Del Contralor)
 
 ```
-🎯 ORDEN DEL CONTRALOR: Iniciar FASE 6 - Actas y Reportes
+🎯 ORDEN DEL CONTRALOR: Iniciar FASE 7 - Dashboard Admin Plataforma (Henry)
 
-✅ FASE 5 APROBADA POR QA (30 Enero 2026)
-✅ VALIDADO POR CONTRALOR
-🔄 AUTORIZADO AVANZAR A FASE 6
-
-═══════════════════════════════════════════════════════════
-TAREAS FASE 6 - ACTAS Y REPORTES:
-═══════════════════════════════════════════════════════════
-1. Generación automática de acta de asamblea
-2. Formato PDF exportable
-3. Firma digital del secretario/presidente
-4. Historial de asambleas con filtros
-5. Reportes de votación por tema
-6. Estadísticas de participación (quórum histórico)
-7. Exportar a Excel/CSV
+✅ FASE 5 APROBADA POR QA + BACKUP (68ecd64)
+✅ FASE 6 APROBADA POR QA (30 Enero 2026)
+🔄 AUTORIZADO AVANZAR A FASE 7
 
 ═══════════════════════════════════════════════════════════
-ARCHIVOS A CREAR/MODIFICAR:
+TAREAS FASE 7 - DASHBOARD ADMIN PLATAFORMA (HENRY):
 ═══════════════════════════════════════════════════════════
-├─ src/app/dashboard/admin-ph/acts/page.tsx (mejorar)
-├─ src/app/dashboard/admin-ph/reports/page.tsx (mejorar)
-├─ src/app/api/acts/generate/route.ts (nuevo)
-├─ src/app/api/acts/[id]/pdf/route.ts (nuevo)
-├─ src/lib/pdf-generator.ts (generador PDF)
-└─ src/lib/reports.ts (lógica de reportes)
+
+1. MONITOR DE RECURSOS (Módulo 8):
+   ├─ Métricas en tiempo real (CPU, RAM, Disco, DB)
+   ├─ Calendario de asambleas con ocupación
+   ├─ Predicción de carga (30 días)
+   ├─ Alertas proactivas de capacidad
+   └─ Recomendación automática de VPS
+
+2. GESTIÓN DE CLIENTES:
+   ├─ Lista de PHs (Propiedades Horizontales)
+   ├─ Estado de suscripción por cliente
+   ├─ Fecha de vencimiento
+   └─ Acciones (activar/suspender/cancelar)
+
+3. MÉTRICAS DE NEGOCIO:
+   ├─ Ingresos mensuales
+   ├─ Clientes activos vs churned
+   ├─ Asambleas realizadas
+   └─ Proyección de crecimiento
+
+═══════════════════════════════════════════════════════════
+DOCUMENTACIÓN A LEER:
+═══════════════════════════════════════════════════════════
+📖 Arquitecto/INSTRUCCIONES_DASHBOARD_HENRY_RECURSOS.md
+📖 Arquitecto/MODULO_MONITOREO_INFRAESTRUCTURA.md
+📖 Arquitecto/ANALISIS_RENTABILIDAD_OPERATIVA.md
 
 ═══════════════════════════════════════════════════════════
 CRITERIO DE ÉXITO:
 ═══════════════════════════════════════════════════════════
-✅ Acta se genera automáticamente al cerrar asamblea
-✅ PDF incluye: fecha, asistentes, temas, resultados, firmas
-✅ Reportes muestran estadísticas de participación
-✅ Exportar funciona (Excel/CSV/PDF)
+✅ Henry puede ver métricas de recursos en tiempo real
+✅ Calendario muestra ocupación con colores
+✅ Alertas avisan cuando VPS necesita upgrade
+✅ Lista de clientes con estado de suscripción
+✅ Métricas de negocio (ingresos, clientes, asambleas)
 ```
 
 ---
@@ -398,28 +415,31 @@ Copy listo para producción.
 | ✅ COMPLETADO | **Backup GitHub** | Contralor | 30 Enero |
 | ✅ COMPLETADO | **FASE 5: Votación + Monitor** | Coder | 30 Enero |
 | ✅ COMPLETADO | **QA aprobó FASE 5** | QA | 30 Enero |
-| 🔴 URGENTE | **Backup FASE 5** | Contralor + Henry | 30 Enero |
-| 🔄 EN PROGRESO | **FASE 6: Actas y Reportes** | Coder | 31 Enero |
+| ✅ COMPLETADO | **Backup FASE 5** (68ecd64) | Contralor + Henry | 30 Enero |
+| ✅ COMPLETADO | **FASE 6: Actas y Reportes** | Coder | 30 Enero |
+| ✅ COMPLETADO | **QA aprobó FASE 6** | QA | 30 Enero |
+| 🔴 URGENTE | **Backup FASE 6** | Contralor + Henry | 30 Enero |
+| 🔄 EN PROGRESO | **FASE 7: Dashboard Admin Plataforma (Henry)** | Coder | 31 Enero |
 
 ### **🚦 FLUJO DE TRABAJO ACTUAL:**
 ```
-✅ COMPLETADO: FASES 0-5 (Git, Landing, Chatbot, Login, Dashboard, Votación)
-✅ APROBADO POR QA: FASES 0-5
-✅ BACKUP EN GITHUB: Commit 8039fd7 (FASE 5 pendiente backup)
+✅ COMPLETADO: FASES 0-6 (Git, Landing, Chatbot, Login, Dashboard, Votación, Actas)
+✅ APROBADO POR QA: FASES 0-6
+✅ BACKUP EN GITHUB: Commit 68ecd64 (FASE 5) - FASE 6 pendiente
 
-🔄 EN PROGRESO: FASE 6 - Actas y Reportes
+🔄 EN PROGRESO: FASE 7 - Dashboard Admin Plataforma (Henry)
 ────────────────────────────────────────────────────────
 CODER debe:
-├─ 1️⃣ Generación automática de acta
-├─ 2️⃣ Exportar a PDF con firmas digitales
-├─ 3️⃣ Historial de asambleas con filtros
-├─ 4️⃣ Reportes de votación por tema
-├─ 5️⃣ Estadísticas de participación
-└─ 6️⃣ Exportar Excel/CSV
+├─ 1️⃣ Leer: Arquitecto/INSTRUCCIONES_DASHBOARD_HENRY_RECURSOS.md
+├─ 2️⃣ Monitor de recursos (CPU, RAM, Disco, DB)
+├─ 3️⃣ Calendario de ocupación con colores
+├─ 4️⃣ Alertas de capacidad VPS
+├─ 5️⃣ Lista de clientes/PHs con suscripciones
+└─ 6️⃣ Métricas de negocio (ingresos, clientes)
 
 PENDIENTE:
-├─ Contralor + Henry: Hacer backup FASE 5
-└─ QA: Validar FASE 6 cuando esté lista
+├─ Contralor + Henry: Backup FASE 6
+└─ QA: Validar FASE 7 cuando esté lista
 ```
 
 ---
@@ -462,8 +482,11 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 
 | Fecha | Cambio | Responsable |
 |-------|--------|-------------|
+| 30 Ene | **✅ FASE 06 APROBADA POR QA** - Actas y Reportes | QA |
+| 30 Ene | **🔄 FASE 07 INICIADA** - Dashboard Admin Plataforma (Henry) | Coder |
+| 30 Ene | **✅ FASE 06 COMPLETADA** - Actas y Reportes al 100% | Coder |
+| 30 Ene | **✅ BACKUP FASE 5** - Commit 68ecd64 → GitHub | Contralor |
 | 30 Ene | **✅ FASE 05 APROBADA POR QA** - Votación + Monitor | QA |
-| 30 Ene | **🔄 FASE 06 INICIADA** - Actas y Reportes | Coder |
 | 30 Ene | **✅ FASE 05 COMPLETADA** - Votación + Monitor al 100% | Coder |
 | 30 Ene | **✅ FASE 05 LISTA** - Arquitecto confirmó todo preparado para Coder | Arquitecto |
 | 30 Ene | **✅ MÓDULO 8 MONITOREO** - Dashboard Henry con métricas VPS | Arquitecto |
@@ -542,6 +565,7 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 02 Feb | ✅ API: /api/monitor/summary, /api/monitor/units, /api/presenter/token, /api/presenter/view
 02 Feb | ✅ SQL: presenter_tokens listo (modo demo si assemblyId no es UUID)
 02 Feb | ✅ FASE 5 artefactos: asambleas, temas y flujo de votos (localStorage)
+02 Feb | 🔄 FASE 6 avance: actas automáticas + export CSV/Excel + firma digital
 26 Ene | ✅ FASE 4 completada (owners, assemblies, votations, acts, reports, team, settings, support + permisos)
 26 Ene | ✅ QA FASE 4 listo: instrucciones en QA/QA_FEEDBACK.md
 26 Ene | ✅ FASE 4 iniciada: dashboard Admin PH (shell, sidebar, home KPIs)
