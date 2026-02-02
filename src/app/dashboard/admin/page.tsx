@@ -70,6 +70,15 @@ export default function AdminInteligenteDashboard() {
             <a className="sidebar-link active" href="/dashboard/admin">
               📊 Resumen ejecutivo
             </a>
+            <a className="sidebar-link" href="/platform-admin/monitoring">
+              🖥️ Monitor VPS
+            </a>
+            <a className="sidebar-link" href="/platform-admin/clients">
+              👥 Gestion de clientes
+            </a>
+            <a className="sidebar-link" href="/platform-admin/business">
+              💹 Metricas de negocio
+            </a>
             <a className="sidebar-link" href="/dashboard/admin#leads">
               🎯 Funnel de leads
             </a>
@@ -137,6 +146,12 @@ export default function AdminInteligenteDashboard() {
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                 <a className="btn" href="/platform-admin/leads">
                   Exportar reporte
+                </a>
+                <a className="btn btn-ghost" href="/platform-admin/monitoring">
+                  Ver monitor VPS
+                </a>
+                <a className="btn btn-ghost" href="/platform-admin/clients">
+                  Abrir clientes
                 </a>
                 <a className="btn btn-primary" href="/platform-admin/leads?stage=demo_active">
                   Activar demo
@@ -276,6 +291,9 @@ export default function AdminInteligenteDashboard() {
                 </div>
               ))}
             </div>
+            <a className="btn" style={{ marginTop: "16px" }} href="/platform-admin/clients">
+              Gestionar clientes
+            </a>
           </section>
 
           <section id="crm" className="section">

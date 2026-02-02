@@ -37,8 +37,9 @@ FORMATO DE COMMIT:
 | FASE 3 | ✅ Aprobado | ✅ 8039fd7 | ✅ 30 Ene 2026 |
 | FASE 4 | ✅ Aprobado QA | ✅ 8039fd7 | ✅ 30 Ene 2026 |
 | FASE 5 | ✅ Aprobado QA | ✅ 68ecd64 | ✅ 30 Ene 2026 |
+| FASE 6 | ✅ Aprobado QA | ✅ 137421b | ✅ 30 Ene 2026 |
 
-**Último backup:** 30 Enero 2026 - Commit `68ecd64`
+**Último backup:** 30 Enero 2026 - Commit `137421b`
 **Repositorio:** https://github.com/hbatista2720/assembly-2-0
 
 ---
@@ -77,7 +78,7 @@ FORMATO DE COMMIT:
 ## 🎯 PROGRESO GENERAL
 
 ```
-[██████████████████████░░] 78%
+[████████████████████████] 85%
 ```
 
 ### **FASES CORE (MVP Mínimo):**
@@ -96,8 +97,8 @@ FORMATO DE COMMIT:
 
 | # | Fase | Progreso | Estado | QA |
 |---|------|----------|--------|-----|
-| **7** | **Dashboard Admin Plataforma (Henry)** | 0% | 🔄 EN PROGRESO | ⏸️ Esperando |
-| 8 | Precios y Suscripciones (BD) | 0% | ⏸️ Pendiente | ⏸️ Esperando |
+| **7** | **Dashboard Admin Plataforma (Henry)** | 100% | ✅ COMPLETADO | ✅ Aprobado |
+| **8** | **Precios y Suscripciones (BD)** | 0% | 🔄 EN PROGRESO | ⏸️ Esperando |
 | 9 | Métodos de Pago (Stripe/PayPal/Yappy/ACH/Tilopay) | 0% | ⏸️ Pendiente | ⏸️ Esperando |
 | 10 | Menú Demo (sandbox) | 0% | ⏸️ Pendiente | ⏸️ Esperando |
 | 11 | Lead Validation (chatbot → CRM) | 0% | ⏸️ Pendiente | ⏸️ Esperando |
@@ -250,43 +251,95 @@ Este error YA NO EXISTE en la arquitectura actual.
 | Estadísticas de participación | ✅ |
 | Exportar Excel/CSV | ✅ |
 | **Aprobado por QA** | ✅ 30 Ene 2026 |
-| **Backup GitHub** | ⏳ Pendiente |
+| **Backup GitHub** | ✅ Commit 137421b |
 
-**VEREDICTO FINAL:** ✅ **FASE 6 APROBADA - Avanzar a FASE 7**
+**VEREDICTO FINAL:** ✅ **FASE 6 APROBADA + BACKUP - Avanzar a FASE 7**
+
+---
+
+## ✅ FASE 7 COMPLETADA - PENDIENTE APROBACIÓN QA
+
+### **VALIDACIÓN DEL CONTRALOR (02 Febrero 2026):**
+
+| Criterio FASE 7 | Estado |
+|-----------------|--------|
+| Monitor de recursos (CPU, RAM, Disco, DB) | ✅ COMPLETADO |
+| Calendario de ocupación con colores | ✅ COMPLETADO |
+| Alertas proactivas de capacidad | ✅ COMPLETADO |
+| Predicción de carga (30 días) | ✅ COMPLETADO |
+| Lista de PHs con estado suscripción | ✅ COMPLETADO |
+| Métricas de negocio (ingresos, churn) | ✅ COMPLETADO |
+
+| Aprobación | Fecha |
+|------------|-------|
+| ✅ Coder | 02 Febrero 2026 |
+| ✅ Contralor | 02 Febrero 2026 |
+| ✅ QA | 02 Febrero 2026 |
+
+**VEREDICTO FINAL:** ✅ **FASE 7 APROBADA - Avanzar a FASE 8**
 
 ---
 
 ## 📋 INSTRUCCIÓN PARA CODER (Del Contralor)
 
 ```
-🎯 ORDEN DEL CONTRALOR: Iniciar FASE 7 - Dashboard Admin Plataforma (Henry)
+🎯 ORDEN DEL CONTRALOR: Iniciar FASE 8 - Precios y Suscripciones
 
-✅ FASE 5 APROBADA POR QA + BACKUP (68ecd64)
-✅ FASE 6 APROBADA POR QA (30 Enero 2026)
-🔄 AUTORIZADO AVANZAR A FASE 7
+✅ FASE 7 APROBADA POR QA (02 Febrero 2026)
+✅ BACKUP PENDIENTE (hacer antes de avanzar mucho)
+🔄 AUTORIZADO AVANZAR A FASE 8
 
 ═══════════════════════════════════════════════════════════
-TAREAS FASE 7 - DASHBOARD ADMIN PLATAFORMA (HENRY):
+TAREAS FASE 8 - PRECIOS Y SUSCRIPCIONES:
 ═══════════════════════════════════════════════════════════
 
-1. MONITOR DE RECURSOS (Módulo 8):
-   ├─ Métricas en tiempo real (CPU, RAM, Disco, DB)
-   ├─ Calendario de asambleas con ocupación
-   ├─ Predicción de carga (30 días)
-   ├─ Alertas proactivas de capacidad
-   └─ Recomendación automática de VPS
+1. BASE DE DATOS:
+   ├─ Tabla plans (id, name, price, units_included, features)
+   ├─ Tabla subscriptions (organization_id, plan_id, status, expires_at)
+   ├─ Tabla invoices (subscription_id, amount, status, paid_at)
+   └─ RLS policies para multi-tenant
 
-2. GESTIÓN DE CLIENTES:
-   ├─ Lista de PHs (Propiedades Horizontales)
-   ├─ Estado de suscripción por cliente
-   ├─ Fecha de vencimiento
-   └─ Acciones (activar/suspender/cancelar)
+2. PLANES DISPONIBLES (según Arquitecto):
+   ├─ DEMO: $0 (14 días, 50 unidades)
+   ├─ EVENTO ÚNICO: $225 (250 unidades)
+   ├─ DÚO PACK: $389 (250 unidades, 2 asambleas)
+   ├─ STANDARD: $189/mes (250 unidades)
+   ├─ MULTI-PH: $699/mes (5,000 unidades)
+   └─ ENTERPRISE: $2,499/mes (ilimitado)
 
-3. MÉTRICAS DE NEGOCIO:
-   ├─ Ingresos mensuales
-   ├─ Clientes activos vs churned
-   ├─ Asambleas realizadas
-   └─ Proyección de crecimiento
+3. UI REQUERIDA:
+   ├─ Página de selección de plan (checkout)
+   ├─ Dashboard de suscripción actual
+   ├─ Alertas de vencimiento
+   └─ Historial de facturas
+
+4. LÓGICA DE NEGOCIO:
+   ├─ Validación de límites por plan
+   ├─ Cargos adicionales por unidades extra
+   ├─ Renovación automática (flag)
+   └─ Suspensión por falta de pago
+
+═══════════════════════════════════════════════════════════
+DOCUMENTACIÓN:
+═══════════════════════════════════════════════════════════
+📖 Arquitecto/LIMITES_UNIDADES_POR_PLAN.md
+📖 Arquitecto/ANALISIS_RENTABILIDAD_OPERATIVA.md
+📖 Marketing/MARKETING_PRECIOS_COMPLETO.md
+
+═══════════════════════════════════════════════════════════
+CRITERIO DE ÉXITO:
+═══════════════════════════════════════════════════════════
+✅ Tablas de planes y suscripciones creadas
+✅ Cliente puede ver planes disponibles
+✅ Sistema valida límites según plan
+✅ Dashboard muestra suscripción actual
+✅ Alertas de vencimiento funcionan
+
+ESTATUS FINAL FASE 7:
+✅ FASE 7 APROBADA ✅
+➡️ Henry autoriza backup
+➡️ Contralor hace commit + push
+➡️ Coder inicia FASE 8 (Precios y Suscripciones)
 
 ═══════════════════════════════════════════════════════════
 DOCUMENTACIÓN A LEER:
@@ -418,28 +471,34 @@ Copy listo para producción.
 | ✅ COMPLETADO | **Backup FASE 5** (68ecd64) | Contralor + Henry | 30 Enero |
 | ✅ COMPLETADO | **FASE 6: Actas y Reportes** | Coder | 30 Enero |
 | ✅ COMPLETADO | **QA aprobó FASE 6** | QA | 30 Enero |
-| 🔴 URGENTE | **Backup FASE 6** | Contralor + Henry | 30 Enero |
-| 🔄 EN PROGRESO | **FASE 7: Dashboard Admin Plataforma (Henry)** | Coder | 31 Enero |
+| ✅ COMPLETADO | **Backup FASE 6** (137421b) | Contralor + Henry | 30 Enero |
+| ✅ COMPLETADO | **FASE 7: Dashboard Admin Plataforma (Henry)** | Coder | 02 Feb |
+| ✅ COMPLETADO | **QA aprobó FASE 7** | QA | 02 Feb |
+| 🔴 URGENTE | **Backup FASE 7** | Contralor + Henry | 02 Feb |
+| 🔄 EN PROGRESO | **FASE 8: Precios y Suscripciones** | Coder | 02 Feb |
 
 ### **🚦 FLUJO DE TRABAJO ACTUAL:**
 ```
 ✅ COMPLETADO: FASES 0-6 (Git, Landing, Chatbot, Login, Dashboard, Votación, Actas)
 ✅ APROBADO POR QA: FASES 0-6
-✅ BACKUP EN GITHUB: Commit 68ecd64 (FASE 5) - FASE 6 pendiente
+✅ BACKUP EN GITHUB: Commit 137421b (FASE 6)
 
-🔄 EN PROGRESO: FASE 7 - Dashboard Admin Plataforma (Henry)
+✅ COMPLETADO: FASES 0-7 (Git, Landing, Chatbot, Login, Dashboard, Votación, Actas, Monitor Henry)
+✅ APROBADO POR QA: FASES 0-7
 ────────────────────────────────────────────────────────
+🔄 EN PROGRESO: FASE 8 - Precios y Suscripciones
+
 CODER debe:
-├─ 1️⃣ Leer: Arquitecto/INSTRUCCIONES_DASHBOARD_HENRY_RECURSOS.md
-├─ 2️⃣ Monitor de recursos (CPU, RAM, Disco, DB)
-├─ 3️⃣ Calendario de ocupación con colores
-├─ 4️⃣ Alertas de capacidad VPS
-├─ 5️⃣ Lista de clientes/PHs con suscripciones
-└─ 6️⃣ Métricas de negocio (ingresos, clientes)
+├─ 1️⃣ Tablas de planes y precios en BD
+├─ 2️⃣ UI de selección de plan
+├─ 3️⃣ Lógica de límites por plan
+├─ 4️⃣ Gestión de suscripciones activas
+├─ 5️⃣ Fechas de vencimiento y renovación
+└─ 6️⃣ Integración con sistema de pagos (prep)
 
 PENDIENTE:
-├─ Contralor + Henry: Backup FASE 6
-└─ QA: Validar FASE 7 cuando esté lista
+├─ Contralor + Henry: Backup FASE 7
+└─ QA: Validar FASE 8 cuando esté lista
 ```
 
 ---
@@ -482,7 +541,11 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 
 | Fecha | Cambio | Responsable |
 |-------|--------|-------------|
+| 30 Ene | **✅ BACKUP FASE 6** - Commit 137421b → GitHub | Contralor |
 | 30 Ene | **✅ FASE 06 APROBADA POR QA** - Actas y Reportes | QA |
+| 02 Feb | **✅ FASE 07 APROBADA POR QA** - Dashboard Admin Plataforma | QA |
+| 02 Feb | **🔄 FASE 08 INICIADA** - Precios y Suscripciones | Coder |
+| 02 Feb | **✅ FASE 07 COMPLETADA** - Dashboard Admin Plataforma (Henry) | Coder |
 | 30 Ene | **🔄 FASE 07 INICIADA** - Dashboard Admin Plataforma (Henry) | Coder |
 | 30 Ene | **✅ FASE 06 COMPLETADA** - Actas y Reportes al 100% | Coder |
 | 30 Ene | **✅ BACKUP FASE 5** - Commit 68ecd64 → GitHub | Contralor |
@@ -566,6 +629,7 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 02 Feb | ✅ SQL: presenter_tokens listo (modo demo si assemblyId no es UUID)
 02 Feb | ✅ FASE 5 artefactos: asambleas, temas y flujo de votos (localStorage)
 02 Feb | 🔄 FASE 6 avance: actas automáticas + export CSV/Excel + firma digital
+02 Feb | 🔄 FASE 7 iniciada: Dashboard Admin Plataforma (Henry)
 26 Ene | ✅ FASE 4 completada (owners, assemblies, votations, acts, reports, team, settings, support + permisos)
 26 Ene | ✅ QA FASE 4 listo: instrucciones en QA/QA_FEEDBACK.md
 26 Ene | ✅ FASE 4 iniciada: dashboard Admin PH (shell, sidebar, home KPIs)
@@ -613,6 +677,10 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
        |    ✅ Navegación 8 secciones verificada
        |    ✅ Equipo/permisos visibles con localStorage/cookie
        |    ✅ UI/UX coherente con arquitectura
+30 Ene | 📝 QA_FEEDBACK.md · Fases 5-6-7 aprobadas
+       |    ✅ FASE 5: Votación + Monitor validado
+       |    ✅ FASE 6: Actas y Reportes aprobado
+       |    ✅ FASE 7: Dashboard Henry aprobado (monitoring/clients/business)
 ```
 
 ### 📢 MARKETING - Últimos Avances:
