@@ -1,85 +1,76 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
 
+type Lead = {
+  id: string;
+  email: string;
+  phone: string | null;
+  company_name: string | null;
+  lead_source: string;
+  funnel_stage: string;
+  lead_score: number | null;
+  lead_qualified: boolean | null;
+  last_interaction_at: string | null;
+  created_at: string | null;
+};
+
 export default function LeadsPage() {
   const params = useSearchParams();
-  const [leads, setLeads] = useState<any[]>([]);
+  const stage = params.get("stage") || undefined;
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const stage = params.get("stage");
-  const seedLeads = useMemo(
-    () => [
-      {
-        id: "lead-001",
-        company_name: "PH Urban Tower",
-        contact_name: "Laura Pérez",
-        email: "laura@urbantower.com",
-        phone: "+507 6000-1000",
-        funnel_stage: "new",
-        lead_score: 42,
-        lead_qualified: false,
-        created_at: "2026-01-20T09:00:00Z",
-      },
-      {
-        id: "lead-002",
-        company_name: "PH Costa Azul",
-        contact_name: "Carlos Méndez",
-        email: "carlos@costaazul.com",
-        phone: "+507 6123-9000",
-        funnel_stage: "qualified",
-        lead_score: 80,
-        lead_qualified: true,
-        created_at: "2026-01-18T14:30:00Z",
-      },
-      {
-        id: "lead-003",
-        company_name: "PH Torres del Pacífico",
-        contact_name: "Ana Torres",
-        email: "ana@torrespacifico.com",
-        phone: "+507 6555-3000",
-        funnel_stage: "demo_active",
-        lead_score: 90,
-        lead_qualified: true,
-        created_at: "2026-01-16T11:10:00Z",
-      },
-    ],
-    [],
-  );
 
   useEffect(() => {
     loadLeads();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, seedLeads]);
+  }, [stage]);
 
   async function loadLeads() {
     setLoading(true);
-    const filtered = stage ? seedLeads.filter((lead) => lead.funnel_stage === stage) : seedLeads;
-    setLeads(filtered);
-    setLoading(false);
+    try {
+      const url = stage ? `/api/leads?stage=${encodeURIComponent(stage)}` : "/api/leads";
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Error al cargar leads");
+      const data = await res.json();
+      setLeads(Array.isArray(data) ? data : []);
+    } catch {
+      setLeads([]);
+      toast.error("No se pudieron cargar los leads.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleQualify(leadId: string) {
-    setLeads((prev) =>
-      prev.map((lead) =>
-        lead.id === leadId
-          ? { ...lead, lead_qualified: true, lead_score: 80, funnel_stage: "qualified" }
-          : lead,
-      ),
-    );
-    toast.success("Lead calificado.");
+    try {
+      const res = await fetch("/api/leads", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: leadId, action: "qualify" }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Lead calificado.");
+      loadLeads();
+    } catch {
+      toast.error("Error al calificar.");
+    }
   }
 
   async function handleActivateDemo(leadId: string) {
-    setLeads((prev) =>
-      prev.map((lead) =>
-        lead.id === leadId
-          ? { ...lead, demo_activated_at: new Date().toISOString(), funnel_stage: "demo_active" }
-          : lead,
-      ),
-    );
-    toast.success("Demo activado.");
+    try {
+      const res = await fetch("/api/leads", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: leadId, action: "activate_demo" }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Demo activado.");
+      loadLeads();
+    } catch {
+      toast.error("Error al activar demo.");
+    }
   }
 
   return (
@@ -87,8 +78,22 @@ export default function LeadsPage() {
       <div className="card" style={{ marginBottom: "16px" }}>
         <h1 style={{ margin: 0 }}>Gestión de Leads</h1>
         <p className="muted" style={{ marginTop: "6px" }}>
-          Filtra, califica y activa demos directamente desde el panel.
+          Filtra, califica y activa demos. Datos desde chatbot y CRM.
         </p>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "12px" }}>
+          <a href="/platform-admin/leads" className={`btn ${!stage ? "btn-primary" : "btn-ghost"}`}>
+            Todos
+          </a>
+          {["new", "qualified", "demo_active", "converted"].map((s) => (
+            <a
+              key={s}
+              href={`/platform-admin/leads?stage=${s}`}
+              className={`btn ${stage === s ? "btn-primary" : "btn-ghost"}`}
+            >
+              {s === "new" ? "Nuevos" : s === "qualified" ? "Calificados" : s === "demo_active" ? "Demo activo" : "Convertidos"}
+            </a>
+          ))}
+        </div>
       </div>
 
       <div className="card">
@@ -102,17 +107,27 @@ export default function LeadsPage() {
               <div key={lead.id} className="list-item" style={{ alignItems: "center" }}>
                 <div style={{ flex: 1 }}>
                   <strong>{lead.email}</strong>
+                  {(lead.company_name || lead.phone) && (
+                    <div className="muted" style={{ fontSize: "12px" }}>
+                      {lead.company_name || ""} {lead.phone ? ` · ${lead.phone}` : ""}
+                    </div>
+                  )}
                   <div className="muted" style={{ fontSize: "12px" }}>
                     Etapa: {lead.funnel_stage} · Score: {lead.lead_score ?? 0}
+                    {lead.lead_qualified ? " · Calificado" : ""}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  <button className="btn btn-ghost" onClick={() => handleQualify(lead.id)}>
-                    Calificar
-                  </button>
-                  <button className="btn btn-primary" onClick={() => handleActivateDemo(lead.id)}>
-                    Activar demo
-                  </button>
+                  {!lead.lead_qualified && (
+                    <button className="btn btn-ghost" onClick={() => handleQualify(lead.id)}>
+                      Calificar
+                    </button>
+                  )}
+                  {lead.funnel_stage !== "demo_active" && lead.funnel_stage !== "converted" && (
+                    <button className="btn btn-primary" onClick={() => handleActivateDemo(lead.id)}>
+                      Activar demo
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

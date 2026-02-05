@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import UpgradeBanner from "@/components/UpgradeBanner";
+import DemoBanner from "@/components/DemoBanner";
 import useUpgradeBanner from "@/hooks/useUpgradeBanner";
 import AssemblyCreditsDisplay from "@/components/AssemblyCreditsDisplay";
 
@@ -32,6 +33,7 @@ export default function AdminPhDashboard() {
 
   return (
     <>
+      <DemoBanner />
       {showBanner ? <UpgradeBanner limits={limits} /> : null}
       <div className="card" style={{ padding: "28px" }}>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "16px" }}>

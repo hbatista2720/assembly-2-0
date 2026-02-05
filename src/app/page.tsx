@@ -761,7 +761,7 @@ export default function HomePage() {
         <p className="section-subtitle">Estructura por perfil: administraciones y promotoras.</p>
         <div className="pricing-grid">
           {[
-            { title: "Demo 14 días", desc: "Prueba gratis con 1 PH y flujo completo.", cta: "Probar demo", link: "/login", accent: "rgba(56, 189, 248, 0.9)", glow: "rgba(56, 189, 248, 0.35)" },
+            { title: "Demo 14 días", desc: "Prueba gratis con 1 PH y flujo completo.", cta: "Probar demo", link: "/demo", accent: "rgba(56, 189, 248, 0.9)", glow: "rgba(56, 189, 248, 0.35)" },
             { title: "Multi-PH Pro", desc: "Hasta 50 edificios y asambleas ilimitadas.", cta: "Ver administraciones", link: "/administraciones", accent: "rgba(99, 102, 241, 0.9)", glow: "rgba(99, 102, 241, 0.35)" },
             { title: "Enterprise + CRM", desc: "Promotoras grandes con CRM y tickets ilimitados.", cta: "Ver promotoras", link: "/promotoras", accent: "rgba(236, 72, 153, 0.9)", glow: "rgba(236, 72, 153, 0.35)" },
           ].map((plan, index) => (

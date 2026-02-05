@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     }
 
     const [user] = await sql`
-      SELECT u.id, u.email, u.role, u.is_platform_owner, u.organization_id, o.is_demo
+      SELECT u.id, u.email, u.role, u.is_platform_owner, u.organization_id, o.is_demo, o.parent_subscription_id
       FROM users u
       LEFT JOIN organizations o ON o.id = u.organization_id
       WHERE u.email = ${normalized}
@@ -75,6 +75,8 @@ export async function POST(req: Request) {
         role: user.role,
         is_platform_owner: user.is_platform_owner,
         is_demo: user.is_demo ?? false,
+        organization_id: user.organization_id ?? null,
+        subscription_id: user.parent_subscription_id ?? null,
       },
     });
   } catch (error) {

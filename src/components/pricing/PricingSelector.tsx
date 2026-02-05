@@ -83,7 +83,10 @@ function PlanCard({ plan }: { plan: Plan }) {
           ))}
         </div>
       ) : null}
-      <a className={`btn ${plan.ctaVariant === "primary" ? "btn-primary" : "btn-ghost"}`} href="/login">
+      <a
+        className={`btn ${plan.ctaVariant === "primary" ? "btn-primary" : "btn-ghost"}`}
+        href={plan.id === "ENTERPRISE" ? "/login" : `/checkout?plan=${plan.id}`}
+      >
         {plan.cta}
       </a>
     </div>

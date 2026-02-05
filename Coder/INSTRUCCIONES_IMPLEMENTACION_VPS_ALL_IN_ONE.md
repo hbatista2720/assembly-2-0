@@ -1798,9 +1798,11 @@ Testing:
 
 ### **⚠️ Implementar DESPUÉS de FASES 1-2-4-6**
 
-**Objetivo:** Sistema completo de suscripción automático (TC con Stripe) + manual (ACH/Yappy) sin intervención de Henry.
+**Objetivo:** Sistema completo de suscripción automático (TC con **PayPal** y **Tilopay**) + manual (ACH/Yappy/Transferencia) sin intervención de Henry.
 
-**Inspiración:** Cursor, Vercel, GitHub Pro, Stripe Billing
+**🚨 STRIPE NO SE USA:** Stripe no permite retiros en Panamá. Usar solo pasarelas con retiro en Panamá. Ver `Arquitecto/VALIDACION_PASARELAS_PAGO_PANAMA.md`.
+
+**Pasarelas a implementar:** PayPal (principal automático), Tilopay (principal automático local/CA), Yappy (manual), ACH/Transferencia (manual).
 
 **Referencia completa:** `Arquitecto/ARQUITECTURA_DASHBOARD_ADMIN_PH.md` → **PANTALLA 7: SUSCRIPCIÓN Y FACTURACIÓN**
 
@@ -1846,7 +1848,8 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   
   -- Método de pago
   payment_method TEXT CHECK (payment_method IN (
-    'STRIPE_CARD',        -- TC automática (recomendado)
+    'PAYPAL',             -- TC/suscripción automática (retiros Panamá)
+    'TILOPAY',            -- TC/suscripción automática (Panamá/CA)
     'MANUAL_ACH',         -- ACH manual (Panamá)
     'MANUAL_YAPPY',       -- Yappy manual (Panamá)
     'MANUAL_TRANSFER'     -- Transferencia manual
@@ -1864,11 +1867,13 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   cancelled_at TIMESTAMPTZ,
   cancellation_effective_at TIMESTAMPTZ,  -- Para downgrade programado
   
-  -- Stripe (solo para pagos automáticos)
-  stripe_subscription_id TEXT UNIQUE,
-  stripe_customer_id TEXT,
-  stripe_payment_method_id TEXT,
-  stripe_latest_invoice_id TEXT,
+  -- PayPal (pagos automáticos; retiros en Panamá)
+  paypal_subscription_id TEXT UNIQUE,
+  paypal_plan_id TEXT,
+  paypal_payer_id TEXT,
+  -- Tilopay (pagos automáticos local/CA)
+  tilopay_subscription_id TEXT UNIQUE,
+  tilopay_customer_id TEXT,
   
   -- Créditos (solo para planes con sistema de créditos)
   credits_per_period INT DEFAULT 0,
@@ -1886,8 +1891,8 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 
 CREATE INDEX idx_subs_org ON subscriptions(organization_id);
 CREATE INDEX idx_subs_status ON subscriptions(status);
-CREATE INDEX idx_subs_stripe_sub ON subscriptions(stripe_subscription_id);
-CREATE INDEX idx_subs_stripe_customer ON subscriptions(stripe_customer_id);
+CREATE INDEX idx_subs_paypal_sub ON subscriptions(paypal_subscription_id);
+CREATE INDEX idx_subs_tilopay_sub ON subscriptions(tilopay_subscription_id);
 
 -- Tabla de créditos de asamblea
 CREATE TABLE IF NOT EXISTS organization_credits (
@@ -1983,10 +1988,11 @@ CREATE TABLE IF NOT EXISTS invoices (
   due_date DATE,
   paid_at TIMESTAMPTZ,
   
-  -- Stripe
-  stripe_invoice_id TEXT UNIQUE,
-  stripe_payment_intent_id TEXT,
-  stripe_hosted_invoice_url TEXT,  -- URL de Stripe para pago
+  -- PayPal / Tilopay (no Stripe; retiros Panamá)
+  paypal_invoice_id TEXT UNIQUE,
+  tilopay_payment_id TEXT,
+  payment_provider TEXT CHECK (payment_provider IN ('PAYPAL', 'TILOPAY', 'MANUAL')),
+  hosted_invoice_url TEXT,
   
   -- PDF
   pdf_url TEXT,
@@ -1999,7 +2005,8 @@ CREATE INDEX idx_invoices_org ON invoices(organization_id);
 CREATE INDEX idx_invoices_sub ON invoices(subscription_id);
 CREATE INDEX idx_invoices_status ON invoices(status);
 CREATE INDEX idx_invoices_number ON invoices(invoice_number);
-CREATE INDEX idx_invoices_stripe_invoice ON invoices(stripe_invoice_id);
+CREATE INDEX idx_invoices_paypal ON invoices(paypal_invoice_id);
+CREATE INDEX idx_invoices_tilopay ON invoices(tilopay_payment_id);
 
 -- Función para generar número de factura
 CREATE OR REPLACE FUNCTION generate_invoice_number() RETURNS TEXT AS $$
@@ -2138,8 +2145,9 @@ CREATE TABLE IF NOT EXISTS units_addon_charges (
   price_per_100_units NUMERIC(10,2) NOT NULL,  -- Precio por cada 100 unidades
   total_amount NUMERIC(10,2) NOT NULL,
   
-  -- Stripe (si es pago automático)
-  stripe_payment_intent_id TEXT,
+  -- PayPal/Tilopay (si es pago automático)
+  paypal_payment_id TEXT,
+  tilopay_payment_id TEXT,
   
   -- Estado
   status TEXT CHECK (status IN ('PENDING', 'PAID', 'FAILED')) DEFAULT 'PENDING',
@@ -2185,82 +2193,49 @@ docker exec -i assembly-db psql -U postgres -d assembly < sql_snippets/schema_su
 
 ---
 
-### **Tarea 7.2: Integrar Stripe**
+### **Tarea 7.2: Integrar PayPal y Tilopay (NO Stripe)**
 
-**Instalardependencias:**
+**Motivo:** Stripe no permite retiros en Panamá. Ver `Arquitecto/VALIDACION_PASARELAS_PAGO_PANAMA.md`.
+
+**Instalar dependencias:**
 ```bash
-npm install stripe @stripe/stripe-js
+npm install @paypal/react-paypal-js
+# Tilopay: ver documentación tilopay.com (API REST)
 ```
 
-**Archivo:** `src/lib/stripe.ts` (NUEVO)
+**Archivos:** `src/lib/paypal.ts`, `src/lib/tilopay.ts` (NUEVOS)
 
-```typescript
-import Stripe from 'stripe';
+- **PayPal:** Usar SDK/API de PayPal Subscriptions (developer.paypal.com). Crear planes y precios en Dashboard PayPal; mapear planes Assembly (EVENTO_UNICO, STANDARD, etc.) a Plan IDs de PayPal.
+- **Tilopay:** Usar API de Tilopay para cobros recurrentes (documentación en tilopay.com). Credenciales sandbox para pruebas.
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',  // Usar versión latest
-});
-
-// Precios de Stripe (crear en Dashboard de Stripe)
-export const STRIPE_PRICES = {
-  EVENTO_UNICO: process.env.STRIPE_PRICE_EVENTO_UNICO!,  // price_xxx
-  DUO_PACK: process.env.STRIPE_PRICE_DUO_PACK!,
-  STANDARD: process.env.STRIPE_PRICE_STANDARD!,
-  MULTI_PH: process.env.STRIPE_PRICE_MULTI_PH!,
-  ENTERPRISE: process.env.STRIPE_PRICE_ENTERPRISE!,
-};
-
-// Mapeo de planes a precios
-export function getPlanPrice(plan: string): number {
-  const prices: Record<string, number> = {
-    EVENTO_UNICO: 225,
-    DUO_PACK: 389,
-    STANDARD: 189,
-    MULTI_PH: 699,
-    ENTERPRISE: 2499,
-  };
-  return prices[plan] || 0;
-}
-
-// Mapeo de billing_cycle
-export function getBillingCycle(plan: string): string {
-  if (plan === 'EVENTO_UNICO' || plan === 'DUO_PACK') {
-    return 'one-time';
-  }
-  return 'monthly';
-}
-```
+**Funciones a implementar (equivalente a lo que era Stripe):**
+- `getPlanPrice(plan: string): number` – precios en USD por plan.
+- `getBillingCycle(plan: string): string` – 'one-time' | 'monthly'.
+- Crear cliente/config para PayPal y Tilopay según sus SDKs.
 
 **Agregar en `.env`:**
 ```bash
 # ============================================
-# PASARELAS DE PAGO (3 automáticas)
+# PASARELAS DE PAGO (retiro en Panamá)
+# Stripe NO se usa: no permite retiros en Panamá.
 # ============================================
 
-# Stripe (Tarjetas internacionales) - dashboard.stripe.com
-STRIPE_SECRET_KEY=sk_test_xxx
-STRIPE_PUBLISHABLE_KEY=pk_test_xxx
-STRIPE_WEBHOOK_SECRET=whsec_xxx
-
-# Price IDs de Stripe (crear productos en Stripe Dashboard)
-STRIPE_PRICE_EVENTO_UNICO=price_xxx
-STRIPE_PRICE_DUO_PACK=price_xxx
-STRIPE_PRICE_STANDARD=price_xxx
-STRIPE_PRICE_MULTI_PH=price_xxx
-STRIPE_PRICE_ENTERPRISE=price_xxx
-
-# PayPal (Tarjetas + PayPal wallet) - developer.paypal.com
+# PayPal (principal - retiros a bancos Panamá) - developer.paypal.com
 PAYPAL_CLIENT_ID=xxx
 PAYPAL_CLIENT_SECRET=xxx
 PAYPAL_MODE=sandbox  # o 'live' en producción
 PAYPAL_WEBHOOK_ID=xxx
 
-# Tilopay (Centroamérica - tarjetas locales) - tilopay.com
+# Tilopay (principal - Panamá/Centroamérica) - tilopay.com
 TILOPAY_API_KEY=xxx
 TILOPAY_SECRET_KEY=xxx
 TILOPAY_MERCHANT_ID=xxx
 TILOPAY_WEBHOOK_SECRET=xxx
 TILOPAY_MODE=sandbox  # o 'production'
+
+# Yappy (manual / botón pago Panamá) - yappy.com.pa
+YAPPY_MERCHANT_ID=xxx
+YAPPY_SECRET_KEY=xxx
 ```
 
 ---
@@ -2269,9 +2244,11 @@ TILOPAY_MODE=sandbox  # o 'production'
 
 **Archivo:** `src/app/api/subscription/create-checkout/route.ts` (NUEVO)
 
+**Importante:** Implementar con **PayPal** o **Tilopay**, NO con Stripe. Ejemplo de flujo (adaptar a API de PayPal/Tilopay):
+
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe, STRIPE_PRICES, getPlanPrice, getBillingCycle } from '@/lib/stripe';
+import { getPlanPrice, getBillingCycle } from '@/lib/paypal';  // o tilopay
 import { sql } from '@/lib/db';
 import { verifySession } from '@/lib/auth';
 
@@ -2301,49 +2278,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Organización no encontrada' }, { status: 404 });
     }
 
-    // FLUJO AUTOMÁTICO CON STRIPE
-    if (payment_method === 'STRIPE_CARD') {
-      // Crear/obtener Stripe Customer
+    // FLUJO AUTOMÁTICO CON PAYPAL O TILOPAY (no Stripe)
+    if (payment_method === 'PAYPAL' || payment_method === 'TILOPAY') {
+      // Crear/obtener customer en PayPal o Tilopay según documentación
       let [existing_sub] = await sql`
-        SELECT stripe_customer_id FROM subscriptions 
-        WHERE organization_id = ${org.id} AND stripe_customer_id IS NOT NULL
+        SELECT paypal_payer_id, tilopay_customer_id FROM subscriptions 
+        WHERE organization_id = ${org.id}
         LIMIT 1
       `;
 
-      let customerId = existing_sub?.stripe_customer_id;
-
-      if (!customerId) {
-        const customer = await stripe.customers.create({
-          email: session.email,
-          name: org.name,
-          metadata: {
-            organization_id: org.id,
-            user_id: session.userId,
-          },
-        });
-        customerId = customer.id;
-      }
-
-      // Crear Stripe Checkout Session
-      const checkout_session = await stripe.checkout.sessions.create({
-        customer: customerId,
-        payment_method_types: ['card'],
-        mode: plan_tier === 'EVENTO_UNICO' || plan_tier === 'DUO_PACK' ? 'payment' : 'subscription',
-        line_items: [
-          {
-            price: STRIPE_PRICES[plan_tier],
-            quantity: 1,
-          },
-        ],
-        success_url: `${process.env.NEXTAUTH_URL}/dashboard/admin-ph/subscription?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.NEXTAUTH_URL}/dashboard/admin-ph/subscription?cancelled=true`,
-        metadata: {
-          organization_id: org.id,
-          plan_tier,
-        },
-      });
-
-      return NextResponse.json({ checkout_url: checkout_session.url });
+      // Crear sesión de checkout según proveedor (PayPal Subscriptions API o Tilopay)
+      // Ver documentación: developer.paypal.com / tilopay.com
+      const checkoutUrl = await createPayPalOrTilopayCheckout(org.id, plan_tier, session, payment_method);
+      return NextResponse.json({ checkout_url: checkoutUrl });
     }
 
     // FLUJO MANUAL (ACH/YAPPY/TRANSFER)
@@ -2427,205 +2374,22 @@ export async function GET(req: NextRequest) {
 
 ---
 
-### **Tarea 7.4: Webhook de Stripe**
+### **Tarea 7.4: Webhooks de PayPal y Tilopay (NO Stripe)**
 
-**Archivo:** `src/app/api/webhooks/stripe/route.ts` (NUEVO)
+**Archivos:** `src/app/api/webhooks/paypal/route.ts`, `src/app/api/webhooks/tilopay/route.ts` (NUEVOS)
 
-```typescript
-import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe';
-import { sql } from '@/lib/db';
-import Stripe from 'stripe';
+- **PayPal:** Ver developer.paypal.com → Webhooks. Eventos: `BILLING.SUBSCRIPTION.ACTIVATED`, `PAYMENT.SALE.COMPLETED`, `BILLING.SUBSCRIPTION.CANCELLED`, etc. Validar firma con `PAYPAL_WEBHOOK_ID` y actualizar `subscriptions` / `invoices` con `paypal_subscription_id`, `paypal_payer_id`.
+- **Tilopay:** Según documentación tilopay.com configurar URL de webhook y manejar eventos de pago/completado/cancelado. Actualizar tablas con `tilopay_subscription_id`, `tilopay_customer_id`.
 
-export async function POST(req: NextRequest) {
-  const body = await req.text();
-  const sig = req.headers.get('stripe-signature')!;
+**Lógica equivalente (adaptar a payload de cada proveedor):**
+- Checkout/suscripción completada → insertar/actualizar `subscriptions`, estado ACTIVE.
+- Pago de factura → marcar `invoices` como PAID, `paid_at = NOW()`.
+- Pago fallido → marcar suscripción PAST_DUE, notificar.
+- Suscripción cancelada → marcar suscripción CANCELLED, `cancelled_at`.
 
-  let event: Stripe.Event;
+**NO implementar webhook de Stripe.**
 
-  try {
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
-  } catch (err: any) {
-    console.error('Webhook signature verification failed:', err.message);
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
-  }
-
-  // Manejar eventos
-  switch (event.type) {
-    case 'checkout.session.completed':
-      await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
-      break;
-
-    case 'invoice.paid':
-      await handleInvoicePaid(event.data.object as Stripe.Invoice);
-      break;
-
-    case 'invoice.payment_failed':
-      await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
-      break;
-
-    case 'customer.subscription.updated':
-      await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
-      break;
-
-    case 'customer.subscription.deleted':
-      await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
-      break;
-
-    default:
-      console.log(`Unhandled event type: ${event.type}`);
-  }
-
-  return NextResponse.json({ received: true });
-}
-
-async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  const { organization_id, plan_tier } = session.metadata!;
-
-  if (session.mode === 'subscription') {
-    // Suscripción mensual
-    const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-
-    await sql`
-      INSERT INTO subscriptions (
-        organization_id,
-        plan_tier,
-        status,
-        payment_method,
-        price_amount,
-        billing_cycle,
-        current_period_start,
-        current_period_end,
-        stripe_subscription_id,
-        stripe_customer_id,
-        credits_per_period,
-        commitment_months
-      )
-      VALUES (
-        ${organization_id},
-        ${plan_tier},
-        'ACTIVE',
-        'STRIPE_CARD',
-        ${(subscription.items.data[0].price.unit_amount || 0) / 100},
-        'monthly',
-        TO_TIMESTAMP(${subscription.current_period_start}),
-        TO_TIMESTAMP(${subscription.current_period_end}),
-        ${subscription.id},
-        ${subscription.customer as string},
-        ${plan_tier === 'STANDARD' ? 2 : 0},
-        ${plan_tier === 'STANDARD' ? 2 : 0}
-      )
-    `;
-
-    // Crear créditos iniciales si aplica
-    if (plan_tier === 'STANDARD') {
-      await sql`
-        INSERT INTO organization_credits (organization_id, credits_available)
-        VALUES (${organization_id}, 2)
-        ON CONFLICT (organization_id) DO UPDATE SET credits_available = 2
-      `;
-    }
-  } else {
-    // Pago único (EVENTO_UNICO, DUO_PACK)
-    const credits = plan_tier === 'EVENTO_UNICO' ? 1 : 2;
-
-    await sql`
-      INSERT INTO subscriptions (
-        organization_id,
-        plan_tier,
-        status,
-        payment_method,
-        price_amount,
-        billing_cycle,
-        stripe_customer_id
-      )
-      VALUES (
-        ${organization_id},
-        ${plan_tier},
-        'ACTIVE',
-        'STRIPE_CARD',
-        ${session.amount_total! / 100},
-        'one-time',
-        ${session.customer as string}
-      )
-    `;
-
-    await sql`
-      INSERT INTO organization_credits (
-        organization_id,
-        credits_available,
-        credits_expire_at
-      )
-      VALUES (
-        ${organization_id},
-        ${credits},
-        NOW() + INTERVAL '12 months'
-      )
-      ON CONFLICT (organization_id) 
-      DO UPDATE SET credits_available = organization_credits.credits_available + ${credits}
-    `;
-  }
-
-  console.log(`✅ Suscripción activada para org: ${organization_id}`);
-}
-
-async function handleInvoicePaid(invoice: Stripe.Invoice) {
-  // Registrar factura como pagada
-  await sql`
-    UPDATE invoices
-    SET status = 'PAID', paid_at = NOW()
-    WHERE stripe_invoice_id = ${invoice.id}
-  `;
-
-  // TODO: Enviar email de confirmación
-  console.log(`✅ Factura pagada: ${invoice.id}`);
-}
-
-async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
-  // Marcar suscripción como PAST_DUE
-  await sql`
-    UPDATE subscriptions
-    SET status = 'PAST_DUE'
-    WHERE stripe_customer_id = ${invoice.customer as string}
-  `;
-
-  // TODO: Enviar email de alerta
-  console.log(`⚠️ Pago fallido: ${invoice.id}`);
-}
-
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  // Actualizar datos de suscripción
-  await sql`
-    UPDATE subscriptions
-    SET 
-      current_period_end = TO_TIMESTAMP(${subscription.current_period_end}),
-      status = ${subscription.status === 'active' ? 'ACTIVE' : subscription.status.toUpperCase()}
-    WHERE stripe_subscription_id = ${subscription.id}
-  `;
-}
-
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  // Marcar como cancelada
-  await sql`
-    UPDATE subscriptions
-    SET status = 'CANCELLED', cancelled_at = NOW()
-    WHERE stripe_subscription_id = ${subscription.id}
-  `;
-}
-```
-
-**IMPORTANTE:** Configurar webhook en Stripe Dashboard:
-```
-1. Ir a: dashboard.stripe.com → Developers → Webhooks
-2. Add endpoint: https://tudominio.com/api/webhooks/stripe
-3. Seleccionar eventos:
-   - checkout.session.completed
-   - invoice.paid
-   - invoice.payment_failed
-   - customer.subscription.updated
-   - customer.subscription.deleted
-4. Copiar "Signing secret" y agregarlo en .env como STRIPE_WEBHOOK_SECRET
-```
+Configurar webhooks en PayPal Dashboard y Tilopay según sus documentaciones (URLs: `/api/webhooks/paypal`, `/api/webhooks/tilopay`).
 
 ---
 
@@ -2638,9 +2402,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { loadStripe } from '@stripe/stripe-js';
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+// Usar @paypal/react-paypal-js o SDK de Tilopay (no Stripe)
 
 interface Subscription {
   plan_tier: string;
@@ -2687,7 +2449,7 @@ export default function SubscriptionPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           plan_tier: plan, 
-          payment_method: 'STRIPE_CARD' 
+          payment_method: 'PAYPAL'  // o 'TILOPAY' 
         }),
       });
 
@@ -2777,29 +2539,29 @@ SQL:
 [ ] Crear funciones: consume_credit(), refill_monthly_credits()
 [ ] Testing: Verificar consumo de créditos
 
-Stripe:
-[ ] Crear cuenta Stripe (stripe.com)
-[ ] Crear productos y precios en Dashboard
-[ ] Configurar webhook endpoint
-[ ] Agregar keys en .env
+PayPal y Tilopay (NO Stripe; retiros en Panamá):
+[ ] Crear cuentas PayPal y Tilopay (developer.paypal.com, tilopay.com)
+[ ] Crear planes/precios en Dashboards
+[ ] Configurar webhooks (PayPal, Tilopay)
+[ ] Agregar keys en .env (PAYPAL_*, TILOPAY_*, YAPPY_*)
 
 Backend:
-[ ] Instalar stripe, @stripe/stripe-js
-[ ] Crear src/lib/stripe.ts
-[ ] API POST /api/subscription/create-checkout
+[ ] Instalar @paypal/react-paypal-js
+[ ] Crear src/lib/paypal.ts, src/lib/tilopay.ts
+[ ] API POST /api/subscription/create-checkout (PayPal/Tilopay)
 [ ] API GET /api/subscription
-[ ] API POST /api/webhooks/stripe
+[ ] API POST /api/webhooks/paypal, /api/webhooks/tilopay
 [ ] API POST /api/payment/manual-request
 
 Frontend:
 [ ] Crear src/app/dashboard/admin-ph/subscription/page.tsx
-[ ] Integrar Stripe Elements
-[ ] Modal para pagos manuales
+[ ] Integrar checkout PayPal y Tilopay (no Stripe)
+[ ] Modal para pagos manuales (Yappy, ACH, Transferencia)
 [ ] Modal para comprar créditos
 
 Testing:
-[ ] Pago con TC de prueba (4242424242424242)
-[ ] Webhook recibido correctamente
+[ ] Pago con PayPal/Tilopay sandbox
+[ ] Webhooks recibidos correctamente
 [ ] Suscripción activada en BD
 [ ] Créditos agregados
 [ ] Solicitud de pago manual funciona

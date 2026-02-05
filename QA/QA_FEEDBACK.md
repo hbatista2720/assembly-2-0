@@ -293,3 +293,43 @@ localStorage.setItem("assembly_email", "qa@assembly2.com")
 - ✅ **FASE 8 APROBADA** (26 Febrero 2026)
 - Precios v4.0 + Créditos FIFO 6 meses + UI + BD implementados
 - Coder puede avanzar a FASE 9 (Métodos de Pago)
+
+---
+
+# QA Feedback · Fases 09, 10 y 11
+
+**Fecha:** 26 Febrero 2026  
+**Estado:** ✅ APROBADAS
+
+## FASE 9 – Métodos de Pago (PayPal, Tilopay, Yappy, ACH)
+
+### Artefactos verificados
+- [x] Migraciones `010_payment_methods.sql`, `013_paypal_tilopay_panama.sql` (manual_payment_requests, invoices, paypal_*, tilopay_*)
+- [x] `src/lib/payments.ts`: montos por plan, sin Stripe
+- [x] `POST /api/subscription/create-checkout`: PAYPAL, TILOPAY, MANUAL_ACH, MANUAL_YAPPY, MANUAL_TRANSFER
+- [x] `POST /api/webhooks/stripe`: 410 (Stripe fuera de alcance)
+- [x] Webhooks `paypal`, `tilopay`: placeholders para configuración
+- [x] Página `/checkout` con métodos PayPal, Tilopay, Yappy, ACH, Transferencia (sin Tarjeta/Stripe)
+
+## FASE 10 – Menú Demo (Sandbox)
+
+### Artefactos verificados
+- [x] Página `/demo` con CTA "Entrar al demo" → login ?demo=1
+- [x] Componente `DemoBanner` (modo demo, CTA "Subir a plan real")
+- [x] Migración `011_demo_sandbox.sql`: suscripción DEMO, org demo, asamblea de prueba
+- [x] Script `scripts/reset-demo-sandbox.ts` (cron 24h)
+- [x] API `POST /api/cron/reset-demo` (protegida por CRON_RESET_SECRET)
+
+## FASE 11 – Lead Validation
+
+### Artefactos verificados
+- [x] Migración `012_platform_leads.sql`: tabla platform_leads (email, phone, company_name, lead_score, funnel_stage)
+- [x] Chatbot: comando `/registrarme` en `commands.ts` → INSERT/UPDATE en platform_leads, validación email, score
+- [x] `GET /api/leads` y `PATCH /api/leads` (qualify, activate_demo)
+- [x] Página `/platform-admin/leads`: lista desde API, filtro por etapa, acciones Calificar y Activar demo
+
+## Veredicto
+- ✅ **FASE 9 APROBADA** – Métodos de Pago (PayPal, Tilopay, Yappy, ACH; Stripe fuera de alcance)
+- ✅ **FASE 10 APROBADA** – Menú Demo (sandbox, reset 24h)
+- ✅ **FASE 11 APROBADA** – Lead Validation (chatbot /registrarme → platform_leads → CRM)
+- FASES MONETIZACIÓN 9, 10, 11 completas. Avanzar a FASES PRODUCCIÓN (12-13)

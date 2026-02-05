@@ -1442,9 +1442,11 @@ Tipos de reportes:
 
 **Objetivo:** Sistema de suscripción **automático (TC) + manual (ACH/Yappy)** estilo Cursor/Vercel.
 
-**Métodos de pago:**
-- ✅ **Automático con TC (Stripe)** - Activación instantánea, sin intervención de Henry
-- ⚠️ **Manual (ACH/Yappy/Transferencia)** - Requiere aprobación de Henry (1-2 días)
+**Métodos de pago (solo pasarelas con retiro en Panamá; Stripe no se usa):**
+- ✅ **Automático con TC (PayPal o Tilopay)** - Activación instantánea, retiros a cuenta en Panamá
+- ⚠️ **Manual (Yappy/ACH/Transferencia)** - Requiere aprobación de Henry (1-2 días)
+
+Ver: `Arquitecto/VALIDACION_PASARELAS_PAGO_PANAMA.md`
 
 ---
 
@@ -1505,10 +1507,10 @@ Tipos de reportes:
 
 #### **Paso 2: Método de Pago**
 ```
-🔵 Tarjeta de Crédito/Débito (Automático con Stripe)
+🔵 Tarjeta de Crédito/Débito (Automático con PayPal o Tilopay)
    ✅ Activación instantánea
-   ✅ Renovación automática
-   [🔒 Pagar con Stripe]
+   ✅ Retiros a cuenta en Panamá
+   [🔒 Pagar con PayPal]  [🔒 Pagar con Tilopay]
 
 ───────── o ─────────
 
@@ -1517,9 +1519,9 @@ Tipos de reportes:
    [📄 Solicitar Pago Manual]
 ```
 
-#### **Paso 3A: Pago Automático (Stripe)**
+#### **Paso 3A: Pago Automático (PayPal / Tilopay)**
 ```
-[Stripe Checkout embed]
+[Checkout PayPal o Tilopay embed]
 Número de tarjeta: [____-____-____-____]
 Vencimiento: [MM / AA]  CVV: [___]
 Nombre: [_________________________]
@@ -1600,11 +1602,13 @@ CREATE TABLE subscriptions (
   organization_id UUID REFERENCES organizations(id),
   plan_tier TEXT, -- DEMO, EVENTO_UNICO, STANDARD, etc.
   status TEXT,    -- TRIAL, ACTIVE, PAST_DUE, CANCELLED, PENDING_MANUAL
-  payment_method TEXT, -- STRIPE_CARD, MANUAL_ACH, MANUAL_YAPPY
+  payment_method TEXT, -- PAYPAL, TILOPAY, MANUAL_ACH, MANUAL_YAPPY, MANUAL_TRANSFER
   
-  -- Stripe (solo automático)
-  stripe_subscription_id TEXT,
-  stripe_customer_id TEXT,
+  -- PayPal / Tilopay (automático; retiros Panamá)
+  paypal_subscription_id TEXT,
+  tilopay_subscription_id TEXT,
+  paypal_payer_id TEXT,
+  tilopay_customer_id TEXT,
   
   -- Créditos
   credits_per_period INT,
@@ -1640,7 +1644,9 @@ CREATE TABLE invoices (
   invoice_number TEXT UNIQUE,
   amount NUMERIC(10,2),
   status TEXT, -- DRAFT, OPEN, PAID, VOID
-  stripe_invoice_id TEXT,
+  paypal_invoice_id TEXT,
+  tilopay_payment_id TEXT,
+  payment_provider TEXT,
   pdf_url TEXT
 );
 ```
@@ -1661,10 +1667,11 @@ GET    /api/credits                       (obtener disponibles)
 POST   /api/credits/purchase              (comprar adicionales)
 
 Pagos:
-POST   /api/payment/create-stripe-checkout  (Stripe Checkout)
+POST   /api/subscription/create-checkout     (PayPal o Tilopay Checkout)
 POST   /api/payment/update-card              (actualizar tarjeta)
 POST   /api/payment/manual-request           (solicitud manual)
-POST   /api/webhooks/stripe                  (webhook Stripe)
+POST   /api/webhooks/paypal                  (webhook PayPal)
+POST   /api/webhooks/tilopay                 (webhook Tilopay)
 
 Facturas:
 GET    /api/invoices                      (listar)

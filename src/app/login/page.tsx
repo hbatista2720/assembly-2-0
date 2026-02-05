@@ -1,10 +1,17 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRef, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+
+const DEMO_EMAIL = "demo@assembly2.com";
+
 export default function LoginPage() {
   const router = useRouter();
+  const params = useSearchParams();
   const [email, setEmail] = useState("");
+  useEffect(() => {
+    if (params.get("demo") === "1") setEmail(DEMO_EMAIL);
+  }, [params]);
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState<"email" | "otp">("email");
   const [error, setError] = useState("");
@@ -76,6 +83,12 @@ export default function LoginPage() {
         localStorage.setItem("assembly_role", roleLabel);
         localStorage.setItem("assembly_email", trimmedEmail);
         document.cookie = `assembly_role=${roleLabel}; path=/; max-age=604800`;
+        if (data.user.organization_id) {
+          localStorage.setItem("assembly_organization_id", data.user.organization_id);
+        }
+        if (data.user.subscription_id) {
+          localStorage.setItem("assembly_subscription_id", data.user.subscription_id);
+        }
       } catch {
         // ignore storage errors
       }
