@@ -1,0 +1,17 @@
+FASE 08 - PRECIOS V4.0
+=====================
+
+Implementa sistema de precios actualizado:
+
+1. BD: Agrega plan 'MULTI_PH_LITE' y campo max_units_total_all_orgs
+2. BD: Crea funciones check_plan_limits() con regla "lo que ocurra primero"
+3. API: Endpoint GET /api/subscription/:id/limits + middleware validación
+4. Frontend: PricingSelector, ROICalculator, EnterprisePlanCard, UpgradeBanner
+5. Testing: Valida bloqueo al exceder límites y banner al 90%
+
+NUEVO PLAN: Multi-PH Lite ($399/mes) - 10 PHs, 1,500 residentes, 5 asambleas/mes
+REGLA: Si excede CUALQUIER límite (PHs, residentes o asambleas) → Upgrade
+
+CÓDIGO COMPLETO: Arquitecto/VALIDACION_FASE08_PRECIOS_V4.md
+
+Tiempo: 1-2 días | Bloqueadores: Ninguno

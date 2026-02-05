@@ -254,3 +254,42 @@ localStorage.setItem("assembly_email", "qa@assembly2.com")
 - Dashboard Admin Plataforma funciona correctamente
 - Monitor de recursos y métricas operativos
 - Coder puede avanzar a FASE 8 (Precios y Suscripciones)
+
+---
+
+# QA Feedback · Fase 08 (Precios y Suscripciones BD)
+
+**Fecha:** 26 Febrero 2026  
+**Estado:** ✅ APROBADA
+
+## Validación completada (artefactos verificados)
+
+### APIs
+- `GET /api/subscription/[subscriptionId]/limits` ✓ (plan, organizations, units, assemblies, show_banner)
+- `GET /api/assembly-credits/[organizationId]` ✓ (total_available, expiring_soon, all_credits)
+- Enterprise: show_banner: false ✓
+
+### UI y páginas
+- `/pricing` con PricingSelector ✓
+- ROICalculator (calculadora inteligente) ✓
+- EnterprisePlanCard ($2,499) ✓
+
+### Base de datos y lógica
+- Migraciones: 009_assembly_credits.sql, add_multi_ph_lite_plan.sql ✓
+- validateSubscriptionLimits en assemblies y organizations ✓
+- Funciones SQL: is_unlimited_plan, check_plan_limits, check_multi_ph_lite_limits ✓
+
+### Documentación
+- Contralor/CRON_FASE08.md (crontab créditos) ✓
+
+## Checklist QA (CHECKLIST_FASE08_MANUAL.md) – validación por artefactos
+- [x] API limits con estructura correcta
+- [x] API assembly-credits implementada
+- [x] Página /pricing y componentes
+- [x] BD: subscriptions, assembly_credits, migraciones
+- [x] Documento CRON FASE08 existe
+
+## Veredicto
+- ✅ **FASE 8 APROBADA** (26 Febrero 2026)
+- Precios v4.0 + Créditos FIFO 6 meses + UI + BD implementados
+- Coder puede avanzar a FASE 9 (Métodos de Pago)

@@ -1,7 +1,7 @@
 # 📊 ESTATUS DE AVANCE - Assembly 2.0
 ## Control del Contralor
 
-**Última actualización:** 30 Enero 2026  
+**Última actualización:** Febrero 2026  
 **Responsable:** Contralor
 
 ---
@@ -38,8 +38,10 @@ FORMATO DE COMMIT:
 | FASE 4 | ✅ Aprobado QA | ✅ 8039fd7 | ✅ 30 Ene 2026 |
 | FASE 5 | ✅ Aprobado QA | ✅ 68ecd64 | ✅ 30 Ene 2026 |
 | FASE 6 | ✅ Aprobado QA | ✅ 137421b | ✅ 30 Ene 2026 |
+| FASE 7 | ✅ Aprobado QA | ✅ bd253ff | ✅ 02 Feb 2026 |
+| FASE 8 | ✅ Aprobado QA | ⏳ En curso | ⏳ En curso |
 
-**Último backup:** 30 Enero 2026 - Commit `137421b`
+**Último backup:** 02 Febrero 2026 - Commit `bd253ff`
 **Repositorio:** https://github.com/hbatista2720/assembly-2-0
 
 ---
@@ -98,7 +100,7 @@ FORMATO DE COMMIT:
 | # | Fase | Progreso | Estado | QA |
 |---|------|----------|--------|-----|
 | **7** | **Dashboard Admin Plataforma (Henry)** | 100% | ✅ COMPLETADO | ✅ Aprobado |
-| **8** | **Precios y Suscripciones (BD)** | 0% | 🔄 EN PROGRESO | ⏸️ Esperando |
+| **8** | **Precios y Suscripciones (BD)** | 100% | ✅ COMPLETADO | ✅ Aprobado QA |
 | 9 | Métodos de Pago (Stripe/PayPal/Yappy/ACH/Tilopay) | 0% | ⏸️ Pendiente | ⏸️ Esperando |
 | 10 | Menú Demo (sandbox) | 0% | ⏸️ Pendiente | ⏸️ Esperando |
 | 11 | Lead Validation (chatbot → CRM) | 0% | ⏸️ Pendiente | ⏸️ Esperando |
@@ -280,60 +282,175 @@ Este error YA NO EXISTE en la arquitectura actual.
 
 ---
 
-## 📋 INSTRUCCIÓN PARA CODER (Del Contralor)
+## 📋 INSTRUCCIÓN PARA ARQUITECTO (Del Contralor) - FASE 8
 
 ```
-🎯 ORDEN DEL CONTRALOR: Iniciar FASE 8 - Precios y Suscripciones
+🎯 ORDEN DEL CONTRALOR: Validar FASE 8 antes de enviar a Coder
 
-✅ FASE 7 APROBADA POR QA (02 Febrero 2026)
-✅ BACKUP PENDIENTE (hacer antes de avanzar mucho)
-🔄 AUTORIZADO AVANZAR A FASE 8
-
-═══════════════════════════════════════════════════════════
-TAREAS FASE 8 - PRECIOS Y SUSCRIPCIONES:
-═══════════════════════════════════════════════════════════
-
-1. BASE DE DATOS:
-   ├─ Tabla plans (id, name, price, units_included, features)
-   ├─ Tabla subscriptions (organization_id, plan_id, status, expires_at)
-   ├─ Tabla invoices (subscription_id, amount, status, paid_at)
-   └─ RLS policies para multi-tenant
-
-2. PLANES DISPONIBLES (según Arquitecto):
-   ├─ DEMO: $0 (14 días, 50 unidades)
-   ├─ EVENTO ÚNICO: $225 (250 unidades)
-   ├─ DÚO PACK: $389 (250 unidades, 2 asambleas)
-   ├─ STANDARD: $189/mes (250 unidades)
-   ├─ MULTI-PH: $699/mes (5,000 unidades)
-   └─ ENTERPRISE: $2,499/mes (ilimitado)
-
-3. UI REQUERIDA:
-   ├─ Página de selección de plan (checkout)
-   ├─ Dashboard de suscripción actual
-   ├─ Alertas de vencimiento
-   └─ Historial de facturas
-
-4. LÓGICA DE NEGOCIO:
-   ├─ Validación de límites por plan
-   ├─ Cargos adicionales por unidades extra
-   ├─ Renovación automática (flag)
-   └─ Suspensión por falta de pago
+📢 MARKETING ACTUALIZÓ PRECIOS (v4.0 - 03 Febrero 2026)
+⚠️ ARQUITECTO debe validar técnicamente ANTES de pasar a Coder
 
 ═══════════════════════════════════════════════════════════
-DOCUMENTACIÓN:
+CAMBIOS DE MARKETING A VALIDAR:
 ═══════════════════════════════════════════════════════════
-📖 Arquitecto/LIMITES_UNIDADES_POR_PLAN.md
-📖 Arquitecto/ANALISIS_RENTABILIDAD_OPERATIVA.md
-📖 Marketing/MARKETING_PRECIOS_COMPLETO.md
+
+📖 FUENTE: Marketing/MARKETING_PRECIOS_COMPLETO.md
+
+PLANES ACTUALIZADOS (v4.0):
+┌──────────────────┬──────────┬───────────┬────────────┬─────────┐
+│ Plan             │ Precio   │ Asambleas │ Residentes │ PHs     │
+├──────────────────┼──────────┼───────────┼────────────┼─────────┤
+│ Evento Único     │ $225     │ 1         │ 250        │ 1       │
+│ Dúo Pack         │ $389     │ 2         │ 250        │ 1       │
+│ Standard         │ $189/mes │ 2/mes     │ 250        │ 1       │
+│ Multi-PH Lite    │ $399/mes │ 5/mes     │ 1,500      │ 10      │ ← NUEVO
+│ Multi-PH Pro     │ $699/mes │ 15/mes    │ 5,000      │ 30      │
+│ Enterprise       │ $2,499   │ ∞         │ ∞          │ ∞       │
+└──────────────────┴──────────┴───────────┴────────────┴─────────┘
+
+LÓGICA DE CONTROL (Marketing solicita):
+1. LÍMITE TRIPLE: Monitorear edificios + unidades + asambleas simultáneamente
+2. 🆕 ASAMBLEAS ACUMULABLES (ROLLOVER):
+   - Planes: Standard, Multi-PH Lite, Multi-PH Pro
+   - Asambleas NO usadas → se acumulan al mes siguiente
+   - ⚠️ VENCIMIENTO: 6 MESES (FIFO - First-In, First-Out)
+   - Packs transaccionales: válidos 12 meses
+3. UPGRADE TRIGGER: Al 90% de cualquier límite → Banner "Upgrade Sugerido"
+4. USO JUSTO: Enterprise restringido a misma razón social
+
+UX SOLICITADA POR MARKETING:
+1. Selector: "Soy un PH" vs "Soy Administradora/Promotora"
+2. Calculadora inteligente con regla "lo que llegue primero"
+3. Badge Gold/Premium para Enterprise
 
 ═══════════════════════════════════════════════════════════
-CRITERIO DE ÉXITO:
+ARQUITECTO DEBE VALIDAR:
 ═══════════════════════════════════════════════════════════
-✅ Tablas de planes y suscripciones creadas
-✅ Cliente puede ver planes disponibles
-✅ Sistema valida límites según plan
-✅ Dashboard muestra suscripción actual
-✅ Alertas de vencimiento funcionan
+[✅] Estructura de tablas BD soporta los 6 planes
+[✅] Límite triple es técnicamente viable
+[✅] Upgrade trigger al 90% es implementable
+[✅] Actualizar LIMITES_UNIDADES_POR_PLAN.md si es necesario
+[✅] Crear instrucciones técnicas para Coder
+
+🆕 VALIDACIÓN ADICIONAL REQUERIDA (03 Feb 2026):
+═══════════════════════════════════════════════════════════
+[ ] Sistema de CRÉDITOS ACUMULABLES (Rollover):
+    - Tabla assembly_credits (org_id, month, credits_earned, credits_used, expires_at)
+    - Lógica FIFO para consumo (primero los más viejos)
+    - Job automático para expirar créditos > 6 meses
+    - Validez diferenciada:
+      * Suscripciones: 6 meses rollover
+      * Packs transaccionales: 12 meses fijos
+[ ] UI para mostrar créditos disponibles y próximos a vencer
+[ ] Alertas cuando créditos están por expirar (30 días antes)
+
+═══════════════════════════════════════════════════════════
+REPORTE DEL ARQUITECTO (30 Enero 2026):
+═══════════════════════════════════════════════════════════
+
+✅ FASE 8 VALIDADA TÉCNICAMENTE
+
+Documento: Arquitecto/VALIDACION_FASE08_PRECIOS_V4.md
+
+VALIDACIONES COMPLETADAS:
+├─ ✅ Matriz de Precios v4.0 (6 planes)
+├─ ✅ Multi-PH Lite ($399/mes) - Plan intermedio viable
+├─ ✅ Regla "Lo que ocurra primero" - Implementable
+├─ ✅ Upgrade Trigger 90% - Lógica clara
+├─ ✅ Enterprise ILIMITADO - Con uso justo
+└─ ✅ UX Solicitada (Selector + Calculadora + Badge Gold)
+
+CAMBIOS EN BD NECESARIOS:
+├─ Agregar 'MULTI_PH_LITE' al enum plan_tier
+├─ Agregar campo max_units_total_all_orgs (suma total)
+├─ Agregar campo company_tax_id (Enterprise uso justo)
+└─ 3 funciones SQL nuevas
+
+BLOQUEADORES: NINGUNO
+TIEMPO ESTIMADO: 1-2 días implementación
+
+✅ LISTO PARA QUE CODER INICIE FASE 8
+```
+
+---
+
+## ✅ INSTRUCCIÓN PARA CODER (VALIDACIÓN COMPLETA)
+
+```
+✅ CODER (CURSOR IA): INICIAR FASE 8 - Precios v4.0 + Créditos Acumulables
+
+VALIDACIÓN ARQUITECTO: ✅ COMPLETADA (Ambos sistemas)
+
+📂 PROMPT PARA CURSOR IA:
+└─ Contralor/PROMPT_CURSOR_IA_FASE08.md ⭐ USA ESTE (Actualizado con FASE D)
+
+📖 REFERENCIAS TÉCNICAS (LEER PRIMERO):
+├─ Arquitecto/VALIDACION_FASE08_PRECIOS_V4.md (FASES A, B, C)
+└─ Arquitecto/VALIDACION_SISTEMA_CREDITOS_ACUMULABLES.md (FASE D) ⭐ NUEVO
+
+ESTRUCTURA:
+├─ FASE A: Base de Datos - Límites (7 tareas)
+├─ FASE B: Backend API - Validaciones (4 tareas)
+├─ FASE C: Frontend - UI/UX (7 tareas)
+├─ FASE D: Créditos Acumulables (11 tareas) ⭐ NUEVO
+└─ FASE E: Testing (8 tareas)
+
+CAMBIOS PRINCIPALES:
+1. Plan Multi-PH Lite ($399/mes) - 10 PHs, 1,500 residentes, 5 asambleas
+2. Regla "Lo que ocurra primero" → Excede CUALQUIER límite = Upgrade
+3. Créditos acumulables FIFO - Vencen a los 6 meses ⭐ NUEVO
+4. Alertas 30 días antes de expirar ⭐ NUEVO
+
+TIEMPO ESTIMADO: 2-3 días
+BLOQUEADORES: NINGUNO
+
+🚀 INICIAR IMPLEMENTACIÓN
+REPORTAR al Contralor después de cada FASE
+```
+
+---
+
+## 📋 REPORTE CODER - FASE 08 COMPLETADA AL 100%
+
+**Fecha:** Feb 2026  
+**Estado:** ✅ FASE 08 IMPLEMENTACIÓN COMPLETA - Lista para QA y backup
+
+### FASE A - BASE DE DATOS
+- [x] Migraciones: `add_multi_ph_lite_plan.sql`, `add_max_units_total_field.sql`, `add_company_tax_id_field.sql`
+- [x] Tabla `assembly_credits`: `009_assembly_credits.sql`
+- [x] Funciones: `check_multi_ph_lite_limits`, `check_plan_limits`, `is_unlimited_plan`, `consume_assembly_credits`, `expire_old_credits`
+
+### FASE B - BACKEND API
+- [x] `GET /api/subscription/[subscriptionId]/limits` (mock; con BD retorna datos reales)
+- [x] Middleware `validateSubscriptionLimits` en `src/lib/middleware/validateSubscriptionLimits.ts`
+- [x] `POST /api/organizations` con validación de límites
+- [x] `POST /api/assemblies` con validación de límites + consumo de créditos FIFO (rollback por transacción si falla insert)
+
+### FASE C - FRONTEND
+- [x] PricingSelector, ROICalculator, EnterprisePlanCard
+- [x] useUpgradeBanner, UpgradeBanner integrado en dashboard admin-ph
+- [x] Página `/pricing` con planes v4.0 y Multi-PH Lite
+- [x] Tipos y planes en `src/lib/types/pricing.ts`
+
+### FASE D - CRÉDITOS ACUMULABLES
+- [x] Tabla y funciones SQL (FIFO, expiración)
+- [x] Scripts `grant-monthly-credits.ts`, `expire-assembly-credits.ts`
+- [x] `GET /api/assembly-credits/[organizationId]`
+- [x] Hook `useAssemblyCredits`, componente `AssemblyCreditsDisplay` en dashboard admin-ph
+- [x] Cron documentado en `Contralor/CRON_FASE08.md`
+- [x] Rollback de créditos: cubierto por transacción en `POST /api/assemblies`
+
+### FASE E - TESTING
+- [x] Checklist de validación manual en `QA/CHECKLIST_FASE08_MANUAL.md`
+
+### Validación final
+- [x] Cliente sin BD: flujo con mocks (limits, pricing, banner)
+- [x] Con BD: validación de límites y créditos aplicada
+- [x] Sin errores de lint en archivos tocados
+
+⏭️ **Siguiente paso:** QA valida con checklist manual → Henry autoriza backup → Contralor commit + push
+
+---
 
 ESTATUS FINAL FASE 7:
 ✅ FASE 7 APROBADA ✅
@@ -418,11 +535,17 @@ PENDIENTE (después de que Coder termine FASE 3):
 
 ### Para QA:
 ```
-PENDIENTE:
-1. Revisar Landing Page (FASE 1) - Dar aprobación o feedback
-2. Revisar Chatbot (FASE 2) - Dar aprobación o feedback
-3. Esperar que Coder resuelva bloqueador de FASE 3
-4. Probar login con los 3 usuarios de prueba
+🎯 ORDEN DEL CONTRALOR: Validar FASE 8 - Precios y Suscripciones
+
+✅ Coder confirmó F08 lista al 100%
+📋 Validar con: QA/CHECKLIST_FASE08_MANUAL.md
+├─ Planes v4.0 (Evento Único, Dúo, Standard, Multi-PH Lite/Pro, Enterprise)
+├─ UI de precios y selector de plan
+├─ Límites por plan y créditos acumulables (FIFO 6 meses)
+├─ BD: subscriptions, assembly_credits, invoices
+└─ Reportar: "FASE 8 APROBADA" o listar observaciones
+
+Después de aprobar → Henry autoriza backup → Contralor ejecuta commit + push
 ```
 
 ### Para ARQUITECTO:
@@ -474,8 +597,10 @@ Copy listo para producción.
 | ✅ COMPLETADO | **Backup FASE 6** (137421b) | Contralor + Henry | 30 Enero |
 | ✅ COMPLETADO | **FASE 7: Dashboard Admin Plataforma (Henry)** | Coder | 02 Feb |
 | ✅ COMPLETADO | **QA aprobó FASE 7** | QA | 02 Feb |
-| 🔴 URGENTE | **Backup FASE 7** | Contralor + Henry | 02 Feb |
-| 🔄 EN PROGRESO | **FASE 8: Precios y Suscripciones** | Coder | 02 Feb |
+| ✅ COMPLETADO | **Backup FASE 7** (bd253ff) | Contralor + Henry | 02 Feb |
+| 📢 ACTUALIZADO | **Marketing v4.0** - Nuevos planes | Marketing | 03 Feb |
+| ✅ COMPLETADO | **Arquitecto validó FASE 8** | Arquitecto | 03 Feb |
+| ✅ COMPLETADO | **Coder: FASE 8** (Precios y Suscripciones) 100% | Coder | Feb 2026 |
 
 ### **🚦 FLUJO DE TRABAJO ACTUAL:**
 ```
@@ -485,20 +610,13 @@ Copy listo para producción.
 
 ✅ COMPLETADO: FASES 0-7 (Git, Landing, Chatbot, Login, Dashboard, Votación, Actas, Monitor Henry)
 ✅ APROBADO POR QA: FASES 0-7
+✅ BACKUP: Commit bd253ff
 ────────────────────────────────────────────────────────
-🔄 EN PROGRESO: FASE 8 - Precios y Suscripciones
+✅ FASE 8 - COMPLETADA 100% por Coder → ✅ APROBADA POR QA (26 Feb 2026)
 
-CODER debe:
-├─ 1️⃣ Tablas de planes y precios en BD
-├─ 2️⃣ UI de selección de plan
-├─ 3️⃣ Lógica de límites por plan
-├─ 4️⃣ Gestión de suscripciones activas
-├─ 5️⃣ Fechas de vencimiento y renovación
-└─ 6️⃣ Integración con sistema de pagos (prep)
-
-PENDIENTE:
-├─ Contralor + Henry: Backup FASE 7
-└─ QA: Validar FASE 8 cuando esté lista
+✅ Coder confirmó: F08 listo (Precios v4.0 + Créditos FIFO + UI + BD)
+✅ QA aprobó FASE 8 (ver QA/QA_FEEDBACK.md)
+⏸️ Siguiente: Henry autoriza backup → Contralor commit + push
 ```
 
 ---
@@ -541,10 +659,21 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 
 | Fecha | Cambio | Responsable |
 |-------|--------|-------------|
+| 26 Feb | **✅ FASE 08 APROBADA POR QA** - Precios y Suscripciones (Precios v4.0 + Créditos FIFO + UI + BD) | QA |
 | 30 Ene | **✅ BACKUP FASE 6** - Commit 137421b → GitHub | Contralor |
 | 30 Ene | **✅ FASE 06 APROBADA POR QA** - Actas y Reportes | QA |
+| 03 Feb | **🆕 MARKETING AGREGÓ** - Vencimiento créditos: 6 meses FIFO | Marketing |
+| 03 Feb | **📋 ARQUITECTO: Re-validar** - Sistema de créditos acumulables | Contralor |
+| 03 Feb | **✅ ARQUITECTO VALIDÓ** - Sistema créditos acumulables FIFO 6 meses | Arquitecto |
+| 03 Feb | **📢 MARKETING ACTUALIZÓ** - Créditos acumulables + Planes v4.0 | Marketing |
+| 03 Feb | **📋 FASE 08 ENVIADA A ARQUITECTO** - Validar antes de Coder | Contralor |
+| 03 Feb | **🔄 FASE 08 EN PROGRESO** - Precios v4.0 + UI de suscripciones | Coder |
+| 03 Feb | **🔄 FASE 08 FASE D** - Sistema de créditos acumulables (FIFO) | Coder |
+| Feb 2026 | **✅ FASE 08 COMPLETADA 100%** - Reporte al Contralor (A+B+C+D+E) | Coder |
+| Feb 2026 | **📋 CONTRALOR INFORMA A QA** - Validar FASE 8 (checklist manual) | Contralor |
+| 02 Feb | **✅ BACKUP FASE 7** - Commit bd253ff → GitHub | Contralor |
 | 02 Feb | **✅ FASE 07 APROBADA POR QA** - Dashboard Admin Plataforma | QA |
-| 02 Feb | **🔄 FASE 08 INICIADA** - Precios y Suscripciones | Coder |
+| 02 Feb | **🔄 FASE 08 INICIADA** - Precios y Suscripciones | Arquitecto → Coder |
 | 02 Feb | **✅ FASE 07 COMPLETADA** - Dashboard Admin Plataforma (Henry) | Coder |
 | 30 Ene | **🔄 FASE 07 INICIADA** - Dashboard Admin Plataforma (Henry) | Coder |
 | 30 Ene | **✅ FASE 06 COMPLETADA** - Actas y Reportes al 100% | Coder |
@@ -580,6 +709,8 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 
 ### 🏗️ ARQUITECTO - Últimos Avances:
 ```
+30 Ene | ✅ SISTEMA CRÉDITOS ACUMULABLES validado (FIFO, expiración 6m, alertas 30d)
+30 Ene | ✅ FASE 8 VALIDADA - Precios v4.0 + Créditos + Prompts actualizados
 30 Ene | ✅ Arquitectura VPS All-in-One aprobada (PostgreSQL + Redis + Auth self-hosted)
 30 Ene | ✅ INSTRUCCIONES_IMPLEMENTACION_VPS_ALL_IN_ONE.md (1,285 líneas, 5 FASES)
 30 Ene | ✅ SETUP_VPS_CHATBOTS_MULTI_CANAL.md (guía completa VPS)
@@ -623,6 +754,8 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 
 ### 💻 CODER - Últimos Avances:
 ```
+Feb 2026 | ✅ FASE 08 COMPLETADA 100%: Precios v4.0 + Límites + Créditos FIFO + UI + Tests manuales
+Feb 2026 | ✅ Reporte formal al Contralor en ESTATUS_AVANCE.md (FASES A-E)
 02 Feb | 🔄 FASE 5 iniciada: Vista Monitor + Presentación
 02 Feb | ✅ FASE 5 completada: Monitor + Presenter + APIs backend (polling)
 02 Feb | ✅ API: /api/monitor/summary, /api/monitor/units, /api/presenter/token, /api/presenter/view

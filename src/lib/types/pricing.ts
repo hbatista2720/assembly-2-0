@@ -1,4 +1,10 @@
-export type PlanTier = "EVENTO_UNICO" | "DUO_PACK" | "STANDARD" | "MULTI_PH" | "ENTERPRISE";
+export type PlanTier =
+  | "EVENTO_UNICO"
+  | "DUO_PACK"
+  | "STANDARD"
+  | "MULTI_PH_LITE"
+  | "MULTI_PH_PRO"
+  | "ENTERPRISE";
 
 export type BillingCycle = "one-time" | "monthly" | "annual";
 
@@ -95,10 +101,10 @@ export const PLANS: Plan[] = [
     },
     features: [
       "2 asambleas/mes incluidas (acumulables)",
-      "3ra asamblea: +$75",
+      "Hasta 250 residentes base",
       "Quórum automático y actas legales",
       "Histórico ilimitado",
-      "Soporte prioritario",
+      "Soporte 24/7 prioritario",
     ],
     cta: "Empezar Standard",
     ctaVariant: "accent",
@@ -106,22 +112,48 @@ export const PLANS: Plan[] = [
     badge: "MAS POPULAR",
   },
   {
-    id: "MULTI_PH",
-    name: "MultiPH",
-    displayName: "Multi-PH",
-    tagline: "Administradoras con múltiples edificios",
+    id: "MULTI_PH_LITE",
+    name: "MultiPHLite",
+    displayName: "Multi-PH Lite",
+    tagline: "Administradoras pequeñas/medianas",
+    price: 399,
+    billing: "monthly",
+    limits: {
+      assembliesPerMonth: 5,
+      maxPropertiesPerAssembly: 1500,
+      maxTopicsPerAssembly: "unlimited",
+      maxBuildings: 10,
+      historyDays: "unlimited",
+    },
+    features: [
+      "Hasta 10 PHs administrados",
+      "5 asambleas/mes (acumulables)",
+      "Hasta 1,500 residentes totales",
+      "Panel multi-tenant",
+      "Reportes consolidados",
+      "Roles y permisos",
+    ],
+    cta: "Agendar Demo",
+    ctaVariant: "primary",
+  },
+  {
+    id: "MULTI_PH_PRO",
+    name: "MultiPHPro",
+    displayName: "Multi-PH Pro",
+    tagline: "Administradoras en crecimiento",
     price: 699,
     billing: "monthly",
     limits: {
-      assembliesPerMonth: "unlimited",
+      assembliesPerMonth: 15,
       maxPropertiesPerAssembly: 5000,
       maxTopicsPerAssembly: "unlimited",
       maxBuildings: 30,
       historyDays: "unlimited",
     },
     features: [
-      "Hasta 30 edificios gestionados",
-      "Asambleas ilimitadas",
+      "Hasta 30 PHs administrados",
+      "15 asambleas/mes (acumulables)",
+      "Hasta 5,000 residentes totales",
       "Panel multi-tenant",
       "Reportes consolidados",
       "Roles y permisos",
@@ -146,7 +178,7 @@ export const PLANS: Plan[] = [
     },
     features: [
       "Unidades ilimitadas",
-      "CRM integrado (tickets)",
+      "CRM con IA de sentimiento",
       "Consultoría legal incluida",
       "Integraciones ERP/CRM",
       "Soporte dedicado y SLA",

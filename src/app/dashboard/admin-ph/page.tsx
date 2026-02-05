@@ -1,5 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import UpgradeBanner from "@/components/UpgradeBanner";
+import useUpgradeBanner from "@/hooks/useUpgradeBanner";
+import AssemblyCreditsDisplay from "@/components/AssemblyCreditsDisplay";
+
 const KPIS = [
   { label: "Propietarios activos", value: "200", note: "85% al dia" },
   { label: "Asambleas 2026", value: "3", note: "1 programada" },
@@ -14,8 +19,20 @@ const ALERTS = [
 ];
 
 export default function AdminPhDashboard() {
+  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const { showBanner, limits } = useUpgradeBanner(subscriptionId);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("assembly_subscription_id");
+    setSubscriptionId(stored || "demo-subscription");
+    const storedOrg = localStorage.getItem("assembly_organization_id");
+    setOrganizationId(storedOrg || "demo-organization");
+  }, []);
+
   return (
     <>
+      {showBanner ? <UpgradeBanner limits={limits} /> : null}
       <div className="card" style={{ padding: "28px" }}>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "16px" }}>
           <div style={{ flex: 1 }}>
@@ -45,6 +62,8 @@ export default function AdminPhDashboard() {
           </div>
         ))}
       </div>
+
+      <AssemblyCreditsDisplay organizationId={organizationId} />
 
       <div className="two-col">
         <div className="card">

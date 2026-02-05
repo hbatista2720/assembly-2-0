@@ -23,297 +23,41 @@
 
 ---
 
-## 💰 MODELOS DE PRECIOS (v3.0 Premium)
+## 💰 MODELOS DE PRECIOS (v4.0 Phase 08 Go-Live)
 
-### **CAMBIOS PRINCIPALES vs Versión Anterior:**
+### **MATRIZ FINAL DE PRECIOS Y LÍMITES:**
+*Regla de Aplicación: Se aplica el límite de lo que ocurra primero (PHs, Residentes o Asambleas).*
 
-| Concepto | v2.0 (Anti-Abuso) | v3.0 (Premium) | Cambio |
-|----------|-------------------|----------------|--------|
-| Pay-per-Event | $175 | **$225** (Evento Único) | ⬆️ +$50 |
-| Standard | $129/mes | **$189/mes** | ⬆️ +$60 |
-| Pro Multi-PH | $499/mes | **$699/mes** | ⬆️ +$200 |
-| Enterprise | $1,499/mes | **$2,499/mes** | ⬆️ +$1,000 |
+#### 📦 1. Modelos Transaccionales (Pago por Uso)
+| Plan | Inversión | Asambleas | Residentes (Tope) | Validez |
+|------|-----------|-----------|-------------------|---------|
+| **Evento Único** | **$225** | 1 | 250 (Base*) | 12 Meses |
+| **Dúo Pack** | **$389** | 2 | 250 (Base*) | 12 Meses |
+*\*Escalabilidad: +$50 por cada bloque de 100 unidades adicionales.*
 
-**Justificación del aumento:**
-- Posicionamiento como **solución premium** (no commodity)
-- ROI demostrable: Ahorro de $2,500-$5,000 en costos legales
-- Seguridad jurídica: Evita impugnaciones (causa #1 de nulidad en Panamá)
-- Eficiencia: 40-60 horas hombre ahorradas por asamblea
-
----
-
-## 📊 ESTRUCTURA DE PAQUETES (v3.0)
-
-### 🟦 **MODELOS TRANSACCIONALES** (Pago por Uso)
-*Ideal para PHs independientes o autogestionados*
-
-#### 1️⃣ **Evento Único:** $225
-```
-✅ Base: 1 crédito de asamblea (válido 12 meses)
-✅ Residentes: Hasta 250 unidades
-
-FUNCIONALIDADES INCLUIDAS:
-✅ Chatbot Lex de soporte (antes, durante y después)
-✅ Validación Face ID para votar (biométrica)
-✅ Voto manual alternativo (para no tecnológicos)
-✅ Pre-registro de residentes con Face ID
-✅ Lista de asistencia en tiempo real
-✅ Quórum calculado automáticamente
-✅ Gráficas de resultados por tema votado
-✅ Acta digital generada al finalizar con:
-   • Resultado de participación por tema
-   • Validación de quórum cumplido
-   • Lista de asistencia completa
-   • Votos por coeficiente
-✅ Acta sin marca de agua (lista para imprimir)
-✅ Vista de presentación profesional (proyector)
-✅ Soporte durante asamblea (chat)
-✅ Histórico: 30 días
-
-EXTRAS:
-• 251-350 unidades: +$50
-• 351-500 unidades: +$100
-• Más de 500: +$150
-
-CUÁNDO USAR:
-"Perfecto para edificios que hacen 1 asamblea al año"
-
-AHORRO VS DEMO:
-"Conserva histórico + sin límite de propietarios + acta sin marca de agua"
-```
+#### 📅 2. Modelos de Suscripción (Mensual Recurrente)
+| Plan | Mensualidad | Asambleas/Mes | Residentes (Tope) | PHs (Tope) |
+|------|-------------|---------------|-------------------|------------|
+| **Standard** | **$189** | 2 (Acumulables) | 250 (Base*) | 1 PH |
+| **Multi-PH Lite**| **$399** | **5 (Acumulables)** | **1,500** | **10 PHs** |
+| **Multi-PH Pro** | **$699** | **15 (Acumulables)** | **5,000** | **30 PHs** |
+| **Enterprise** | **$2,499** | **ILIMITADAS** | **ILIMITADOS** | **∞** |
 
 ---
 
-#### 2️⃣ **Dúo Pack:** $389 🆕
-```
-✅ Base: 2 créditos de asamblea (válidos 12 meses)
-✅ Residentes: Hasta 250 unidades por asamblea
-
-FUNCIONALIDADES INCLUIDAS:
-✅ Todo de Evento Único +
-✅ Chatbot Lex personalizado (guarda historial)
-✅ Validación Face ID para votar
-✅ Voto manual alternativo
-✅ Pre-registro de residentes con Face ID
-✅ Lista de asistencia en tiempo real
-✅ Quórum calculado automáticamente
-✅ Gráficas de resultados por tema votado
-✅ Actas digitales (2) al finalizar con:
-   • Resultado de participación por tema
-   • Validación de quórum cumplido
-   • Lista de asistencia completa
-   • Votos por coeficiente
-✅ Dashboard activo 12 meses (comparar asambleas)
-✅ Histórico: 12 meses (acceso a ambas actas)
-✅ Exportar resultados a Excel
-
-AHORRO: ~15% vs 2x Evento Único ($450)
-
-CUÁNDO USAR:
-"Ideal para edificios con 2 asambleas ordinarias/año"
-
-VALOR PERCIBIDO:
-"Pagas $194.50 por asamblea (vs $225)"
-```
+### 🚨 LÓGICA DE CONTROL (Para el Arquitecto):
+1. **Límite Triple:** El sistema debe monitorear simultáneamente la cantidad de edificios creados, el total de unidades (residentes) sumadas en toda la cartera y la cantidad de asambleas iniciadas en el mes calendario.
+2. **Asambleas Acumulables (Rollover):** Para planes Standard, Multi-PH Lite y Pro, las asambleas no utilizadas se acumulan automáticamente para el mes siguiente.
+   - **Vencimiento:** Los créditos acumulados tienen una validez de **6 meses** (First-In, First-Out).
+3. **Upgrade Trigger:** Al alcanzar el 90% de cualquier límite, el sistema habilitará automáticamente el banner de "Upgrade Sugerido".
+4. **Uso Justo Enterprise:** Aunque es ilimitado, se restringe legalmente a proyectos de la misma razón social (Promotora).
 
 ---
 
-### 🟩 **MODELOS DE SUSCRIPCIÓN** (Recurrente)
-*Ideal para Administradoras y Promotoras*
-
-#### 3️⃣ **Plan Standard:** $189/mes ⭐ MÁS POPULAR
-```
-✅ Base de Residentes: Hasta 250 unidades incluidas
-✅ Sistema de Créditos: 2 créditos/asamblea al mes (acumulables 6 meses)
-✅ Compromiso Mínimo: 2 meses obligatorios
-
-FUNCIONALIDADES INCLUIDAS:
-✅ Chatbot Lex inteligente (guarda preferencias)
-✅ Validación Face ID para votar
-✅ Voto manual alternativo con verificación
-✅ Pre-registro masivo de residentes con Face ID
-✅ Lista de asistencia en tiempo real
-✅ Quórum dinámico calculado automáticamente
-✅ Gráficas de resultados por tema votado (live)
-✅ Actas digitales ilimitadas al finalizar con:
-   • Resultado de participación por tema
-   • Validación de quórum cumplido/perdido
-   • Lista de asistencia detallada
-   • Votos por coeficiente y unidad
-   • Firma digital certificada
-✅ Dashboard siempre activo (análisis histórico)
-✅ Histórico ilimitado (todas las asambleas)
-✅ Reportes y estadísticas avanzadas:
-   • Participación por asamblea
-   • Temas más votados
-   • Tendencias de asistencia
-✅ Soporte prioritario 24/7 (WhatsApp + Chat)
-✅ API básico (integración con otros sistemas)
-✅ Templates de convocatorias (personalizables)
-✅ Exportar todo a Excel (actas, reportes, asistencia)
-
-EXTRAS:
-• 3ra asamblea en adelante: +$75/crédito
-• 251-350 unidades: +$50 por asamblea
-• 351-500 unidades: +$100 por asamblea
-
-CUÁNDO USAR:
-"Para edificios activos con 2+ asambleas/año"
-
-AHORRO VS EVENTO ÚNICO:
-"2 asambleas/mes: $189 vs $450 = Ahorra $261/mes"
-"Anual: $2,268 vs $5,400 = Ahorra $3,132/año"
-
-ROI:
-"Por $189/mes obtienes:
-• Ahorro de 40-60 horas hombre ($1,200-$1,800)
-• Blindaje legal vs impugnaciones ($2,500-$5,000)
-• ROI: 633% - 2,547%"
-
-PROTECCIÓN ANTI-ABUSO:
-⚠️ Compromiso mínimo 2 meses ($378 total)
-⚠️ Si cancelas antes: Pagas los 2 meses completos
-⚠️ Si cancelas <3 meses: No puedes reactivar por 6 meses
-```
-
----
-
-#### 4️⃣ **Plan Multi-PH:** $699/mes
-```
-✅ Propiedades: Hasta 30 edificios gestionados
-✅ Asambleas: ILIMITADAS (No aplica sistema de créditos)
-✅ Tope de Residentes: Hasta 5,000 unidades totales en cartera
-
-FUNCIONALIDADES INCLUIDAS:
-✅ Todo de Standard + Avanzadas:
-
-**Por cada edificio:**
-✅ Chatbot Lex multi-idioma (español/inglés)
-✅ Validación Face ID para votar
-✅ Voto manual alternativo con auditoría
-✅ Pre-registro masivo con importación Excel
-✅ Lista de asistencia en tiempo real por edificio
-✅ Quórum dinámico multi-edificio
-✅ Gráficas de resultados por tema (comparativas)
-✅ Actas digitales ilimitadas con:
-   • Resultado de participación por tema
-   • Validación de quórum cumplido/perdido
-   • Lista de asistencia detallada
-   • Votos por coeficiente y unidad
-   • Firma digital certificada
-   • Logo personalizado (white label)
-
-**Panel consolidado:**
-✅ CRM Básico: Historial de residentes y trazabilidad
-✅ Panel multi-tenant (cambiar entre edificios en 1 click)
-✅ Roles y permisos (asignar admins por edificio)
-✅ Reportes consolidados (todos los edificios):
-   • Participación global
-   • Edificios más activos
-   • Comparativa de asistencia
-   • Tendencias por región
-✅ API access completo (integraciones avanzadas)
-✅ White label (tu logo en todo)
-✅ Onboarding personalizado (1:1)
-✅ Account manager asignado (WhatsApp directo)
-
-CUÁNDO USAR:
-"Para empresas administradoras que gestionan 10-30 edificios"
-
-AHORRO:
-"Gestionas 20 edificios a $34.95 c/u al mes"
-"Con plan Standard pagarías $3,780/mes (20 x $189)"
-"Ahorro: $3,081/mes = $36,972/año"
-
-FEATURES EXCLUSIVOS:
-✨ Dashboard consolidado (todos los edificios)
-✨ Reportes por edificio o globales
-✨ Asignación de administradores
-✨ Facturación centralizada
-
-PLAN ANUAL:
-$6,990/año (ahorras $1,398 = 2 meses gratis)
-```
-
----
-
-#### 5️⃣ **Plan Enterprise:** $2,499/mes 💎
-```
-✅ Proyectos: Unidades y propiedades ilimitadas
-✅ Asambleas: ILIMITADAS
-✅ Residentes: ILIMITADOS
-
-FUNCIONALIDADES INCLUIDAS:
-✅ Todo de Multi-PH + Premium:
-
-**Asambleas avanzadas:**
-✅ Chatbot Lex con IA avanzada (aprende de cada asamblea)
-✅ Validación Face ID + reconocimiento facial avanzado
-✅ Voto manual con validación de identidad (OCR cédula)
-✅ Pre-registro automático desde CRM/ERP
-✅ Lista de asistencia predictiva (quién asistirá según histórico)
-✅ Quórum predictivo con alertas tempranas
-✅ Gráficas de resultados en tiempo real con:
-   • Desglose por tipo de propietario
-   • Análisis de sentimiento por tema
-   • Predicción de resultados
-✅ Actas digitales certificadas con blockchain:
-   • Resultado de participación por tema
-   • Validación de quórum cumplido/perdido
-   • Lista de asistencia detallada con timestamps
-   • Votos por coeficiente y unidad
-   • Firma digital certificada
-   • Validación legal (Ley 284)
-   • Hash blockchain (inmutable)
-   • Logo personalizado
-
-**CRM Avanzado con IA:**
-✅ Sistema de Tickets automático:
-   • Voto negativo → Ticket en <5 min
-   • Categorización automática (IA)
-   • Asignación inteligente por departamento
-✅ Análisis de Sentimiento:
-   • IA detecta insatisfacción en comentarios
-   • Alertas proactivas antes de crisis
-   • Dashboard de satisfacción en tiempo real
-✅ Separación propietarios/inquilinos/inversionistas
-✅ Dashboard de satisfacción con:
-   • NPS automático post-asamblea
-   • Tendencias de quejas
-   • Unidades en riesgo
-
-**Integraciones y personalización:**
-✅ API premium abierta (sin límites)
-✅ Integración ERP/CRM/Salesforce/HubSpot
-✅ Reportes personalizados para inversionistas
-✅ Desarrollo de features a medida (1 feature/trimestre)
-
-**Soporte y garantías:**
-✅ Consultoría legal: 4 horas/mes (abogado especializado Ley 284)
-✅ Soporte dedicado (WhatsApp directo con equipo)
-✅ SLA 99.9% uptime garantizado
-✅ Backup diario de datos
-✅ Auditorías de seguridad trimestrales
-
-CUÁNDO USAR:
-"Para promotoras/desarrolladores con proyectos de 200-500+ unidades en pre-entrega o transición"
-
-ROI PROMOTORA:
-"Si vendes 5 unidades adicionales por mejor atención a quejas:
-• 5 unidades x $150,000 = $750,000 ingresos extra
-• Inversión: $2,499/mes = $29,988/año
-• ROI: 2,400%"
-
-FEATURES EXCLUSIVOS:
-✨ CRM: Voto negativo → Ticket automático en <5 min
-✨ Dashboard de ventas integrado
-✨ Segmentación: Vendidas/Alquiladas/Disponibles/Mora
-✨ Integraciones custom con tu ERP/Salesforce/HubSpot
-✨ Reportes para inversionistas (formato personalizado)
-
-PLAN ANUAL:
-$24,990/año (ahorras $4,998 = 2 meses gratis)
-```
+### 🛠️ INSTRUCCIONES PARA EL CODER (UX de Venta):
+1. **Selector de Perfil en Pricing:** Implementar switch "Soy un PH" vs "Soy una Administradora/Promotora".
+2. **Calculadora Inteligente:** La calculadora de ROI debe sugerir el plan basándose en la regla de "lo que llegue primero".
+3. **Badge Enterprise:** Usar estilo visual "Gold/Premium" para el plan de $2,499 resaltando el **CRM con IA de Sentimiento**.
 
 ---
 

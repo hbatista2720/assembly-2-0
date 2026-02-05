@@ -1,12 +1,13 @@
 # 🤖 EQUIPO DE AGENTES IA - Assembly 2.0
 ## Configuración, Responsabilidades y Modelos Óptimos
 
-**Versión:** 2.0  
-**Fecha:** 30 Enero 2026 (ACTUALIZADO: Arquitectura VPS All-in-One)  
+**Versión:** 2.1  
+**Fecha:** 30 Enero 2026 (ACTUALIZADO: Regla 8 por rol)  
 **Audiencia:** Henry, Equipo completo  
 **Propósito:** Definir roles, responsabilidades y modelos IA para cada agente
 
-**Última actualización:**
+**Última actualización (historial):**
+- **v2.1 (Feb 2026):** 🚨 REGLA 8 - Por rol: no podemos generar código, solo instrucciones y tareas propias de tu rol. Solo Coder genera código (ahorro tokens). Coder no debe revisar archivos fuera de la tarea.
 - **v2.0 (30 Ene 2026):** 🔥 CAMBIO MAYOR - Nueva arquitectura VPS All-in-One aprobada. Ya NO usamos Supabase Cloud. Todo es self-hosted: PostgreSQL + Redis + Auth (OTP+JWT) + Socket.io.
 - **v1.1 (30 Ene 2026):** Agente Database actualizado a DBA Senior con capacidades de auditoría.
 
@@ -1529,6 +1530,26 @@ Agente QA:
 ✅ Database crea SQL ANTES de que Coder lo consuma
 ```
 
+### **8. POR ROL: NO CÓDIGO, SOLO INSTRUCCIONES Y TAREAS PROPIAS** (REGLA DE ORO)
+```
+🚨 Por rol: no podemos generar código, solo instrucciones y tareas propias de tu rol.
+
+❌ Arquitecto, Contralor, Database, Marketing y QA NO deben generar código
+   → Cada uno produce solo lo que corresponde a su rol:
+   → Arquitecto: especificaciones, diagramas, documentos .md
+   → Contralor: reportes, checklist, instrucciones, ESTATUS_AVANCE
+   → Database: esquemas SQL, migraciones (archivos .sql), no código app
+   → Marketing: copy, precios, documentos .md
+   → QA: casos de prueba, reportes, checklist
+   → Evitar consumo de tokens en tareas que no son de implementación
+
+✅ SOLO el agente CODER puede generar código (escribe/edita archivos de código)
+
+✅ CODER: No revisar ni abrir archivos que NO estén asociados a la tarea actual
+   → Limitar contexto solo a lo necesario para la tarea asignada
+   → Reduce tokens y evita tocar código fuera de scope
+```
+
 ---
 
 ## 📚 REFERENCIAS
@@ -1547,7 +1568,7 @@ Agente QA:
 ---
 
 **Fecha:** 30 Enero 2026  
-**Versión:** 1.0  
+**Versión:** 2.1  
 **Autor:** Arquitecto Assembly 2.0  
 **Status:** 🟢 LISTO PARA USAR
 

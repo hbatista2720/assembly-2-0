@@ -21,7 +21,8 @@
 | **EVENTO ÚNICO** | $225 | 250 unidades | +$50 por cada 100 unidades | Máx 500 |
 | **DÚO PACK** | $389 | 250 unidades | +$50 por cada 100 unidades | Máx 500 |
 | **STANDARD** | $189/mes | 250 unidades | +$50 por cada 100 unidades | Máx 500 |
-| **MULTI-PH** | $699/mes | 5,000 unidades (total cartera) | +$100 por cada 1,000 adicionales | Máx 10,000 |
+| **MULTI-PH LITE** | $399/mes | 1,500 unidades (total cartera) | +$50 por cada 500 adicionales | Máx 3,000 |
+| **MULTI-PH PRO** | $699/mes | 5,000 unidades (total cartera) | +$100 por cada 1,000 adicionales | Máx 10,000 |
 | **ENTERPRISE** | $2,499/mes | ♾️ **ILIMITADO** | N/A | Sin límite |
 
 ---
@@ -76,26 +77,26 @@ Total mensual: $189/mes + $100 (único)
 
 ---
 
-### **Ejemplo 3: Administradora Multi-PH con 3 torres (600 unidades)**
+### **Ejemplo 3: Administradora Multi-PH Lite con 3 torres (600 unidades)**
 
 ```
-Plan contratado: Multi-PH ($699/mes)
-Unidades incluidas: 5,000 (total cartera)
+Plan contratado: Multi-PH Lite ($399/mes)
+Unidades incluidas: 1,500 (total cartera)
 Torre A: 200 unidades
 Torre B: 200 unidades
 Torre C: 200 unidades
 Total: 600 unidades
 
-Validación: ✅ OK (600 < 5,000)
+Validación: ✅ OK (600 < 1,500)
 Cargo adicional: $0
 ```
 
 ---
 
-### **Ejemplo 4: Promotora con 6,000 unidades (excede Multi-PH)**
+### **Ejemplo 4: Promotora con 6,000 unidades (excede Multi-PH Pro)**
 
 ```
-Plan contratado: Multi-PH ($699/mes)
+Plan contratado: Multi-PH Pro ($699/mes)
 Unidades incluidas: 5,000
 Unidades reales: 6,000
 

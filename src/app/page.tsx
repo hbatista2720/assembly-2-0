@@ -361,6 +361,9 @@ export default function HomePage() {
               <button className="btn btn-primary btn-demo" onClick={() => setChatbotOpen(true)}>
                 Agendar demo con Lex
               </button>
+              <a className="btn btn-ghost" href="/pricing">
+                Ver precios
+              </a>
               <a className="btn btn-ghost" href="/login?role=admin-inteligente">
                 Ver acceso seguro
               </a>

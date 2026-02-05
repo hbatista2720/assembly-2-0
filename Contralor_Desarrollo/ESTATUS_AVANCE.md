@@ -1,15 +1,15 @@
 # 📊 ESTATUS DE AVANCE - Assembly 2.0
 ## Control del Contralor
 
-**Última actualización:** 31 Enero 2026  
-**Responsable:** Contralor
+**Última actualización:** 03 Febrero 2026  
+**Responsable:** Contralor & Marketing B2B
 
 ---
 
 ## 🎯 PROGRESO GENERAL
 
 ```
-[███████░░░░░░░░░░░░░░░░░] 29%
+[████████░░░░░░░░░░░░░░░░] 35%
 ```
 
 | Fase | Progreso | Estado | QA |
@@ -21,6 +21,7 @@
 | FASE 4: Dashboard Admin PH | 20% | ⏸️ Pendiente | ⏸️ Esperando |
 | FASE 5: Votación básica | 0% | ⏸️ Pendiente | ⏸️ Esperando |
 | FASE 6: Acta y Deploy | 0% | ⏸️ Pendiente | ⏸️ Esperando |
+| **FASE 08: Go-Live Pricing** | 100% | ✅ COMPLETADO | 🟢 Lista |
 
 ---
 
@@ -264,14 +265,15 @@ Copy listo para producción.
 ```
 [FECHA] [DESCRIPCIÓN DEL AVANCE]
 ────────────────────────────────────────
+03 Feb | ✅ Adición a Fase 08: Lógica de "Asambleas Acumulables" (Rollover) extendida a planes Multi-PH Lite y Pro.
+03 Feb | ✅ Definida regla de vencimiento de 6 meses para créditos acumulados (arquitectura FIFO).
+03 Feb | ✅ Finalización Fase 08 Go-Live: Matriz de precios v4.0 consolidada.
+03 Feb | ✅ Lanzamiento Plan Multi-PH Lite ($399/mes) para 10 PHs.
+03 Feb | ✅ Redefinición de Límites: Regla de "lo que ocurra primero" (PHs, Residentes, Asambleas).
+03 Feb | ✅ Plan Enterprise ($2,499/mes) confirmado como Ilimitado con CRM IA.
+03 Feb | ✅ Actualización de Modelos Transaccionales: Evento Único ($225) y Dúo Pack ($389).
 31 Ene | ✅ Definida Estrategia B2B Premium: Standard ($189), Multi-PH ($699), Enterprise ($2,499)
 31 Ene | ✅ Implementada Política Anti-Abuso y Sistema de Créditos Acumulables (ESTRATEGIA_B2B.md)
-31 Ene | ✅ Diseñada Lógica de ROI y Realismo de Datos para Landing Page
-31 Ene | ✅ Creadas Instrucciones de Pulido para Chatbot Residente (Context Switching & Deep Linking)
-31 Ene | ✅ Actualizado Rol de Agente 5 en EQUIPO_AGENTES_CURSOR.md
-29 Ene | Copy de landing page finalizado
-29 Ene | Precios v3.0 definidos
-       | (Agregar nuevos avances arriba de esta línea)
 ```
 
 ### 👔 CONTRALOR - Últimas Auditorías:
@@ -309,4 +311,4 @@ IMPORTANTE:
 
 ---
 
-**Próxima actualización:** 31 Enero 2026 (o cuando se resuelva bloqueador)
+**Próxima actualización:** 04 Febrero 2026 (o cuando se resuelva bloqueador)
