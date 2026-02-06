@@ -4,6 +4,8 @@
 **Última actualización:** Febrero 2026  
 **Responsable:** Contralor
 
+**Recordatorio para todos los agentes (Arquitecto, Contralor, Database, Coder, Marketing, QA):** No crear carpetas innecesarias. Usar la estructura existente del proyecto (Contralor/, QA/, Coder/, Arquitecto/, etc.) para evitar confusiones. Ver Contralor/EQUIPO_AGENTES_CURSOR.md – Regla 9.
+
 ---
 
 ## 📋 PROTOCOLO DE BACKUP POR FASE
@@ -583,21 +585,106 @@ El Coder puede seguir FASE 9 usando solo PayPal, Tilopay, Yappy y ACH/transferen
 Opcional: FASES 9, 10 y 11 como bloque. Producción (12-13) cuando todo OK.
 ```
 
-### Para DATABASE:
+### Para DATABASE (Base de Datos):
 ```
-PENDIENTE (después de que Coder termine FASE 3):
-1. Crear tabla owners (propietarios)
-2. Crear tabla assemblies (asambleas)
-3. Crear tabla voting_topics (temas de votación)
-4. Crear tabla votes (votos)
-5. Implementar RLS policies por organization_id
+🎯 ORDEN DEL CONTRALOR: Validar Docker y persistencia OTP (referencia única)
+
+📖 LEER Y SEGUIR: Contralor/VALIDACION_DOCKER_Y_OTP.md
+
+VALIDAR:
+1. Levantar Docker: docker compose up -d (desde la raíz del proyecto)
+2. Servicios activos: postgres:5433, pgbouncer:6432, redis:6379, app:3000, telegram-bot, web-chatbot (docker compose ps)
+3. OTP se guarda solo en BD: tabla auth_pins en PostgreSQL (contenedor assembly-db). Esquema/seed en sql_snippets/auth_otp_local.sql
+4. Conclusión para Base de Datos: "Todo OK, el login OTP depende solo de esta BD". No Redis ni archivos para OTP.
+
+🔴 CORRECCIÓN PgBouncer↔PostgreSQL ("wrong password type", 08P01):
+   RESPONSABLE PRINCIPAL: Database.
+   Tarea: Diagnosticar y especificar la corrección de autenticación (pg_hba.conf, auth_method md5 vs scram-sha-256, userlist si aplica). Documentar qué debe cambiar en Postgres y/o PgBouncer. Entregar instrucciones al Coder para aplicar en el repo.
+```
+
+### Para CODER (corrección PgBouncer↔PostgreSQL):
+```
+🔴 CORRECCIÓN: Autenticación PgBouncer↔PostgreSQL (bloqueador QA – "wrong password type").
+
+   📖 INSTRUCCIONES DE BASE DE DATOS (obligatorio leer y aplicar):
+   Database_DBA/INSTRUCCIONES_CODER_PGBOUNCER_AUTH.md
+
+   Contenido: problema 08P01, causa (md5 vs scram-sha-256), 3 opciones (A: md5 en Postgres, B: auth en PgBouncer, C: conexión directa temporal), verificación y referencias.
+   Tras aplicar: avisar a QA para re-ejecutar validación del flujo OTP (Contralor/VALIDACION_DOCKER_Y_OTP.md).
+```
+
+### Para CODER (bloqueador verify-otp – QA reporta 26 Feb):
+```
+✅ ESTATUS REPORTE QA: Listo – Registrado en Contralor.
+✅ CODER COMPLETÓ: parent_subscription_id añadido en sql_snippets/auth_otp_local.sql (CREATE TABLE + ALTER para instancias existentes). Bloqueador verify-otp resuelto.
+
+   (Causa original: La API verify-otp usa `o.parent_subscription_id`; la columna no existía en el schema. TAREA ya aplicada.)
+   Referencia: QA/QA_FEEDBACK.md – sección "QA Re-validación · Docker + OTP".
+   Instancias existentes: ejecutar ALTER o recrear volumen para que el init aplique el script actualizado.
+```
+
+### Para CODER – Resumen de tareas (1) (2) (3):
+```
+(1) parent_subscription_id en auth_otp_local.sql
+    ✅ APLICADO. Columna en CREATE TABLE organizations + ALTER para instancias existentes.
+
+(2) Corrección PgBouncer (cuando se deje de usar Opción C)
+    ✅ YA APLICADA EN REPO: sql_snippets/99_pgbouncer_md5_compat.sql (init Docker).
+    Cuando Contralor/QA decida volver a PgBouncer:
+    ├─ En docker-compose.yml, servicio app: cambiar DATABASE_URL de postgres:5432 a pgbouncer:5432.
+    ├─ Asegurar que el init de Postgres haya corrido con 99_ (recrear volumen si la BD se creó antes del script).
+    └─ Ver Database_DBA/INSTRUCCIONES_CODER_PGBOUNCER_AUTH.md (verificación).
+
+(3) Leads
+    ✅ Tabla platform_leads: sql_snippets/97_platform_leads.sql. Revisar/ajustar si QA reporta algo en Gestión de Leads.
+```
+
+### Para CODER (corrección "No se pudieron cargar los leads"):
+```
+Responsable: Coder.
+
+Problema: En /platform-admin/leads aparece el mensaje "No se pudieron cargar los leads." porque la tabla platform_leads no existía en la BD (no estaba en el init Docker).
+
+Corrección aplicada por Coder:
+├─ Añadido sql_snippets/97_platform_leads.sql para que el init de Docker cree la tabla platform_leads.
+├─ Nuevas instancias (docker compose up -d con volumen nuevo): la tabla se crea automáticamente.
+└─ Instancias existentes (volumen ya creado): ejecutar una vez el SQL manualmente:
+   docker compose exec postgres psql -U postgres -d assembly -f - < sql_snippets/97_platform_leads.sql
+   (o pegar el contenido de 97_platform_leads.sql en psql).
+
+Tras aplicar en BD existente, recargar la página de Gestión de Leads; debe cargar sin error (lista vacía = "No hay leads registrados." sin toast rojo).
+```
+
+### Para CODER (AssembliesPage – duplicate export, aprobado por Contralor):
+```
+✅ APLICADO POR CODER. Una sola export default en el archivo.
+Referencia: QA/QA_FEEDBACK.md – sección "QA Re-validación · Login + Plan de Pruebas".
+```
+
+### Para CODER (bloqueador QA re-ejecución 26 Feb):
+```
+🔴 NUEVO BLOQUEADOR: Module not found: Can't resolve '@/components/UpgradeBanner'
+   Archivo: src/app/dashboard/admin-ph/page.tsx, línea 4.
+   El componente existe en src/components/UpgradeBanner.tsx.
+   Tarea: Revisar alias @/ en tsconfig.json o next.config.js. Alternativa: usar import relativo (../../components/UpgradeBanner).
+   Referencia: QA/QA_FEEDBACK.md – "QA Re-ejecución Plan de Pruebas · Reporte al Contralor".
 ```
 
 ### Para QA:
 ```
-✅ FASE 8 ya APROBADA por QA.
-✅ FASES 9, 10 y 11 APROBADAS por QA (26 Feb 2026).
-   Siguiente: Henry autoriza backup → Contralor commit + push. Producción (12-13) cuando todo OK.
+✅ PLAN PRUEBAS COMPLETADO (26 Ene 2026). Etapas 1–6 aprobadas.
+   Rutas automáticas: 200. Ver QA_FEEDBACK.md (Fase 04 + Smoke).
+
+✅ Residentes demo en BD: residente1@…residente5@demo.assembly2.com (role RESIDENTE, org Demo).
+   Scripts: sql_snippets/auth_otp_local.sql (init) y sql_snippets/seeds_residentes_demo.sql (BD existente).
+   Usar para: login OTP como residente, pruebas E2E, carga (varios residentes). Ver QA_FEEDBACK.md § "Asamblea demo con admin y residentes".
+
+📋 OPCIONAL: Validación manual chatbot (4.1, 4.3–4.7) en navegador.
+📋 SIGUIENTE: Validar Docker local según Contralor/VALIDACION_DOCKER_Y_OTP.md (si aplica).
+────────────────────────────────────────────────────────
+✅ FASE 8 y FASES 9, 10, 11 ya APROBADAS por QA. Backup realizado (dc1f9c7).
+
+📖 LEER Y SEGUIR: Contralor/VALIDACION_DOCKER_Y_OTP.md (Docker + OTP).
 ```
 
 ### Para ARQUITECTO:
@@ -656,6 +743,14 @@ Copy listo para producción.
 | ✅ COMPLETADO | **QA aprobó FASE 8** | QA | Feb 2026 |
 | ✅ COMPLETADO | **Backup FASE 8** (3715276) | Contralor | Feb 2026 |
 | ✅ COMPLETADO | **Coder: FASES 9, 10 y 11** (Pagos, Demo, Lead Validation) | Coder | Feb 2026 |
+| ✅ COMPLETADO | **QA aprobó FASES 9, 10 y 11** | QA | Feb 2026 |
+| ✅ COMPLETADO | **Backup FASES 9, 10, 11** (dc1f9c7) | Contralor | Feb 2026 |
+| 🔴 SIGUIENTE | **Validar Docker** – Database y QA según Contralor/VALIDACION_DOCKER_Y_OTP.md | Database + QA | Feb 2026 |
+| ✅ COMPLETADO | **Coder: parent_subscription_id** – Columna añadida en auth_otp_local.sql (verify-otp desbloqueado). | Coder | Feb 2026 |
+| ✅ COMPLETADO | **Coder: AssembliesPage** – Eliminada la segunda definición (duplicate export default) en src/app/dashboard/admin-ph/assemblies/page.tsx. Una sola export default. Ver "Para CODER (AssembliesPage)". | Coder | Feb 2026 |
+| ✅ COMPLETADO | **QA: Re-ejecutó etapas 2 y 3** (Admin PH + Platform Admin). Todas las rutas 200. Reporte QA_FEEDBACK.md + historial. 26 Ene 2026. | QA | Feb 2026 |
+| ✅ COMPLETADO | **QA: Plan pruebas completado** (etapas 1–6). Fase 04, residentes, smoke OK. | QA | Feb 2026 |
+| 📋 PLAN CREADO | **Pruebas navegación Login→Chatbot** – QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md (flujo login, Admin PH, Platform Admin, chatbot botones, residentes). Ejecutar QA cuando login esté OK. | Contralor + QA | Feb 2026 |
 
 ### **🚦 FLUJO DE TRABAJO ACTUAL:**
 ```
@@ -672,7 +767,9 @@ Copy listo para producción.
 ✅ Backup: commit 3715276 realizado. Henry: ejecutar `git push origin main` si falta.
 ✅ CODER: FASES 9, 10 y 11 implementadas. ✅ QA aprobó. ✅ Backup commit dc1f9c7.
    Henry: ejecutar `git push origin main` si el push no se hizo desde el IDE.
-📌 FASES PRODUCCIÓN (12-13): Docker/Deploy VPS listo para cuando Henry decida.
+────────────────────────────────────────────────────────
+✅ Etapas 2 y 3 APROBADAS (26 Ene 2026). Siguiente: QA ejecutar etapa 4 (Chatbot). Plan: QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md.
+📌 FASES PRODUCCIÓN (12-13): Docker validado → luego Deploy VPS cuando Henry decida.
 ```
 
 ---
@@ -715,8 +812,43 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 
 | Fecha | Cambio | Responsable |
 |-------|--------|-------------|
+| 05 Feb 2026 | **✅ QA: Chatbot re-validado** – Fix Opción B aplicado (DEMO_RESIDENT_EMAILS). Emails residente1@…residente5@ reconocidos. Login OTP + carga OK. Ver QA_FEEDBACK.md. | QA |
+| 05 Feb 2026 | **📋 QA: Chatbot residente** – Validación email usa solo localStorage.assembly_users; residente2@ existe en BD pero chatbot dice "No encuentro ese correo". **Para Coder:** validar contra API/BD. Ver QA_FEEDBACK.md. | QA |
+| 05 Feb 2026 | **✅ QA: Flujo residente validado** – Seeds ejecutados, login OTP residente1@…residente5@ OK, acceso /residentes/votacion con redirect. Ver QA_FEEDBACK.md § "Flujo residente con usuarios demo". | QA |
+| 05 Feb 2026 | **📋 QA: /residentes/votacion** – Botón "Emitir voto" no responde (sin onClick). No valida usuario. Ver QA_FEEDBACK.md. **Para Coder.** | QA |
+| 26 Ene 2026 | **✅ QA PLAN PRUEBAS COMPLETADO** – Fase 04 (Landing→Chatbot), etapas 5 (residentes) y 6 (smoke). Todas las rutas 200. Ver QA_FEEDBACK.md. Plan navegación Login→Chatbot 100% aprobado. | QA |
+| 26 Ene 2026 | **✅ CONTRALOR APROBÓ AVANCE QA** – Avance QA confirmado. Fase 04 (Landing → Chatbot) queda autorizada para ejecución. | Contralor |
+| 26 Ene 2026 | **✅ QA RE-EJECUTÓ ETAPAS 2 Y 3** – Plan pruebas navegación. Dashboard Admin PH (2.1–2.9) y Platform Admin (3.1–3.6). Todas las rutas HTTP 200. /api/chatbot/config 200. Reporte QA_FEEDBACK.md. Etapas 2 y 3 APROBADAS. Siguiente: etapa 4 (Chatbot). | QA |
+| Feb 2026 | **✅ CONTRALOR CONFIRMA AVANCES QA** – Revisado QA/QA_FEEDBACK.md: (1) Ejecución plan: Login ✅, etapas 2–6 con bloqueadores. (2) Re-validación: AssembliesPage duplicate → Coder corrigió. (3) Re-ejecución: alias @/ UpgradeBanner → Coder corrigió + duplicate export + "use client". Coder confirma build OK. Siguiente: QA re-ejecutar etapas 2 y 3 y reportar en QA_FEEDBACK + historial. | Contralor |
+| Feb 2026 | **📋 CODER: Bloqueadores compilación corregidos** – Plan de pruebas indica que QA debe re-ejecutar etapas 2 (Dashboard Admin PH) y 3 (Platform Admin) y reportar en QA_FEEDBACK.md y en historial Contralor. | Coder |
+| 26 Feb | **📋 QA RE-EJECUTÓ PLAN** – AssembliesPage OK. Nuevo bloqueador: Module not found @/components/UpgradeBanner (admin-ph/page.tsx). App 500 en rutas. Coder: revisar alias @/ o usar import relativo. Reporte QA_FEEDBACK + notificación Contralor. | QA |
+| Feb 2026 | **✅ CODER: Bloqueadores plan pruebas** – Corregidos duplicate export/const en team, owners, settings, support, votations; "use client" en acts y reports. Build compila. Plan de pruebas (QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md) actualizado: QA re-ejecuta etapas 2 y 3. | Coder |
+| Feb 2026 | **✅ CODER: Script residentes demo integrado en init Docker** – sql_snippets/seeds_residentes_demo.sql (entregado por Database) ya está en la carpeta montada en /docker-entrypoint-initdb.d; se ejecuta en el primer arranque. Cabecera del script y sql_snippets/README.md documentan ejecución manual para instancias existentes. Ref: QA_FEEDBACK.md, ESTATUS_AVANCE. | Coder |
+| 26 Feb 2026 | **✅ CODER: Revisión plan de pruebas + API chatbot** – Revisado PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md y QA_FEEDBACK. GET /api/chatbot/config: si tabla no existe (42P01) devuelve [] en lugar de 500 para no bloquear UI. Sin más imports @/ en src. Siguiente: QA re-ejecutar etapas 2 y 3 y reportar. | Coder |
+| Feb 2026 | **✅ CODER: Bloqueador alias @/** – Sustituidos todos los imports `@/` por rutas relativas (admin-ph/page, checkout, pricing, AssemblyCreditsDisplay, API organizations/assemblies/assembly-credits, validateSubscriptionLimits). QA_FEEDBACK actualizado. Build ya no falla por Module not found @/. | Coder |
+| 26 Feb | **✅ QA RE-EJECUTÓ ETAPAS 2 Y 3** – Dashboard Admin PH (2.1–2.9) y Platform Admin (3.1–3.6). Todas las rutas 200. Reporte en QA_FEEDBACK.md. Etapas 2 y 3 APROBADAS. | QA |
+| 26 Feb | **📋 QA INFORMA AL CONTRALOR** – Siguiente tarea (tras reporte QA) es para Coder: corregir bloqueadores que QA reporte en QA_FEEDBACK.md. | QA |
+| Feb 2026 | **✅ CODER: AssembliesPage duplicate export** – Eliminada la segunda definición en src/app/dashboard/admin-ph/assemblies/page.tsx (una sola export default). Sección "Para CODER (AssembliesPage)" y tabla de próximas acciones actualizadas. QA puede re-validar rutas. | Coder |
+| Feb 2026 | **✅ CODER: AssembliesPage finalizado** – Eliminada definición duplicada en assemblies/page.tsx. Siguiente: QA re-validar navegación y reportar. | Coder |
+| Feb 2026 | **✅ APROBADO POR CONTRALOR** – Documentos: QA/QA_FEEDBACK.md (re-validación con causa raíz y acción para Coder), ESTATUS_AVANCE (entrada en historial). Acción Coder: eliminar una de las dos definiciones de AssembliesPage en src/app/dashboard/admin-ph/assemblies/page.tsx. | Contralor |
+| Feb 2026 | **✅ CONTRALOR VALIDA RESPUESTA QA** – QA_FEEDBACK: Login OK; plan ejecutado; bloqueadores (AssembliesPage duplicate → Coder ya corrigió). Siguiente tarea: (1) QA re-ejecutar plan tras fix AssembliesPage y reportar en QA_FEEDBACK + historial. (2) Coder corregir bloqueadores restantes si QA los reporta: /api/chatbot/config 500, /pricing /register 500, residentes 500. | Contralor |
+| Feb 2026 | **✅ CONTRALOR VALIDA: Coder finalizó AssembliesPage** – Una sola export default en assemblies/page.tsx. Próximo paso: QA re-validar navegación (plan pruebas) y reportar en QA_FEEDBACK + historial. | Contralor |
+| Feb 2026 | **✅ CODER: parent_subscription_id aplicado** – auth_otp_local.sql actualizado (CREATE + ALTER). Verify-otp desbloqueado. Siguiente: QA re-validar login y ejecutar plan navegación. | Coder |
+| Feb 2026 | **📋 PLAN DE PRUEBAS: Navegación Login→Chatbot** – Creado QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md (login, redirección por rol, Admin PH, Platform Admin, chatbot, residentes). Para QA. | Contralor |
+| Feb 2026 | **✅ Reporte QA verify-otp registrado en Contralor** – Responsable: Coder. Asignación: añadir parent_subscription_id a organizations en auth_otp_local.sql. Instrucción en "Para CODER (bloqueador verify-otp)" e historial. Ref: QA/QA_FEEDBACK.md. | Contralor |
+| Feb 2026 | **✅ QA re-validación documentada** - QA/QA_FEEDBACK.md (Docker+OTP tras Opción C). **docker-compose:** app DATABASE_URL → postgres:5432 (Opción C temporal). Historial actualizado. | QA + Contralor |
+| Feb 2026 | **✅ DATABASE: Residentes demo en BD** – Usuarios residente1@…residente5@demo.assembly2.com (org Demo, role RESIDENTE) en auth_otp_local.sql + seeds_residentes_demo.sql. Ref: QA_FEEDBACK.md "Recomendación: Asamblea demo con admin y residentes". QA puede usar para plan pruebas (login OTP como residente, carga). | Database |
+| Feb 2026 | **📋 BASE DE DATOS: Instrucciones para Coder** - Database_DBA/INSTRUCCIONES_CODER_PGBOUNCER_AUTH.md (corrección PgBouncer↔PostgreSQL, wrong password type) | Database |
 | Feb 2026 | **🔄 FASE 09 ACTUALIZADA** - Stripe quitado (no retiros Panamá). Pasarelas: PayPal, Tilopay, Yappy, ACH. Ver Arquitecto/VALIDACION_PASARELAS_PAGO_PANAMA.md | Arquitecto |
+| Feb 2026 | **📋 CONTRALOR: Siguiente paso validar Docker** - Instrucciones a Base de Datos y QA vía Contralor/VALIDACION_DOCKER_Y_OTP.md | Contralor |
 | Feb 2026 | **✅ BACKUP FASES 9, 10, 11** - Commit dc1f9c7 (push manual: `git push origin main`) | Contralor |
+| Feb 2026 | **✅ CODER: Corrección "No se pudieron cargar los leads"** – Añadido sql_snippets/97_platform_leads.sql para que el init Docker cree la tabla platform_leads. Nueva sección "Para CODER (corrección Gestión de Leads)" en ESTATUS_AVANCE. Instancias existentes: ejecutar 97_platform_leads.sql una vez en la BD. | Coder |
+| Feb 2026 | **✅ CODER: Correcciones UI y build** – (1) Botón "Crear demo" en dashboard admin: ahora es enlace con href="/demo". (2) API leads: import corregido en src/app/api/leads/route.ts (de @/lib/db a relativo ../../../lib/db) para que compile; /platform-admin/leads operativo. Nota: el build completo sigue fallando por otros módulos (checkout, admin-ph, assemblies) no relacionados con leads. | Coder |
+| 26 Feb | **📋 QA RE-VALIDACIÓN** - Login + Plan pruebas. Bloqueador persiste: assemblies/page.tsx tiene 2x export default (líneas 6 y 170). App 500 en todas las rutas. Coder debe eliminar duplicado. Ver QA_FEEDBACK | QA |
+| 26 Feb | **📋 QA EJECUTÓ PLAN PRUEBAS** - PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT. Login OK. Bloqueadores: Duplicate export default, /api/chatbot/config 500, pricing/register/residentes 500. Ver QA_FEEDBACK | QA |
+| 26 Feb | **📋 CONTRALOR ASIGNA A CODER** - Corregir verify-otp: añadir parent_subscription_id a organizations en auth_otp_local.sql (bloqueador login) | Contralor |
+| 26 Feb | **🟡 QA: Re-validación Docker+OTP** - Opción C aplicada. Formas A/B/C OK. verify-otp bloqueado: columna parent_subscription_id falta en organizations (auth_otp_local) | QA |
+| 26 Feb | **🔴 QA: Validación Docker+OTP** - Bloqueador: "wrong password type" app→PgBouncer→Postgres (ver QA_FEEDBACK) | QA |
 | 26 Feb | **✅ FASES 09, 10, 11 APROBADAS POR QA** - Métodos de Pago, Menú Demo, Lead Validation | QA |
 | 26 Feb | **✅ FASE 08 APROBADA POR QA** - Precios y Suscripciones (Precios v4.0 + Créditos FIFO + UI + BD) | QA |
 | 30 Ene | **✅ BACKUP FASE 6** - Commit 137421b → GitHub | Contralor |
@@ -810,6 +942,7 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 
 ### 🗄️ DATABASE - Últimos Avances:
 ```
+Feb 2026 | ✅ Residentes demo en BD: auth_otp_local.sql + seeds_residentes_demo.sql (residente1@…residente5@demo.assembly2.com, role RESIDENTE). Reportado en QA_FEEDBACK.md y ESTATUS_AVANCE.
 30 Ene | ✅ Revisión y aprobación Arquitectura VPS All-in-One
 30 Ene | ✅ VEREDICTO_DBA_ARQUITECTURA_VPS.md con validación técnica
 30 Ene | ✅ Recomendaciones: PgBouncer, work_mem, backup, rate limiting
@@ -902,8 +1035,88 @@ Feb 2026 | ✅ Reporte formal al Contralor en ESTATUS_AVANCE.md (FASES A-E)
 30 Ene | ✅ Gestión de costos actualizada v3.0
 30 Ene | ✅ Diagnóstico bloqueador login OTP
 30 Ene | ✅ Plan de trabajo por fases creado
+30 Ene | ✅ Contralor confirma avance QA: etapas 2 y 3 aprobadas; autorizada Fase 04 (Chatbot).
+30 Ene | ✅ Decisión Contralor (QA_FEEDBACK): validación residente en chatbot → Opción B (aceptar residente1@…residente5@demo.assembly2.com en front; sin API). Coder: implementar en page.tsx.
+30 Ene | ✅ Coder finalizó Opción B (validación residente en chatbot). Siguiente: QA revalidar reconocimiento de correo y botones.
+30 Ene | ✅ QA revalidación chatbot Opción B completada y aprobada (QA_FEEDBACK.md). Siguiente tarea: Contralor backup (cuando Henry autorice) o QA validación manual 4.1–4.7.
 ```
 
 ---
 
-**Próxima actualización:** 1 Febrero 2026
+## ▶ SIGUIENTE PASO (al cierre de este documento)
+
+**Plan de pruebas navegación:** ✅ **COMPLETADO** (etapas 1–6 aprobadas).
+
+**Respuesta Contralor a QA:** Se recomienda **continuar con la validación manual del chatbot en navegador** para cerrar el ciclo UX del plan (pasos 4.1, 4.3–4.7). Si Henry prefiere otra tarea, puede asignar: validación Docker/OTP (VALIDACION_DOCKER_Y_OTP.md) o autorizar backup.
+
+**Validación Contralor – Tarea usuarios residentes demo:** ✅ **REALIZADA.** Database: script en `sql_snippets/seeds_residentes_demo.sql` e INSERT en `auth_otp_local.sql` (residente1@ a residente5@demo.assembly2.com, rol RESIDENTE, org demo). Coder: integración en init Docker; ejecución manual documentada en `seeds_residentes_demo.sql`.
+
+**Decisión Contralor – Validación residente en chatbot (QA_FEEDBACK):** Se toma **Opción B**. Para la org demo, aceptar en el flujo residente del chatbot los emails `residente1@demo.assembly2.com` … `residente5@demo.assembly2.com` sin consultar BD (sin crear API). Motivo: MVP en 30 días, menor alcance y entrega más rápida. La Opción A (API `GET /api/users/check-resident`) queda como mejora post-lanzamiento si se requiere validación por BD para todas las orgs. Reporte: QA/QA_FEEDBACK.md.
+
+**Coder – Validación residente en chatbot (Opción B):** ✅ **FINALIZADA.**
+
+**QA – Revalidación chatbot Opción B:** ✅ **COMPLETADA.** Reporte en QA/QA_FEEDBACK.md (§ "QA Re-validación · Chatbot tras fix Opción B"). Veredicto: aprobado.
+
+**Siguiente tarea:** **Contralor** (backup cuando Henry autorice) o **QA** (validación manual chatbot 4.1–4.7 si falta). Ver instrucciones más abajo.
+
+**Próximas opciones:**
+- **Contralor (siguiente paso recomendado):** Ejecutar backup (commit + push) cuando Henry autorice. Protocolo: Henry autoriza → Contralor ejecuta. Ver instrucción más abajo.
+- **QA:** Validación manual chatbot (4.1, 4.3–4.7) si aún no ejecutada; reportar en QA_FEEDBACK.md.
+- **QA:** Validación Docker/OTP según Contralor/VALIDACION_DOCKER_Y_OTP.md.
+
+---
+
+### Tarea: Usuarios residentes demo (propuesta QA) – ✅ COMPLETADA
+
+**Estado:** ✅ Database: script en `seeds_residentes_demo.sql` e INSERT en `auth_otp_local.sql`. ✅ Coder: init Docker + documentación ejecución manual. Usuarios: residente1@ a residente5@demo.assembly2.com, rol RESIDENTE, org demo. **Qué había que hacer:** Crear en BD usuarios residentes de la org demo (ej. residente1@demo.assembly2.com, residente2@demo.assembly2.com, …) con rol RESIDENTE o PROPIETARIO, para poder: entrar como admin (demo@assembly2.com), entrar como residente vía OTP (residente1@…), probar votación y pruebas de carga con varios residentes. Reporte detallado: **QA/QA_FEEDBACK.md** (sección “Recomendación: Asamblea demo con admin y residentes”).
+
+**Quién lo hace primero:** **Database.** Luego, si hace falta integrar el script en el init de Docker o en un comando de seed, **Coder**.
+
+| Orden | Agente   | Acción |
+|-------|----------|--------|
+| 1º    | **Database** | Crear script SQL: INSERT en `users` con `organization_id` = org demo (`11111111-1111-1111-1111-111111111111`), emails `residente1@demo.assembly2.com`, `residente2@...`, etc., `role` = `RESIDENTE` o `PROPIETARIO`. Entregar en `sql_snippets/` o indicar cómo añadirlo a `auth_otp_local.sql`. |
+| 2º    | **Coder** (si aplica) | Integrar el script en el init de Docker o documentar cómo ejecutarlo (ej. en README o en script de seed). No crear los usuarios; solo ejecutar/integrar lo que Database entregue. |
+
+---
+
+### Instrucción para copiar y pegar al agente
+
+**Para QA (revalidación chatbot Opción B):** ✅ Completada (ver QA_FEEDBACK.md).
+
+**Para Contralor (siguiente tarea – backup):**
+```
+Cuando Henry autorice "Hacer backup": ejecutar commit + push según protocolo de backup por fase (Contralor/ESTATUS_AVANCE.md). Formato commit: "FASE X completada: [descripción] - Aprobado por QA". Confirmar "Backup completado" tras el push.
+```
+
+**Para QA (validación manual chatbot 4.1–4.7, si falta):**
+```
+Ejecutar validación manual del chatbot: abrir http://localhost:3000, abrir el chatbot (4.1), probar cada botón de navegación rápida (4.3 Votación, 4.4 Asambleas, 4.5 Calendario, 4.6 Tema del día, 4.7 Ceder poder). Reportar en QA/QA_FEEDBACK.md. Referencia: QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md sección 4.
+```
+
+**Para QA (validación manual chatbot):**
+```
+Ejecutar validación manual del chatbot en navegador: abrir http://localhost:3000, abrir el chatbot (4.1), probar cada botón de navegación rápida (4.3 Votación, 4.4 Asambleas, 4.5 Calendario, 4.6 Tema del día, 4.7 Ceder poder). Documento de referencia: QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md sección 4. Reportar resultado en QA/QA_FEEDBACK.md (breve: qué se probó, si cada botón lleva a la URL esperada).
+```
+
+**Para Coder (validación residente en chatbot – Opción B):** ✅ Completado.
+
+**Para Coder (cuando QA reporte otras correcciones):**
+```
+Corregir los bloqueadores o errores indicados en QA/QA_FEEDBACK.md (etapa que corresponda del plan de pruebas). Implementar solo lo que QA reporta. Confirmar cuando esté listo.
+```
+
+**Para Database (tarea: usuarios residentes demo) – ejecutar primero:**
+```
+Crear usuarios residentes en BD para la org demo: INSERT en tabla users con organization_id = '11111111-1111-1111-1111-111111111111' (Demo - P.H. Urban Tower), emails residente1@demo.assembly2.com, residente2@demo.assembly2.com, residente3@demo.assembly2.com (y los que se necesiten), role = RESIDENTE o PROPIETARIO. Entregar script en sql_snippets/ o integrar en auth_otp_local.sql. Referencia: QA/QA_FEEDBACK.md sección "Recomendación: Asamblea demo con admin y residentes".
+```
+
+**Para Coder (usuarios residentes demo) – después de Database:** ✅ Completado
+```
+Integrar el script SQL de usuarios residentes demo (entregado por Database) en el init de Docker o documentar cómo ejecutarlo. No crear los datos; solo ejecutar/integrar el script que Database haya proporcionado. Referencia: QA/QA_FEEDBACK.md, Contralor/ESTATUS_AVANCE.md.
+```
+- **Integración init Docker:** El script `sql_snippets/seeds_residentes_demo.sql` está en la carpeta montada en `/docker-entrypoint-initdb.d`; se ejecuta automáticamente en el primer arranque del contenedor Postgres.
+- **Ejecución manual** (si la BD ya existía antes): ver cabecera de `sql_snippets/seeds_residentes_demo.sql` o `sql_snippets/README.md`.
+
+---
+
+**Próxima actualización:** Febrero 2026

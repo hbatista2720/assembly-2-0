@@ -5,8 +5,12 @@ CREATE TABLE IF NOT EXISTS organizations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   is_demo BOOLEAN DEFAULT FALSE,
+  parent_subscription_id UUID NULL,  -- Contralor/QA: bloqueador verify-otp (Para CODER)
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Instancias existentes: añadir columna si faltaba (init solo corre en primer arranque)
+ALTER TABLE organizations ADD COLUMN IF NOT EXISTS parent_subscription_id UUID NULL;
 
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -53,3 +57,13 @@ INSERT INTO users (id, organization_id, email, role, is_platform_owner) VALUES
   ('11111111-1111-1111-1111-111111111113', '11111111-1111-1111-1111-111111111111', 'demo@assembly2.com', 'ADMIN_PH', FALSE),
   ('22222222-2222-2222-2222-222222222224', '22222222-2222-2222-2222-222222222222', 'admin@torresdelpacifico.com', 'ADMIN_PH', FALSE)
 ON CONFLICT (id) DO NOTHING;
+
+-- Residentes org demo (QA: Asamblea demo con admin y residentes - QA_FEEDBACK.md)
+-- Org: Demo - P.H. Urban Tower (11111111-1111-1111-1111-111111111111)
+INSERT INTO users (id, organization_id, email, role, is_platform_owner) VALUES
+  ('11111111-1111-1111-1111-111111111121', '11111111-1111-1111-1111-111111111111', 'residente1@demo.assembly2.com', 'RESIDENTE', FALSE),
+  ('11111111-1111-1111-1111-111111111122', '11111111-1111-1111-1111-111111111111', 'residente2@demo.assembly2.com', 'RESIDENTE', FALSE),
+  ('11111111-1111-1111-1111-111111111123', '11111111-1111-1111-1111-111111111111', 'residente3@demo.assembly2.com', 'RESIDENTE', FALSE),
+  ('11111111-1111-1111-1111-111111111124', '11111111-1111-1111-1111-111111111111', 'residente4@demo.assembly2.com', 'RESIDENTE', FALSE),
+  ('11111111-1111-1111-1111-111111111125', '11111111-1111-1111-1111-111111111111', 'residente5@demo.assembly2.com', 'RESIDENTE', FALSE)
+ON CONFLICT (email) DO NOTHING;

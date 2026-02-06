@@ -5,6 +5,13 @@
 
 ---
 
+## 0. Corrección PgBouncer aplicada (Coder)
+
+Se aplicó **Database_DBA/INSTRUCCIONES_CODER_PGBOUNCER_AUTH.md** (Opción A): script `sql_snippets/99_pgbouncer_md5_compat.sql` para compatibilidad md5 PgBouncer↔PostgreSQL.  
+**Si la BD ya existía**, antes de validar hay que recrear el volumen de Postgres para que el init ejecute el script (ver sección 4 del documento DBA). Luego **QA re-ejecuta** la validación del flujo OTP que se describe abajo.
+
+---
+
 ## 1. Levantar Docker
 
 ```bash

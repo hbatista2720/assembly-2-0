@@ -6,7 +6,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import { PLANS, Plan, PlanTier } from "@/lib/types/pricing";
+import { PLANS, Plan, PlanTier } from "../../lib/types/pricing";
 
 const PAYMENT_METHODS = [
   { id: "PAYPAL", label: "PayPal", desc: "Tarjeta o balance PayPal (retiros en Panamá)" },

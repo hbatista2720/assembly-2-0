@@ -76,7 +76,8 @@ services:
       dockerfile: Dockerfile
     container_name: assembly-app
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@pgbouncer:5432/assembly
+      # Opción C (temporal): app → postgres directo. Para usar PgBouncer: cambiar a @pgbouncer:5432 (corrección 99_pgbouncer_md5_compat.sql ya en init).
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/assembly
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET}
       OTP_SECRET: ${OTP_SECRET}

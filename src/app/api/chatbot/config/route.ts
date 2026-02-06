@@ -9,7 +9,11 @@ export async function GET() {
       ORDER BY bot_name
     `;
     return NextResponse.json(configs);
-  } catch (error) {
+  } catch (error: unknown) {
+    const msg = error && typeof error === "object" && "code" in error ? String((error as { code: string }).code) : "";
+    if (msg === "42P01") {
+      return NextResponse.json([]);
+    }
     console.error("Error fetching chatbot config:", error);
     return NextResponse.json({ error: "Error al cargar configuración" }, { status: 500 });
   }

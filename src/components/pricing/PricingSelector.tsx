@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PLANS, Plan } from "@/lib/types/pricing";
+import { PLANS, Plan } from "../../lib/types/pricing";
 
 const PH_PLANS = ["EVENTO_UNICO", "DUO_PACK", "STANDARD"];
 const ADMIN_PLANS = ["MULTI_PH_LITE", "MULTI_PH_PRO", "ENTERPRISE"];

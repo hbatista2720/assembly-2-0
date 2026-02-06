@@ -93,6 +93,11 @@ export default function LoginPage() {
         // ignore storage errors
       }
 
+      const redirectTo = params.get("redirect");
+      if (redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")) {
+        router.push(redirectTo);
+        return;
+      }
       if (user.is_platform_owner || user.role === "ADMIN_PLATAFORMA") {
         router.push("/dashboard/platform-admin");
         return;

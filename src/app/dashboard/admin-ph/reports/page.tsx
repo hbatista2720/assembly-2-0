@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useMemo, useState } from "react";
 import { buildActsCsv, getActs } from "../../../../lib/actsStore";
 

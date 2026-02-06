@@ -17,6 +17,14 @@ export default function HomePage() {
     role: "",
     demoEmail: "",
   });
+  // Emails residentes org demo (lista fija; ref QA_FEEDBACK.md, ESTATUS_AVANCE)
+  const DEMO_RESIDENT_EMAILS = [
+    "residente1@demo.assembly2.com",
+    "residente2@demo.assembly2.com",
+    "residente3@demo.assembly2.com",
+    "residente4@demo.assembly2.com",
+    "residente5@demo.assembly2.com",
+  ];
   const [assembliesPerYear, setAssembliesPerYear] = useState(2);
   const [unitsCount, setUnitsCount] = useState(311);
   const [showMonthly, setShowMonthly] = useState(true);
@@ -207,19 +215,25 @@ export default function HomePage() {
       setLeadData((prev) => ({ ...prev, email: emailLower, role: chatRole }));
 
       if (chatRole === "residente") {
+        let recognized = false;
         try {
           const existingUsers = JSON.parse(localStorage.getItem("assembly_users") || "[]") as Array<{
             email: string;
           }>;
-          const match = existingUsers.find((user) => user.email?.toLowerCase() === emailLower);
-          if (!match) {
-            pushBotMessage("No encuentro ese correo. Contacta al administrador de tu PH para validar.");
-            setChatStep(8);
-            setChatInput("");
-            return;
+          if (existingUsers.some((user) => user.email?.toLowerCase() === emailLower)) {
+            recognized = true;
           }
         } catch {
           // ignore storage issues
+        }
+        if (!recognized && DEMO_RESIDENT_EMAILS.includes(emailLower)) {
+          recognized = true;
+        }
+        if (!recognized) {
+          pushBotMessage("No encuentro ese correo. Contacta al administrador de tu PH para validar.");
+          setChatStep(8);
+          setChatInput("");
+          return;
         }
         pushBotMessage("Correo reconocido. Te conecto con tu administrador.");
         setChatStep(8);

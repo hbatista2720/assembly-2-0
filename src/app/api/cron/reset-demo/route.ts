@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { sql } from "../../../../lib/db";
 
 const DEMO_ORG_ID = "11111111-1111-1111-1111-111111111111";
 

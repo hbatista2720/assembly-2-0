@@ -6,8 +6,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { sql } from "@/lib/db";
-import { PLAN_AMOUNTS_CENTS } from "@/lib/payments";
+import { sql } from "../../../../lib/db";
+import { PLAN_AMOUNTS_CENTS } from "../../../../lib/payments";
 
 const VALID_PLANS = [
   "EVENTO_UNICO",

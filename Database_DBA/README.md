@@ -8,6 +8,11 @@
 
 ## 📋 DOCUMENTOS ACTUALES
 
+### **INSTRUCCIONES_CODER_PGBOUNCER_AUTH.md** 🔴 (activo)
+- **Descripción:** Instrucciones de Base de Datos para el Coder – corrección autenticación PgBouncer↔PostgreSQL ("wrong password type" 08P01).
+- **Para:** Coder
+- **Contiene:** Problema, causa (md5 vs scram-sha-256), 3 opciones (A/B/C), verificación, referencias.
+
 ### **VEREDICTO_DBA_ARQUITECTURA_VPS.md** ⭐
 - **Descripción:** Revisión y aprobación de la arquitectura VPS All-in-One
 - **Estado:** ✅ Aprobado

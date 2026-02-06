@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
-import { validateSubscriptionLimits } from "@/lib/middleware/validateSubscriptionLimits";
+import { sql } from "../../../lib/db";
+import { validateSubscriptionLimits } from "../../../lib/middleware/validateSubscriptionLimits";
 
 export async function POST(request: Request) {
   try {

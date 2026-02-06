@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { sql } from "../../../lib/db";
 
 export async function GET(request: NextRequest) {
   try {

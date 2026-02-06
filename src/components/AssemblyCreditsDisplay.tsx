@@ -1,6 +1,6 @@
 "use client";
 
-import useAssemblyCredits from "@/hooks/useAssemblyCredits";
+import useAssemblyCredits from "../hooks/useAssemblyCredits";
 
 export default function AssemblyCreditsDisplay({ organizationId }: { organizationId?: string | null }) {
   const { credits, loading } = useAssemblyCredits(organizationId);

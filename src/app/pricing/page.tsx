@@ -1,8 +1,8 @@
 "use client";
 
-import PricingSelector from "@/components/pricing/PricingSelector";
-import ROICalculator from "@/components/pricing/ROICalculator";
-import EnterprisePlanCard from "@/components/pricing/EnterprisePlanCard";
+import PricingSelector from "../../components/pricing/PricingSelector";
+import ROICalculator from "../../components/pricing/ROICalculator";
+import EnterprisePlanCard from "../../components/pricing/EnterprisePlanCard";
 
 export default function PricingPage() {
   return (

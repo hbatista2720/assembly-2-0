@@ -96,7 +96,7 @@ export default function AdminInteligenteDashboard() {
             <a className="btn btn-ghost" href="/">
               Volver a landing
             </a>
-            <button className="btn btn-primary">Crear demo</button>
+            <a className="btn btn-primary" href="/demo">Crear demo</a>
           </div>
         </aside>
 

@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import UpgradeBanner from "@/components/UpgradeBanner";
-import DemoBanner from "@/components/DemoBanner";
-import useUpgradeBanner from "@/hooks/useUpgradeBanner";
-import AssemblyCreditsDisplay from "@/components/AssemblyCreditsDisplay";
+import UpgradeBanner from "../../../components/UpgradeBanner";
+import DemoBanner from "../../../components/DemoBanner";
+import useUpgradeBanner from "../../../hooks/useUpgradeBanner";
+import AssemblyCreditsDisplay from "../../../components/AssemblyCreditsDisplay";
 
 const KPIS = [
   { label: "Propietarios activos", value: "200", note: "85% al dia" },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 type VoteCounts = {
   si: number;
@@ -29,13 +29,36 @@ const saveVotes = (assemblyId: string, votes: VoteCounts) => {
 
 export default function ResidentVotePage() {
   const params = useParams();
+  const router = useRouter();
   const assemblyId = typeof params?.id === "string" ? params.id : "demo";
   const [votes, setVotes] = useState<VoteCounts>({ si: 0, no: 0, abst: 0 });
   const [selected, setSelected] = useState<"si" | "no" | "abst" | null>(null);
+  const [sessionOk, setSessionOk] = useState(false);
+
+  // Validar sesión: si no hay usuario, redirigir a /login
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const email = localStorage.getItem("assembly_email");
+    if (!email?.trim()) {
+      const redirect = encodeURIComponent(`/assembly/${assemblyId}/vote`);
+      router.replace(`/login?redirect=${redirect}`);
+      return;
+    }
+    setSessionOk(true);
+  }, [assemblyId, router]);
 
   useEffect(() => {
+    if (!sessionOk) return;
     setVotes(loadVotes(assemblyId));
-  }, [assemblyId]);
+  }, [sessionOk, assemblyId]);
+
+  if (sessionOk !== true) {
+    return (
+      <div className="container">
+        <div className="card">Cargando…</div>
+      </div>
+    );
+  }
 
   const handleVote = (value: "si" | "no" | "abst") => {
     if (selected) return;

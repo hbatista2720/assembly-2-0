@@ -1,4 +1,4 @@
-import { sql } from "@/lib/db";
+import { sql } from "../db";
 
 export type ActionType = "create_organization" | "create_assembly";
 

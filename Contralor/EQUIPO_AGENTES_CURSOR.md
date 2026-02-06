@@ -7,6 +7,7 @@
 **Propósito:** Definir roles, responsabilidades y modelos IA para cada agente
 
 **Última actualización (historial):**
+- **v2.2 (Feb 2026):** REGLA 9 - No crear carpetas innecesarias (todos los agentes). Usar estructura existente para evitar confusiones.
 - **v2.1 (Feb 2026):** 🚨 REGLA 8 - Por rol: no podemos generar código, solo instrucciones y tareas propias de tu rol. Solo Coder genera código (ahorro tokens). Coder no debe revisar archivos fuera de la tarea.
 - **v2.0 (30 Ene 2026):** 🔥 CAMBIO MAYOR - Nueva arquitectura VPS All-in-One aprobada. Ya NO usamos Supabase Cloud. Todo es self-hosted: PostgreSQL + Redis + Auth (OTP+JWT) + Socket.io.
 - **v1.1 (30 Ene 2026):** Agente Database actualizado a DBA Senior con capacidades de auditoría.
@@ -1548,6 +1549,16 @@ Agente QA:
 ✅ CODER: No revisar ni abrir archivos que NO estén asociados a la tarea actual
    → Limitar contexto solo a lo necesario para la tarea asignada
    → Reduce tokens y evita tocar código fuera de scope
+```
+
+### **9. NO CREAR CARPETAS INNECESARIAS**
+```
+❌ Ningún agente debe crear carpetas nuevas si no son estrictamente necesarias
+   → Evita confusión: más carpetas = más rutas y dudas sobre dónde va cada documento
+
+✅ Usar la estructura existente del proyecto (Contralor/, QA/, Coder/, Arquitecto/, etc.)
+✅ Si hace falta un nuevo documento, colocarlo en la carpeta del agente o ruta ya definida en INDICE/ESTATUS_AVANCE
+✅ Si hay duda, preguntar al Contralor o a Henry antes de crear una carpeta
 ```
 
 ---
