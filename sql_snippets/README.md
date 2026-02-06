@@ -15,6 +15,8 @@ Esta carpeta se monta en el contenedor Postgres como **`/docker-entrypoint-initd
 | `rls_multi_tenant_setup.sql` | RLS multi-tenant. |
 | `schema_auth_improved.sql` | Schema auth mejorado. |
 | **`seeds_residentes_demo.sql`** | **Usuarios residentes demo** (residente1@…residente5@demo.assembly2.com, org demo). Entregado por Database. |
+| **`seeds_leads_demo.sql`** | **Leads demo para Funnel** (5 leads, etapas: new, qualified, demo_active, converted). Para validar Gestión de Leads. |
+| `98_platform_admin_clients.sql` | Tabla `platform_client_status` (estado Activo/Suspendido/Cancelado por organización) para dashboard Henry. |
 
 ## Ejecución manual (instancia ya creada)
 
@@ -28,6 +30,12 @@ Si el volumen de Postgres ya existía antes de añadir un script, el init **no**
   `docker compose exec postgres psql -U postgres -d assembly -f /docker-entrypoint-initdb.d/seeds_residentes_demo.sql`
 
 Referencia: **Contralor/ESTATUS_AVANCE.md** (tarea “Usuarios residentes demo”), **QA/QA_FEEDBACK.md**.
+
+### Leads demo para Funnel (`seeds_leads_demo.sql`)
+
+**Prerrequisito:** Ejecutar primero `97_platform_leads.sql` si la tabla no existe.
+- `docker compose exec -T postgres psql -U postgres -d assembly < sql_snippets/seeds_leads_demo.sql`
+- o `docker compose exec postgres psql -U postgres -d assembly -f /docker-entrypoint-initdb.d/seeds_leads_demo.sql`
 
 ### Otros scripts
 

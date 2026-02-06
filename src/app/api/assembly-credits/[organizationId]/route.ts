@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { sql } from "../../../../lib/db";
 
-export async function GET(_: Request, { params }: { params: { organizationId: string } }) {
-  const { organizationId } = params;
+export async function GET(_: Request, { params }: { params: Promise<{ organizationId: string }> }) {
+  const { organizationId } = await params;
 
   try {
     const credits = await sql<

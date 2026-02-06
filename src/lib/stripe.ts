@@ -8,7 +8,7 @@ import Stripe from "stripe";
 const secret = process.env.STRIPE_SECRET_KEY;
 export const stripe =
   typeof secret === "string" && secret.length > 0
-    ? new Stripe(secret, { apiVersion: "2024-12-18.acacia" })
+    ? new Stripe(secret, { apiVersion: "2026-01-28.clover" })
     : null;
 
 export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";

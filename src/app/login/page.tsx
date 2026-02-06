@@ -2,10 +2,11 @@
 
 import { useRef, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 const DEMO_EMAIL = "demo@assembly2.com";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const params = useSearchParams();
   const [email, setEmail] = useState("");
@@ -82,6 +83,9 @@ export default function LoginPage() {
       try {
         localStorage.setItem("assembly_role", roleLabel);
         localStorage.setItem("assembly_email", trimmedEmail);
+        if (data.user.id) {
+          localStorage.setItem("assembly_user_id", data.user.id);
+        }
         document.cookie = `assembly_role=${roleLabel}; path=/; max-age=604800`;
         if (data.user.organization_id) {
           localStorage.setItem("assembly_organization_id", data.user.organization_id);
@@ -287,5 +291,19 @@ export default function LoginPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <main className="container">
+        <div className="card glass" style={{ maxWidth: "860px", margin: "0 auto" }}>
+          <p className="muted">Cargando…</p>
+        </div>
+      </main>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

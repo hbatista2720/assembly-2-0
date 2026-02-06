@@ -15,6 +15,15 @@ type Unit = {
   voteMethod: "FACE_ID" | "MANUAL" | null;
 };
 
+type AbandonEvent = {
+  id: string;
+  resident_name: string | null;
+  unit: string | null;
+  email: string;
+  abandoned_at: string;
+  display: string;
+};
+
 type Summary = {
   stats: {
     total: number;
@@ -75,6 +84,7 @@ export default function MonitorPage() {
   const [zoomLevel, setZoomLevel] = useState<"compact" | "normal" | "large">("normal");
   const [units, setUnits] = useState<Unit[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [abandons, setAbandons] = useState<AbandonEvent[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -108,6 +118,31 @@ export default function MonitorPage() {
     };
   }, [assemblyId]);
 
+  useEffect(() => {
+    let active = true;
+    const loadAbandons = async () => {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const hasValidAssemblyId = uuidRegex.test(assemblyId);
+      const orgId = typeof window !== "undefined" ? localStorage.getItem("assembly_organization_id") : null;
+      const url = hasValidAssemblyId
+        ? `/api/resident-abandon?assemblyId=${assemblyId}`
+        : orgId
+          ? `/api/resident-abandon?organizationId=${orgId}`
+          : null;
+      if (!url) return;
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (active && Array.isArray(data.events)) setAbandons(data.events);
+    };
+    loadAbandons();
+    const interval = setInterval(loadAbandons, 6000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [assemblyId]);
+
   const filteredUnits = useMemo(() => {
     if (filterTower === "all") return units;
     return units.filter((unit) => unit.tower === filterTower);
@@ -132,6 +167,16 @@ export default function MonitorPage() {
 
   return (
     <div className="monitor-container">
+      {abandons.length > 0 && (
+        <div className="abandons-section" style={{ marginBottom: "16px", padding: "12px 16px", background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: "12px" }}>
+          <div style={{ fontWeight: 600, marginBottom: "8px", color: "#fca5a5" }}>Abandonos de sala</div>
+          <ul style={{ margin: 0, paddingLeft: "20px", color: "#e2e8f0", fontSize: "13px" }}>
+            {abandons.map((ev) => (
+              <li key={ev.id}>{ev.display}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="monitor-header">
         <div className="view-toggle">
           <button className={viewMode === "summary" ? "active" : ""} onClick={() => setViewMode("summary")}>

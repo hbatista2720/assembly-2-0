@@ -38,9 +38,12 @@ export default function CrmPage() {
   }
 
   return (
-    <main className="container">
+    <>
       <div className="card" style={{ marginBottom: "16px" }}>
-        <h1 style={{ margin: 0 }}>CRM y Campañas</h1>
+        <a href="/dashboard/admin" className="btn btn-ghost">
+          ← Volver al Dashboard
+        </a>
+        <h1 style={{ margin: "12px 0 0" }}>CRM y Campañas</h1>
         <p className="muted" style={{ marginTop: "6px" }}>
           Automatiza comunicaciones y seguimiento por etapa del funnel.
         </p>
@@ -72,6 +75,6 @@ export default function CrmPage() {
           </div>
         )}
       </div>
-    </main>
+    </>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 type NavItem = {
@@ -124,7 +124,7 @@ const ROLE_PERMISSIONS: Record<string, Record<string, boolean>> = {
   },
 };
 
-export default function AdminPhShell({ children }: { children: ReactNode }) {
+function AdminPhShellContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [userEmail, setUserEmail] = useState("");
@@ -169,6 +169,7 @@ export default function AdminPhShell({ children }: { children: ReactNode }) {
     try {
       localStorage.removeItem("assembly_role");
       localStorage.removeItem("assembly_email");
+      localStorage.removeItem("assembly_user_id");
       localStorage.removeItem("assembly_admin_ph_role");
       document.cookie = "assembly_role=; path=/; max-age=0";
     } catch {
@@ -273,5 +274,20 @@ export default function AdminPhShell({ children }: { children: ReactNode }) {
         </section>
       </div>
     </main>
+  );
+}
+
+export default function AdminPhShell({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={
+      <main className="container">
+        <div className="app-shell">
+          <aside className="sidebar" />
+          <section className="content-area"><p className="muted">Cargando…</p></section>
+        </div>
+      </main>
+    }>
+      <AdminPhShellContent>{children}</AdminPhShellContent>
+    </Suspense>
   );
 }

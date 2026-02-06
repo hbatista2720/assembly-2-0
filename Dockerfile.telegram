@@ -3,7 +3,8 @@ FROM node:20-alpine
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install
+# Incluir devDependencies (tipos React, etc.) por si se ejecuta build
+RUN npm install --include=dev
 
 COPY . .
 

@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
+import ChatbotPreview from "../../../components/chatbot/ChatbotPreview";
+
+const TELEGRAM_BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "";
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "test";
 
 interface ChatbotConfig {
   id: string;
@@ -22,10 +26,10 @@ interface ChatbotConfig {
 }
 
 const CONTEXT_LABELS: Record<string, string> = {
-  landing: "Landing (Calificacion de leads)",
+  landing: "Landing (Calificación de leads)",
   demo: "Demo (Tutor interactivo)",
-  soporte: "Soporte tecnico",
-  residente: "Residente (Votacion)",
+  soporte: "Soporte técnico",
+  residente: "Residente (Votación)",
 };
 const PROMPT_CONTEXTS = ["landing", "demo", "soporte", "residente"];
 
@@ -35,6 +39,12 @@ export default function ChatbotConfigPage() {
   const [editingContext, setEditingContext] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [baseUrl, setBaseUrl] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") setBaseUrl(window.location.origin);
+  }, []);
 
   useEffect(() => {
     fetchConfigs();
@@ -105,6 +115,14 @@ export default function ChatbotConfigPage() {
     }
   }
 
+  function copyToClipboard(text: string, label: string) {
+    if (typeof navigator?.clipboard?.writeText === "function") {
+      navigator.clipboard.writeText(text).then(() => toast.success(`${label} copiado.`)).catch(() => {});
+    } else {
+      toast.error("No se pudo copiar.");
+    }
+  }
+
   async function toggleActive(botName: string) {
     const config = configs.find((item) => item.bot_name === botName);
     if (!config) return;
@@ -126,19 +144,101 @@ export default function ChatbotConfigPage() {
 
   if (loading) {
     return (
-      <main className="container">
-        <div className="card">Cargando configuracion...</div>
-      </main>
+      <>
+        <div className="card">Cargando configuración...</div>
+      </>
     );
   }
 
   return (
-    <main className="container">
+    <>
       <div className="card" style={{ marginBottom: "16px" }}>
-        <h1 style={{ margin: 0 }}>Configuracion de Chatbots</h1>
+        <a href="/dashboard/admin" className="btn btn-ghost">
+          ← Volver al Dashboard
+        </a>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "12px", marginTop: "12px" }}>
+          <h1 style={{ margin: 0 }}>Configuración de Chatbots</h1>
+          <span className="pill" style={{ background: "rgba(99, 102, 241, 0.25)", color: "#a5b4fc" }}>
+            Versión: {APP_VERSION}
+          </span>
+        </div>
         <p className="muted" style={{ marginTop: "6px" }}>
-          Edita prompts, parametros y activa/desactiva chatbots.
+          Edita prompts, parámetros y activa/desactiva chatbots.
         </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: "16px" }}>
+        <h3 style={{ marginTop: 0 }}>Enlaces para compartir y validar</h3>
+        <p className="muted" style={{ marginBottom: "12px" }}>
+          Usa estos enlaces para probar el chatbot web o compartir el bot de Telegram.
+        </p>
+        <div className="card-list">
+          <div className="list-item" style={{ alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+            <div style={{ flex: "1 1 200px" }}>
+              <strong>Chatbot Web (landing)</strong>
+              <p className="muted" style={{ margin: "4px 0 0", fontSize: "13px", wordBreak: "break-all" }}>
+                {baseUrl || "—"}/
+              </p>
+              <p className="muted" style={{ margin: "4px 0 0", fontSize: "12px" }}>
+                Probar en ventana emergente sin salir del dashboard, o abrir en nueva pestaña.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              {baseUrl ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => setPreviewOpen(true)}
+                  >
+                    Probar chatbot (ventana emergente)
+                  </button>
+                  <a
+                    className="btn btn-ghost"
+                    href={baseUrl + "/?openChat=1"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Abrir en nueva pestaña
+                  </a>
+                  <button className="btn btn-ghost" onClick={() => copyToClipboard(baseUrl + "/", "Enlace web")}>
+                    Copiar
+                  </button>
+                </>
+              ) : (
+                <span className="muted">Cargando…</span>
+              )}
+            </div>
+          </div>
+          <div className="list-item" style={{ alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+            <div style={{ flex: "1 1 200px" }}>
+              <strong>Telegram</strong>
+              <p className="muted" style={{ margin: "4px 0 0", fontSize: "13px" }}>
+                {TELEGRAM_BOT_USERNAME
+                  ? `https://t.me/${TELEGRAM_BOT_USERNAME}`
+                  : "Configura NEXT_PUBLIC_TELEGRAM_BOT_USERNAME en .env"}
+              </p>
+            </div>
+            {TELEGRAM_BOT_USERNAME && (
+              <div style={{ display: "flex", gap: "8px" }}>
+                <a
+                  className="btn btn-primary"
+                  href={`https://t.me/${TELEGRAM_BOT_USERNAME}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Abrir
+                </a>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => copyToClipboard(`https://t.me/${TELEGRAM_BOT_USERNAME}`, "Enlace Telegram")}
+                >
+                  Copiar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="split">
@@ -188,7 +288,7 @@ export default function ChatbotConfigPage() {
         <div className="card">
           {selectedConfig ? (
             <>
-              <h3 style={{ marginTop: 0 }}>Parametros IA</h3>
+              <h3 style={{ marginTop: 0 }}>Parámetros IA</h3>
               <div className="two-col" style={{ marginBottom: "16px" }}>
                 <label style={{ display: "grid", gap: "6px" }}>
                   Modelo IA
@@ -293,6 +393,29 @@ export default function ChatbotConfigPage() {
           )}
         </div>
       </div>
-    </main>
+
+      {previewOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Vista previa del chatbot"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+            padding: "20px",
+          }}
+          onClick={() => setPreviewOpen(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <ChatbotPreview onClose={() => setPreviewOpen(false)} />
+          </div>
+        </div>
+      )}
+    </>
   );
 }

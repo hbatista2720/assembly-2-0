@@ -8,15 +8,15 @@ export default function ResidenteAsambleasPage() {
         <p className="muted" style={{ marginTop: "6px" }}>
           Listado de asambleas activas y próximas.
         </p>
-        <a className="btn btn-ghost" href="/">
-          Volver a la landing
+        <a className="btn btn-ghost" href="/chat">
+          Volver al chat
         </a>
       </div>
 
       <div className="card-list">
         {[
-          { title: "Asamblea ordinaria", date: "10 Feb 2026", status: "Activa" },
-          { title: "Asamblea extraordinaria", date: "24 Feb 2026", status: "Programada" },
+          { title: "Asamblea ordinaria", date: "10 Feb 2026", status: "Activa" as const },
+          { title: "Asamblea extraordinaria", date: "24 Feb 2026", status: "Programada" as const },
         ].map((item) => (
           <div key={item.title} className="list-item">
             <div>
@@ -25,7 +25,15 @@ export default function ResidenteAsambleasPage() {
                 {item.date}
               </div>
             </div>
-            <span className="pill">{item.status}</span>
+            {item.status === "Activa" ? (
+              <a href="/residentes/votacion" className="pill" style={{ textDecoration: "none" }}>
+                ACTIVA
+              </a>
+            ) : (
+              <span className="pill" title="Próximamente">
+                PROGRAMADA
+              </span>
+            )}
           </div>
         ))}
       </div>

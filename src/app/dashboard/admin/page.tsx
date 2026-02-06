@@ -36,13 +36,41 @@ const CAMPAIGNS = [
 export default function AdminInteligenteDashboard() {
   const [userEmail, setUserEmail] = useState("");
   const [userRole, setUserRole] = useState("Admin Plataforma");
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [savedDisplayName, setSavedDisplayName] = useState("");
 
   useEffect(() => {
     const storedEmail = localStorage.getItem("assembly_email") || "";
     const storedRole = localStorage.getItem("assembly_role") || "";
+    const storedDisplay = localStorage.getItem("assembly_platform_admin_display_name") || "";
     setUserEmail(storedEmail);
     setUserRole(storedRole === "admin-ph" ? "Admin PH" : "Admin Plataforma");
+    setSavedDisplayName(storedDisplay);
   }, []);
+
+  const headerLabel = savedDisplayName.trim() ? `${savedDisplayName.trim()} (${userEmail || "admin@assembly2.com"})` : (userEmail || "admin@assembly2.com");
+
+  const openProfileModal = () => {
+    setDisplayName(localStorage.getItem("assembly_platform_admin_display_name") || "");
+    setProfileModalOpen(true);
+  };
+
+  const saveProfile = () => {
+    const trimmed = displayName.trim();
+    try {
+      if (trimmed) {
+        localStorage.setItem("assembly_platform_admin_display_name", trimmed);
+        setSavedDisplayName(trimmed);
+      } else {
+        localStorage.removeItem("assembly_platform_admin_display_name");
+        setSavedDisplayName("");
+      }
+    } catch {
+      // ignore
+    }
+    setProfileModalOpen(false);
+  };
 
   const handleLogout = () => {
     try {
@@ -63,7 +91,7 @@ export default function AdminInteligenteDashboard() {
             <span className="pill">Assembly 2.0</span>
             <h3 style={{ margin: "12px 0 4px" }}>Admin Plataforma</h3>
             <p className="muted" style={{ margin: 0 }}>
-              Panel maestro de la operacion
+              Panel maestro de la operación
             </p>
           </div>
           <nav style={{ display: "grid", gap: "10px" }}>
@@ -74,22 +102,25 @@ export default function AdminInteligenteDashboard() {
               🖥️ Monitor VPS
             </a>
             <a className="sidebar-link" href="/platform-admin/clients">
-              👥 Gestion de clientes
+              👥 Gestión de clientes
             </a>
             <a className="sidebar-link" href="/platform-admin/business">
-              💹 Metricas de negocio
+              💹 Métricas de negocio
             </a>
-            <a className="sidebar-link" href="/dashboard/admin#leads">
+            <a className="sidebar-link" href="/platform-admin/leads">
               🎯 Funnel de leads
             </a>
-            <a className="sidebar-link" href="/dashboard/admin#tickets">
+            <a className="sidebar-link" href="/platform-admin/tickets">
               🎫 Tickets inteligentes
             </a>
-            <a className="sidebar-link" href="/dashboard/admin#clientes">
+            <a className="sidebar-link" href="/platform-admin/clients">
               👥 Clientes y demos
             </a>
-            <a className="sidebar-link" href="/dashboard/admin#crm">
+            <a className="sidebar-link" href="/platform-admin/crm">
               📣 CRM y campañas
+            </a>
+            <a className="sidebar-link" href="/platform-admin/chatbot-config">
+              🤖 Configuración Chatbot
             </a>
           </nav>
           <div style={{ marginTop: "auto", display: "grid", gap: "10px" }}>
@@ -121,13 +152,15 @@ export default function AdminInteligenteDashboard() {
                 <span style={{ fontSize: "18px" }}>👤</span>
               </div>
               <div style={{ flex: 1 }}>
-                <strong>{userEmail || "admin@assembly2.com"}</strong>
+                <strong>{headerLabel}</strong>
                 <div className="muted" style={{ fontSize: "13px" }}>
                   {userRole} · Suscripción Plataforma
                 </div>
               </div>
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                <button className="btn btn-ghost">Editar perfil</button>
+                <button type="button" className="btn btn-ghost" onClick={openProfileModal}>
+                  Editar perfil
+                </button>
                 <button className="btn btn-primary" onClick={handleLogout}>
                   Cerrar sesión
                 </button>
@@ -253,7 +286,7 @@ export default function AdminInteligenteDashboard() {
 
           <section id="tickets" className="section">
             <h2 className="section-title">Tickets Inteligentes</h2>
-            <p className="section-subtitle">SLA y escalacion automatica cuando es critico.</p>
+            <p className="section-subtitle">SLA y escalación automática cuando es crítico.</p>
             <div className="grid grid-3">
               {TICKETS.map((ticket) => (
                 <div key={ticket.id} className="card">
@@ -297,14 +330,14 @@ export default function AdminInteligenteDashboard() {
           </section>
 
           <section id="crm" className="section">
-            <h2 className="section-title">CRM y Campanas Automatizadas</h2>
-            <p className="section-subtitle">Seguimiento automatico por etapa del funnel.</p>
+            <h2 className="section-title">CRM y Campañas Automatizadas</h2>
+            <p className="section-subtitle">Seguimiento automático por etapa del funnel.</p>
             <div className="grid grid-3">
               {CAMPAIGNS.map((campaign) => (
                 <div key={campaign.name} className="card">
                   <span className="pill">{campaign.status}</span>
                   <h3 style={{ marginTop: "12px" }}>{campaign.name}</h3>
-                  <p style={{ color: "#cbd5f5" }}>Siguiente accion: {campaign.next}</p>
+                  <p style={{ color: "#cbd5f5" }}>Siguiente acción: {campaign.next}</p>
                   <a className="btn" href="/platform-admin/crm">
                     Configurar
                   </a>
@@ -314,6 +347,93 @@ export default function AdminInteligenteDashboard() {
           </section>
         </section>
       </div>
+
+      {profileModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="profile-modal-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+          }}
+          onClick={() => setProfileModalOpen(false)}
+        >
+          <div
+            className="card"
+            style={{ maxWidth: "400px", margin: "16px", width: "100%" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="profile-modal-title" style={{ marginTop: 0 }}>Editar perfil</h2>
+            <p className="muted" style={{ marginBottom: "16px" }}>
+              Datos de sesión (solo lectura). Puedes definir un nombre para mostrar.
+            </p>
+            <div style={{ display: "grid", gap: "12px" }}>
+              <label style={{ display: "grid", gap: "4px" }}>
+                <span className="muted" style={{ fontSize: "12px" }}>Correo</span>
+                <input
+                  type="text"
+                  value={userEmail || ""}
+                  readOnly
+                  disabled
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: "10px",
+                    border: "1px solid rgba(148,163,184,0.3)",
+                    background: "rgba(15, 23, 42, 0.5)",
+                    color: "#94a3b8",
+                  }}
+                />
+              </label>
+              <label style={{ display: "grid", gap: "4px" }}>
+                <span className="muted" style={{ fontSize: "12px" }}>Rol</span>
+                <input
+                  type="text"
+                  value={userRole}
+                  readOnly
+                  disabled
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: "10px",
+                    border: "1px solid rgba(148,163,184,0.3)",
+                    background: "rgba(15, 23, 42, 0.5)",
+                    color: "#94a3b8",
+                  }}
+                />
+              </label>
+              <label style={{ display: "grid", gap: "4px" }}>
+                <span className="muted" style={{ fontSize: "12px" }}>Nombre para mostrar (opcional)</span>
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Ej. Henry"
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: "10px",
+                    border: "1px solid rgba(148,163,184,0.3)",
+                    background: "rgba(15, 23, 42, 0.6)",
+                    color: "#e2e8f0",
+                  }}
+                />
+              </label>
+            </div>
+            <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+              <button type="button" className="btn btn-primary" onClick={saveProfile}>
+                Guardar
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={() => setProfileModalOpen(false)}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

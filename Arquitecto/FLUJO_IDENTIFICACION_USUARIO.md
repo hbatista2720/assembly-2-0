@@ -169,6 +169,19 @@ return 'visitante';
 
 ---
 
+## 📌 REGLA: CHATBOT LANDING – FLUJO RESIDENTE Y BOTONES
+
+**Referencia:** Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md (Feb 2026).
+
+En el chatbot de la landing, cuando el usuario elige rol **Residente** e introduce un correo:
+
+- **Correo no validado (no reconocido):** Se muestra el mensaje "No encuentro ese correo. Contacta al administrador de tu PH para validar." **No** se muestran los botones de acciones rápidas (Votación, Asambleas, Calendario, Tema del día, Ceder poder). El usuario puede reintentar con otro correo.
+- **Correo validado (reconocido):** Se muestra "Correo reconocido. Te conecto con tu administrador." **Sí** se muestran los botones de acciones rápidas.
+
+**Estado a usar en implementación:** `residentEmailValidated` (boolean). Los botones se muestran solo cuando `chatRole === "residente"` **y** `residentEmailValidated === true`. No basta con `chatStep === 8` si el correo no fue validado.
+
+---
+
 ## 🎯 IMPACTO EN LA ESCALACIÓN
 
 ### **Escenario 1: "Necesito un abogado"**

@@ -8,8 +8,8 @@ export default function ResidenteTemaDelDiaPage() {
         <p className="muted" style={{ marginTop: "6px" }}>
           Información y material de soporte de la votación activa.
         </p>
-        <a className="btn btn-ghost" href="/">
-          Volver a la landing
+        <a className="btn btn-ghost" href="/chat">
+          Volver al chat
         </a>
       </div>
 

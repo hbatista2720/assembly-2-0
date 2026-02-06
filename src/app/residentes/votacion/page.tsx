@@ -103,8 +103,8 @@ export default function ResidenteVotacionPage() {
         <p className="muted" style={{ marginTop: "6px" }}>
           Revisa el tema del día y emite tu voto con trazabilidad legal.
         </p>
-        <a className="btn btn-ghost" href="/">
-          Volver a la landing
+        <a className="btn btn-ghost" href="/chat">
+          Volver al chat
         </a>
         <a className="btn btn-ghost" href="/residentes/asambleas" style={{ marginLeft: "8px" }}>
           Ver asambleas

@@ -18,7 +18,16 @@ El chatbot debe dejar de tratar a todos como "Leads de Venta".
     *   **Subtítulo:** Cambiar "Ventas B2B · Assembly 2.0" ➡️ **"Soporte Residente · [Nombre del PH]"**.
     *   **Footer:** Ocultar el mensaje *"Te contactamos en menos de 24 horas..."*. Mostrar: *"Conectado a la red segura de tu PH"*.
 
-### 2. Deep Linking en Botones de Acción
+### 2. Lógica de Validación de Correo (Residente) – CRÍTICO
+**Problema actual:** Los botones de residente se muestran siempre tras ingresar email, aunque el correo NO esté validado.
+
+**Lógica correcta:**
+- **Si correo NO encontrado:** Mostrar mensaje *"No encuentro ese correo. Contacta al administrador de tu PH para validar."* y **NO mostrar** los botones Votación, Asambleas, etc. Permitir reintentar con otro correo.
+- **Si correo SÍ encontrado:** Mostrar *"Correo reconocido. Te conecto con tu administrador."* y **SÍ mostrar** los botones.
+- **Implementación:** Añadir estado `residentEmailValidated` (boolean). Mostrar botones solo cuando `chatRole === "residente" && residentEmailValidated === true`. No avanzar a `chatStep(8)` si el correo no fue validado.
+- **Referencia detallada:** Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md
+
+### 3. Deep Linking en Botones de Acción
 Los botones actuales en la interfaz del chat (Imagen 2) deben tener rutas específicas:
 *   **Botón "Votación":** 
     *   Si hay una asamblea activa: Redirigir a `/residentes/votacion`.
@@ -37,14 +46,14 @@ Los botones actuales en la interfaz del chat (Imagen 2) deben tener rutas espec�
 *   ✅ Botones de acciones rápidas ya navegan a estas rutas.
 *   🔶 Pendiente: lógica de "asamblea activa" para habilitar/deshabilitar botones.
 
-### 3. Flujo de Validación Biométrica (Marketing de Seguridad)
+### 4. Flujo de Validación Biométrica (Marketing de Seguridad)
 Para residentes, Lex debe ser el guardián de la seguridad.
 *   **Interacción:** Al ingresar el correo, si Lex lo encuentra en la base de datos de `public.users`:
     *   **Respuesta:** *"Hola [Nombre], te he encontrado. Por seguridad legal (Ley 284), para habilitar tu voto necesito que valides tu identidad."*
     *   **Acción:** Mostrar botón **"Validar con Face ID / Touch ID"**.
     *   **Éxito:** Una vez validado, Lex debe decir: *"Identidad verificada. Tus votos ahora están firmados digitalmente."*
 
-### 4. Mejora del Copy (Conversational UX)
+### 5. Mejora del Copy (Conversational UX)
 *   **Lex Humano:** Eliminar frases robóticas. Lex debe sonar como un conserje digital de lujo.
 *   **Base de Conocimiento:** Lex debe ser capaz de responder:
     *   *"¿Cuál es mi coeficiente?"* ➡️ Consultar tabla `residentes`.

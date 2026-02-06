@@ -5,8 +5,8 @@
  */
 
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
-import { PLANS, Plan, PlanTier } from "../../lib/types/pricing";
+import { Suspense, useMemo, useState } from "react";
+import { PLANS, PlanTier } from "../../lib/types/pricing";
 
 const PAYMENT_METHODS = [
   { id: "PAYPAL", label: "PayPal", desc: "Tarjeta o balance PayPal (retiros en Panamá)" },
@@ -16,7 +16,7 @@ const PAYMENT_METHODS = [
   { id: "MANUAL_TRANSFER", label: "Transferencia", desc: "Transferencia manual" },
 ] as const;
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const params = useSearchParams();
   const planId = (params.get("plan") || "STANDARD") as PlanTier;
   const plan = useMemo(() => PLANS.find((p) => p.id === planId) ?? PLANS[2], [planId]);
@@ -141,5 +141,19 @@ export default function CheckoutPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={
+      <main className="container">
+        <div className="card" style={{ maxWidth: "560px", margin: "24px auto", padding: "28px" }}>
+          <p className="muted">Cargando…</p>
+        </div>
+      </main>
+    }>
+      <CheckoutContent />
+    </Suspense>
   );
 }

@@ -4,7 +4,9 @@
 **Última actualización:** Febrero 2026  
 **Responsable:** Contralor
 
-**Recordatorio para todos los agentes (Arquitecto, Contralor, Database, Coder, Marketing, QA):** No crear carpetas innecesarias. Usar la estructura existente del proyecto (Contralor/, QA/, Coder/, Arquitecto/, etc.) para evitar confusiones. Ver Contralor/EQUIPO_AGENTES_CURSOR.md – Regla 9.
+**Recordatorio para todos los agentes (Arquitecto, Contralor, Database, Coder, Marketing, QA):** No crear carpetas innecesarias. Usar la estructura existente del proyecto (Contralor/, QA/, Coder/, Arquitecto/, Marketing/, etc.) para evitar confusiones. Ver Contralor/EQUIPO_AGENTES_CURSOR.md – Regla 9.
+
+**Informar a Marketing (carpeta para reportes):** Los reportes e informes de Marketing deben subirse **solo en la carpeta Marketing/** (ya existente). No crear carpetas nuevas sin consentimiento del Contralor.
 
 ---
 
@@ -43,9 +45,12 @@ FORMATO DE COMMIT:
 | FASE 7 | ✅ Aprobado QA | ✅ bd253ff | ✅ 02 Feb 2026 |
 | FASE 8 | ✅ Aprobado QA | ✅ 3715276 | ⚠️ Push manual (Henry) |
 | FASE 9, 10, 11 | ✅ Aprobado QA | ✅ dc1f9c7 | ⏳ Push (Henry si falla) |
+| Plan navegación + Chatbot residente (Opción B) + Usuarios demo | ✅ Aprobado QA | ✅ a76fb32 | ✅ Push OK |
 
-**Último backup:** Feb 2026 - Commit `dc1f9c7` (FASES 9, 10, 11). Si push falla: `git push origin main` en tu máquina.
+**Último backup:** Feb 2026 - Commit `a76fb32` (Plan navegación Login→Chatbot, Chatbot residente Opción B, Usuarios demo). Push a GitHub completado.
 **Repositorio:** https://github.com/hbatista2720/assembly-2-0
+
+**¿Backup requerido ahora?** **Sí, como primera tarea.** Próxima acción prioritaria: Henry autoriza backup → Contralor ejecuta commit + push. Incluye: validaciones QA/Coder/Database §E, plan de pruebas actualizado, ESTATUS_AVANCE, API resident-abandon, script 100_resident_abandon_events.sql. El resto de tareas (QA revalidar §E, Coder, etc.) van después del backup.
 
 ---
 
@@ -85,6 +90,10 @@ FORMATO DE COMMIT:
 ```
 [████████████████████████] 85%
 ```
+
+### **¿En qué fase estamos?**
+
+Estamos **tras FASES 9, 10 y 11** (monetización completada) y el bloque **Plan navegación + Chatbot residente + Usuarios demo** (backup a76fb32 OK). Siguiente: **pulido y validación** — Coder (botón retorno Platform Admin), **Marketing** (validar dashboard Henry: información correcta y aspecto visual inteligente para Henry). Luego FASE 12 (Docker local) y FASE 13 (Deploy VPS).
 
 ### **FASES CORE (MVP Mínimo):**
 
@@ -597,6 +606,8 @@ VALIDAR:
 3. OTP se guarda solo en BD: tabla auth_pins en PostgreSQL (contenedor assembly-db). Esquema/seed en sql_snippets/auth_otp_local.sql
 4. Conclusión para Base de Datos: "Todo OK, el login OTP depende solo de esta BD". No Redis ni archivos para OTP.
 
+✅ Tabla resident_abandon_events (§E): sql_snippets/100_resident_abandon_events.sql. Instrucciones Coder: Database_DBA/INSTRUCCIONES_CODER_ABANDONO_SALA.md.
+
 🔴 CORRECCIÓN PgBouncer↔PostgreSQL ("wrong password type", 08P01):
    RESPONSABLE PRINCIPAL: Database.
    Tarea: Diagnosticar y especificar la corrección de autenticación (pg_hba.conf, auth_method md5 vs scram-sha-256, userlist si aplica). Documentar qué debe cambiar en Postgres y/o PgBouncer. Entregar instrucciones al Coder para aplicar en el repo.
@@ -655,6 +666,14 @@ Corrección aplicada por Coder:
 Tras aplicar en BD existente, recargar la página de Gestión de Leads; debe cargar sin error (lista vacía = "No hay leads registrados." sin toast rojo).
 ```
 
+### Para CODER (Registro abandono de sala §E):
+```
+✅ Coder implementó: POST /api/resident-abandon, flujo "Cerrar sesión", alerta.
+✅ Database ejecutó script: tabla resident_abandon_events creada en BD (06 Feb).
+📋 Pendiente (si aplica): UI Admin PH "Residente [nombre/unidad] abandonó a las [hora]" en monitor/vista asamblea.
+📋 QA puede revalidar §E.
+```
+
 ### Para CODER (AssembliesPage – duplicate export, aprobado por Contralor):
 ```
 ✅ APLICADO POR CODER. Una sola export default en el archivo.
@@ -679,6 +698,7 @@ Referencia: QA/QA_FEEDBACK.md – sección "QA Re-validación · Login + Plan de
    Scripts: sql_snippets/auth_otp_local.sql (init) y sql_snippets/seeds_residentes_demo.sql (BD existente).
    Usar para: login OTP como residente, pruebas E2E, carga (varios residentes). Ver QA_FEEDBACK.md § "Asamblea demo con admin y residentes".
 
+✅ Abandono de sala (§E): Tabla resident_abandon_events creada en BD (script ejecutado 06 Feb). Coder implementó API POST /api/resident-abandon. **QA puede revalidar §E.**
 📋 OPCIONAL: Validación manual chatbot (4.1, 4.3–4.7) en navegador.
 📋 SIGUIENTE: Validar Docker local según Contralor/VALIDACION_DOCKER_Y_OTP.md (si aplica).
 ────────────────────────────────────────────────────────
@@ -812,6 +832,13 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 
 | Fecha | Cambio | Responsable |
 |-------|--------|-------------|
+| 26 Ene 2026 | **✅ CODER: Respuesta dentro del chatbot (UX residente)** – Votación, Asambleas, Calendario, Tema del día y Ceder poder responden **dentro del chat** con cards/mensajes (sin navegar a landings). Cards en landing (modal) y en /chat: votación (Sí/No/Abstengo), asambleas (listado), calendario (próximas actividades), tema (texto + Ver anexos), poder (formulario email + Enviar). Ref: validación UX Marketing. | Coder |
+| 26 Ene 2026 | **✅ CODER: UX Chatbot navegación residente (Marketing)** – Rec 1: sesión residente en localStorage (assembly_resident_email, assembly_resident_validated) y restauración con ?chat=open. Rec 2: "Volver al chat" (href /chat) en páginas residentes. Rec 3: ACTIVA→votación, PROGRAMADA→Próximamente en asambleas. Rec 5: página /chat full-screen. Rec 6: pills debajo mensaje, encima input. Ref: Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md. | Coder |
+| 26 Ene 2026 | **✅ CODER: Build y tipos React** – @types/react y @types/react-dom en devDependencies; en entornos con NODE_ENV=production usar `npm install --include=dev`. Dockerfile, Dockerfile.webchat, Dockerfile.telegram, Dockerfile.whatsapp con `RUN npm install --include=dev`. Build pasa: params Promise (API Next 15), Stripe apiVersion, useSearchParams en Suspense (checkout, login, landing, AdminPhShell, leads), assemblies route, acts onClick. Ref: ESTATUS_AVANCE § "Para Coder (fallo de build)". | Coder |
+| 30 Ene 2026 | **✅ CONTRALOR: Validación QA, Coder y Base de datos §E** – Respuesta QA validada; respuesta Coder §E validada; **respuesta Base de datos incluida y validada** (tabla resident_abandon_events ejecutada en BD 06 Feb). Plan de pruebas: estatus actualizado. **Próxima tarea prioritaria: backup** (Henry autoriza → Contralor ejecuta). | Contralor |
+| 06 Feb 2026 | **📋 QA: Registro abandono sala §E** – NO IMPLEMENTADO. Falta: botón Cerrar sesión, alerta, tabla BD, UI Admin PH. Ver QA_FEEDBACK.md. **Para Coder + Database.** | QA |
+| 06 Feb 2026 | **📋 QA: Funnel leads + Tickets** – Funnel vacío (tabla platform_leads no existe/vacía). Seeds creados: 97_platform_leads.sql + seeds_leads_demo.sql. **Para Database:** ejecutar scripts. **Para Coder:** integrar en init. Ver QA_FEEDBACK.md. | QA |
+| 05 Feb 2026 | **📋 QA: Dashboard Henry** – Páginas hijas (monitoring, clients, business, leads, chatbot-config, crm) sin botón "Volver al dashboard". **Para Coder.** Ver QA_FEEDBACK.md. | QA |
 | 05 Feb 2026 | **✅ QA: Chatbot re-validado** – Fix Opción B aplicado (DEMO_RESIDENT_EMAILS). Emails residente1@…residente5@ reconocidos. Login OTP + carga OK. Ver QA_FEEDBACK.md. | QA |
 | 05 Feb 2026 | **📋 QA: Chatbot residente** – Validación email usa solo localStorage.assembly_users; residente2@ existe en BD pero chatbot dice "No encuentro ese correo". **Para Coder:** validar contra API/BD. Ver QA_FEEDBACK.md. | QA |
 | 05 Feb 2026 | **✅ QA: Flujo residente validado** – Seeds ejecutados, login OTP residente1@…residente5@ OK, acceso /residentes/votacion con redirect. Ver QA_FEEDBACK.md § "Flujo residente con usuarios demo". | QA |
@@ -837,6 +864,8 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 | Feb 2026 | **📋 PLAN DE PRUEBAS: Navegación Login→Chatbot** – Creado QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md (login, redirección por rol, Admin PH, Platform Admin, chatbot, residentes). Para QA. | Contralor |
 | Feb 2026 | **✅ Reporte QA verify-otp registrado en Contralor** – Responsable: Coder. Asignación: añadir parent_subscription_id a organizations en auth_otp_local.sql. Instrucción en "Para CODER (bloqueador verify-otp)" e historial. Ref: QA/QA_FEEDBACK.md. | Contralor |
 | Feb 2026 | **✅ QA re-validación documentada** - QA/QA_FEEDBACK.md (Docker+OTP tras Opción C). **docker-compose:** app DATABASE_URL → postgres:5432 (Opción C temporal). Historial actualizado. | QA + Contralor |
+| 06 Feb 2026 | **✅ DATABASE: Tabla resident_abandon_events ejecutada en BD** – Script 100_resident_abandon_events.sql ejecutado. Tabla creada. QA puede revalidar §E. Coder ya implementó POST /api/resident-abandon. | Database |
+| Feb 2026 | **✅ DATABASE: Tabla resident_abandon_events (§E)** – Registro abandono de sala. Script sql_snippets/100_resident_abandon_events.sql. Instrucciones Coder: Database_DBA/INSTRUCCIONES_CODER_ABANDONO_SALA.md. Ref: QA_FEEDBACK.md "Registro de abandono de sala (§E)". | Database |
 | Feb 2026 | **✅ DATABASE: Residentes demo en BD** – Usuarios residente1@…residente5@demo.assembly2.com (org Demo, role RESIDENTE) en auth_otp_local.sql + seeds_residentes_demo.sql. Ref: QA_FEEDBACK.md "Recomendación: Asamblea demo con admin y residentes". QA puede usar para plan pruebas (login OTP como residente, carga). | Database |
 | Feb 2026 | **📋 BASE DE DATOS: Instrucciones para Coder** - Database_DBA/INSTRUCCIONES_CODER_PGBOUNCER_AUTH.md (corrección PgBouncer↔PostgreSQL, wrong password type) | Database |
 | Feb 2026 | **🔄 FASE 09 ACTUALIZADA** - Stripe quitado (no retiros Panamá). Pasarelas: PayPal, Tilopay, Yappy, ACH. Ver Arquitecto/VALIDACION_PASARELAS_PAGO_PANAMA.md | Arquitecto |
@@ -942,6 +971,8 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 
 ### 🗄️ DATABASE - Últimos Avances:
 ```
+06 Feb 2026 | ✅ Script 100_resident_abandon_events.sql ejecutado en BD. Tabla resident_abandon_events creada. QA puede revalidar §E. Reportado en ESTATUS_AVANCE y QA_FEEDBACK.
+Feb 2026 | ✅ Tabla resident_abandon_events (§E): 100_resident_abandon_events.sql + INSTRUCCIONES_CODER_ABANDONO_SALA.md. Reportado en QA_FEEDBACK y ESTATUS_AVANCE.
 Feb 2026 | ✅ Residentes demo en BD: auth_otp_local.sql + seeds_residentes_demo.sql (residente1@…residente5@demo.assembly2.com, role RESIDENTE). Reportado en QA_FEEDBACK.md y ESTATUS_AVANCE.
 30 Ene | ✅ Revisión y aprobación Arquitectura VPS All-in-One
 30 Ene | ✅ VEREDICTO_DBA_ARQUITECTURA_VPS.md con validación técnica
@@ -951,6 +982,9 @@ Feb 2026 | ✅ Residentes demo en BD: auth_otp_local.sql + seeds_residentes_demo
 
 ### 💻 CODER - Últimos Avances:
 ```
+26 Ene 2026 | ✅ Respuesta dentro del chatbot: Votación, Asambleas, Calendario, Tema del día, Ceder poder y botón votar responden en el chat con cards/mensajes (sin navegar a landings). Aplicado en landing (modal) y /chat.
+26 Ene 2026 | ✅ UX Chatbot residente (Marketing): sesión en localStorage, "Volver al chat" (/chat), ACTIVA/PROGRAMADA en asambleas, página /chat full-screen, pills debajo mensaje/encima input.
+26 Ene 2026 | ✅ Build y tipos React: devDependencies instaladas con npm install --include=dev; todos los Dockerfiles actualizados; npm run build pasa (Next 15, Suspense useSearchParams, Stripe apiVersion, rutas API).
 Feb 2026 | ✅ FASES 9, 10 y 11 COMPLETADAS: Métodos de pago (Stripe + manual), Demo sandbox, Lead Validation
 Feb 2026 | ✅ FASE 09: create-checkout, webhook Stripe, /checkout, migración 010 (manual_payment_requests, invoices)
 Feb 2026 | ✅ FASE 10: /demo, DemoBanner, login ?demo=1, migración 011 (suscripción DEMO + asamblea), script reset-demo-sandbox
@@ -1019,6 +1053,12 @@ Feb 2026 | ✅ Reporte formal al Contralor en ESTATUS_AVANCE.md (FASES A-E)
 
 ### 📢 MARKETING - Últimos Avances:
 ```
+26 Feb | ✅ UX chatbot: (6) Lógica botones: Votación/Tema del día solo si asamblea activa; Asambleas/Calendario/Ceder poder siempre. (7) Ceder poder: formulario inline en chat. (8) Validación demo: perfiles asamblea activa, programada, pre-registro, sin asambleas ("¿Consultar con admin?"). Ver §F, §G, §H.
+26 Feb | ✅ UX chatbot: (5) Cerrar sesión en lugar de "Volver a landing"; alerta abandono; registro hora para Admin PH. Ver Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md §E.
+26 Feb | ✅ UX chatbot: (3) Mostrar correo, nombre y número de unidad en el chat. (4) Votación/Asambleas/Calendario: responder DENTRO del chat (cards/mensajes inline), no redirigir a landing externa. Ver Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md §C y §D.
+26 Feb | ✅ UX chatbot: (1) Separación Landing vs /chat: landing para ventas, /chat para usuarios existentes. (2) Botones dentro del chat: pills integrados (ref. TAVIQ). Actualizado Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md.
+26 Feb | ✅ UX navegación residente: sesión se pierde al ir a /residentes/* y volver; "Volver a la landing" pide re-ingresar correo; badges ACTIVA/PROGRAMADA sin función. Reporte Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md. Recomendaciones: persistir sesión residente en localStorage, función lógica en tarjetas asambleas.
+26 Feb | ✅ Hallazgo lógica chatbot residente: botones se muestran aunque email NO validado. Reporte en Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md. Instrucciones Coder en INSTRUCCIONES_CODER_PULIDO_CHATBOT_RESIDENTE.md §2.
 31 Ene | ✅ Estrategia B2B Premium: Standard ($189), Multi-PH ($699), Enterprise ($2,499)
 31 Ene | ✅ Política Anti-Abuso y Sistema de Créditos Acumulables
 31 Ene | ✅ Lógica de ROI y Realismo de Datos para Landing Page
@@ -1039,11 +1079,20 @@ Feb 2026 | ✅ Reporte formal al Contralor en ESTATUS_AVANCE.md (FASES A-E)
 30 Ene | ✅ Decisión Contralor (QA_FEEDBACK): validación residente en chatbot → Opción B (aceptar residente1@…residente5@demo.assembly2.com en front; sin API). Coder: implementar en page.tsx.
 30 Ene | ✅ Coder finalizó Opción B (validación residente en chatbot). Siguiente: QA revalidar reconocimiento de correo y botones.
 30 Ene | ✅ QA revalidación chatbot Opción B completada y aprobada (QA_FEEDBACK.md). Siguiente tarea: Contralor backup (cuando Henry autorice) o QA validación manual 4.1–4.7.
+30 Ene | ✅ Backup ejecutado (commit a76fb32). Henry autorizó. Push a GitHub completado (main -> main).
+30 Ene | ✅ Incluido Marketing: validar dashboard Henry (información correcta, aspecto visual inteligente). Instrucción en ESTATUS_AVANCE.
+30 Ene | ✅ Marketing entregó informe MARKETING_VALIDACION_DASHBOARD_HENRY.md con instrucciones explícitas para Coder (layout, sidebar, enlaces, Clients BD, datos reales, precios VPS, tildes). Siguiente: Coder ejecuta.
+30 Ene | ✅ Informe Marketing MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md validado. Arquitecto actualizó FLUJO_IDENTIFICACION_USUARIO.md (regla: botones residente solo cuando residentEmailValidated). Coder puede proceder con corrección en page.tsx.
+30 Ene | ✅ Informe Marketing MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md confirmado (sección A Landing vs Chat, sección B Botones en chat, rec 5 y 6 para Coder). Instrucción para Coder en ESTATUS_AVANCE.
+30 Ene | ✅ Contralor valida: QA reportó que botón de abandono de sala (§E) no está implementado correctamente (QA_FEEDBACK 06 Feb). Acción: Coder + Database implementar según QA_FEEDBACK.md.
+30 Ene | ✅ Contralor valida respuesta Coder §E: implementación coherente con QA_FEEDBACK, INSTRUCCIONES_CODER_ABANDONO_SALA.md y Marketing §E. Pendiente: ejecutar 100_resident_abandon_events.sql en la BD si la tabla no existe (si no, POST devuelve 500).
 ```
 
 ---
 
 ## ▶ SIGUIENTE PASO (al cierre de este documento)
+
+**Primera tarea (prioridad):** **Backup.** Henry autoriza "Hacer backup" → Contralor ejecuta commit + push según protocolo. Incluye estado actual: validaciones QA/Coder/Database §E, plan de pruebas, ESTATUS_AVANCE y cambios recientes (API resident-abandon, script 100_resident_abandon_events.sql). Las demás tareas (QA revalidar §E, Coder §F/§G/§H, etc.) siguen después del backup.
 
 **Plan de pruebas navegación:** ✅ **COMPLETADO** (etapas 1–6 aprobadas).
 
@@ -1059,10 +1108,59 @@ Feb 2026 | ✅ Reporte formal al Contralor en ESTATUS_AVANCE.md (FASES A-E)
 
 **Siguiente tarea:** **Contralor** (backup cuando Henry autorice) o **QA** (validación manual chatbot 4.1–4.7 si falta). Ver instrucciones más abajo.
 
-**Próximas opciones:**
-- **Contralor (siguiente paso recomendado):** Ejecutar backup (commit + push) cuando Henry autorice. Protocolo: Henry autoriza → Contralor ejecuta. Ver instrucción más abajo.
-- **QA:** Validación manual chatbot (4.1, 4.3–4.7) si aún no ejecutada; reportar en QA_FEEDBACK.md.
-- **QA:** Validación Docker/OTP según Contralor/VALIDACION_DOCKER_Y_OTP.md.
+**QA observación (botón retorno):** En platform-admin/tickets/[id]/page.tsx (líneas 109-110) ya existe botón "← Volver al Dashboard". Usar como base para añadirlo en el resto de páginas Platform Admin. Ver QA/QA_FEEDBACK.md § "Botón de retorno en páginas Platform Admin".
+
+**Marketing (validación dashboard Henry):** ✅ **Informe entregado.** Marketing/MARKETING_VALIDACION_DASHBOARD_HENRY.md con checklist detallado, observaciones por ruta y recomendaciones para Henry. Incluye instrucciones explícitas para el Coder (layout compartido, enlace Chatbot Config, enlaces alineados, persistencia Clients, datos reales en dashboard, precios VPS, tildes). Siguiente: **Coder** ejecuta según ese documento. **Regla para Marketing:** Subir reportes solo en la carpeta **Marketing/**; no crear carpetas nuevas sin consentimiento del Contralor.
+
+**Validación avance – fallo de build:** Sí, **lo corrige el Coder**. El fallo del build por ausencia de `@types/react` (o tipos de React) no está causado por los cambios de funcionalidad; es un tema de dependencias/tipos. El Coder debe instalar los tipos (`@types/react`, `@types/react-dom`) y asegurar que el build pase por completo. Instrucción más abajo.
+
+**Informe Marketing – lógica chatbot residente (MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md):** ✅ **Validado.** Contralor valida el informe. **Arquitecto actualizó:** Arquitecto/FLUJO_IDENTIFICACION_USUARIO.md con la sección "Regla: Chatbot landing – Flujo residente y botones" (residentEmailValidated; botones solo cuando correo validado). **Coder puede proceder** con la corrección en src/app/page.tsx según Marketing + Arquitecto.
+
+**Informe Marketing – UX Chatbot y navegación residente (MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md):** ✅ **Confirmado.** Contenido: **§A** Landing vs Chat. **§B** Botones pills en chat. **§C** Identidad residente (correo, nombre, unidad). **§D** Responder DENTRO del chat: botones Votación, Asambleas, Calendario, Tema del día, Ceder poder y botón votar deben dar **respuesta dentro del chatbot** (cards/mensajes inline), no llevar a una landing externa; lo implementa el **Coder**. **§E. Cerrar sesión y abandono de sala:** Reemplazar "Volver a la landing" por "Cerrar sesión"; al clic mostrar alerta "Estás abandonando la votación. Esto afecta el quórum. ¿Cerrar sesión?"; si confirma: cerrar sesión y limpiar datos del residente; **registrar en BD la hora** en que el residente abandonó (para Admin PH). Instrucción para Coder más abajo. **Probar build en Docker:** lo ejecuta **QA** (o Coder para validar); instrucción más abajo.
+
+**Validación Contralor – Respuesta del Coder (§E):** ✅ **Validada.** La implementación del flujo §E (Cerrar sesión, alerta, registro de abandono) está coherente con QA_FEEDBACK.md, Database_DBA/INSTRUCCIONES_CODER_ABANDONO_SALA.md y Marketing §E. API `POST /api/resident-abandon` y uso de la tabla `resident_abandon_events` implementados. **Pendiente:** En la BD debe existir la tabla `resident_abandon_events` (script `sql_snippets/100_resident_abandon_events.sql` ejecutado). Si la tabla no está creada en el entorno, el POST devolverá 500 hasta que **Database** (o quien tenga acceso a la BD) ejecute el script. Instrucción para Database más abajo.
+
+**Validación Contralor – Respuesta QA (§E, 06 Feb 2026):** ✅ **Validada.** El reporte de QA en QA_FEEDBACK.md § "Registro de abandono de sala (§E)" es coherente con el estado actual: (1) BD + API listos (tabla creada 06 Feb, POST /api/resident-abandon implementado). (2) QA indica "QA puede revalidar §E" una vez verificada la tabla en el entorno. (3) Pendientes reportados por QA: botón "Cerrar sesión" en lugar de "Volver al inicio", alerta de confirmación, vista Admin PH "Residente X abandonó a las [hora]", trazabilidad/quórum. La última respuesta del Coder ya fue validada; no hay nueva contestación del Coder que requiera nueva validación. **Siguiente:** QA revalida §E (flujo Cerrar sesión + registro en BD) cuando corresponda; si la tabla existe, el POST debe responder OK.
+
+**Validación Contralor – Respuesta Base de datos (§E):** ✅ **Incluida y validada.** La respuesta de Database está registrada en este documento: (1) **06 Feb 2026:** Database ejecutó en BD el script `sql_snippets/100_resident_abandon_events.sql`; tabla `resident_abandon_events` creada. (2) Script e instrucciones para Coder en Database_DBA/INSTRUCCIONES_CODER_ABANDONO_SALA.md. (3) Historial y sección "DATABASE - Últimos Avances" reflejan: tabla §E creada, residentes demo en BD, instrucciones PgBouncer. No queda pendiente de Database para §E (tabla ya ejecutada en BD el 06 Feb).
+
+**Validación Contralor – Botón de abandono de sala (§E):** ✅ **QA sí lo reportó.** En QA/QA_FEEDBACK.md (06 Feb 2026), sección "QA Validación · Registro de abandono de sala (§E)", el resultado fue **NO IMPLEMENTADO**. Coder ya implementó; pendiente que la tabla exista en BD.
+
+**Orden de trabajo §E (instrucciones separadas):**
+
+| Orden | Agente    | Tarea | Al finalizar |
+|-------|-----------|--------|----------------|
+| **1º** | **Database** | Crear tabla/estructura en BD para registrar hora de abandono del residente (resident_abandon_events o equivalente). Entregar script en sql_snippets/ y documentar para el Coder. | Indicar en ESTATUS_AVANCE o QA_FEEDBACK que Database terminó; **el Coder puede proceder**. |
+| **2º** | **Coder** | Implementar botón "Cerrar sesión", alerta de confirmación, API que registre en la tabla de Database, y vista Admin PH "Residente X abandonó a las [hora]". | QA revalida §E cuando Coder entregue. |
+
+Instrucciones detalladas para cada agente más abajo (copiar y pegar).
+
+---
+
+**Próxima tarea (Marketing – §F, §G, §H agregados al informe):**
+
+| Sección | Qué hace el Coder | Referencia |
+|---------|-------------------|------------|
+| **§F** | **Lógica de habilitación de botones:** Votación y Tema del día solo si hay asamblea activa; Asambleas, Calendario y Ceder poder siempre habilitados. Si no hay asamblea activa: Votación y Tema del día deshabilitados (gris) con texto "No hay votación activa" o similar. | Marketing informe §F |
+| **§G** | **Ceder poder: formulario dentro del chat.** Formulario inline en el chat: campo "Correo del apoderado" + botón "Enviar poder". Todo dentro del chat, sin redirigir. Validar correo y confirmar con mensaje del bot. | Marketing informe §G |
+| **§H** | **Validación demo por perfil.** Comportamiento según contexto: Asamblea activa → Votación y Tema del día habilitados; Asamblea programada → solo Asambleas y Calendario, Votación/Tema deshabilitados; Pre-registro → residente validado sin asambleas; Sin asambleas año en curso → mensaje "No hay asambleas programadas para el año en curso. ¿Consultar con el administrador?" | Marketing informe §H |
+
+**Responsable:** Coder (una sola instrucción para §F, §G, §H). Instrucción para copiar y pegar más abajo.
+
+**Próximas opciones (orden):**
+- **Contralor (primera tarea):** Ejecutar **backup** cuando Henry autorice. Commit + push con estado actual (validaciones §E, plan pruebas, ESTATUS_AVANCE). Resto de tareas después.
+- **Coder (prioridad tras backup):** Corregir lógica chatbot residente en page.tsx (residentEmailValidated; botones solo cuando correo validado). Ver instrucción más abajo y Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md. Arquitecto ya actualizó FLUJO_IDENTIFICACION_USUARIO.md.
+- **Coder:** Ejecutar instrucciones del informe Marketing dashboard Henry (layout platform-admin, Chatbot Config en sidebar, enlaces, persistencia Clients, datos reales, precios VPS, tildes). Ver Marketing/MARKETING_VALIDACION_DASHBOARD_HENRY.md.
+- **Coder:** Implementar informe Marketing UX chatbot (página /chat rec 5, botones pills en chat rec 6, persistencia sesión, Volver al chat, ACTIVA/PROGRAMADA). Ver instrucción más abajo y Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md.
+- **Coder:** Añadir botón de retorno al dashboard en las páginas platform-admin que no lo tengan (monitoring, clients, business, leads, chatbot-config, crm). Referencia: tickets/[id]/page.tsx líneas 109-110.
+- **Contralor:** Backup cuando Henry autorice (ya ejecutado a76fb32; push OK).
+- **QA:** Ejecutar plan de navegación test completo (etapas 1–6). Ver instrucción más abajo y QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md.
+- **QA:** Probar el build dentro de una imagen Docker (docker compose up -d --build; reportar si falla en QA_FEEDBACK.md para que Coder corrija). Ver instrucción más abajo.
+- **Database (§E):** Ejecutar en la BD el script `sql_snippets/100_resident_abandon_events.sql` si la tabla `resident_abandon_events` aún no existe (sin ella el POST /api/resident-abandon devuelve 500). Coder ya implementó el flujo. Ver instrucción más abajo.
+- **Coder (2º, tras Database):** Implementar botón "Cerrar sesión", alerta, llamada a API de abandono y vista Admin PH. Ver instrucción más abajo.
+- **Coder (próxima tarea):** Implementar §F, §G, §H del informe Marketing (lógica botones, formulario Ceder poder en chat, validación demo por perfil). Ver instrucción más abajo.
+- **QA:** Validar registro de abandono de sala (§E): ✅ Ya reportado – NO IMPLEMENTADO. Revalidar cuando Coder/Database entreguen.
+- **QA:** Validación manual chatbot (4.1–4.7) o Docker/OTP si aplica.
 
 ---
 
@@ -1083,9 +1181,38 @@ Feb 2026 | ✅ Reporte formal al Contralor en ESTATUS_AVANCE.md (FASES A-E)
 
 **Para QA (revalidación chatbot Opción B):** ✅ Completada (ver QA_FEEDBACK.md).
 
-**Para Contralor (siguiente tarea – backup):**
+**Para QA (plan de navegación – test completo):**
 ```
-Cuando Henry autorice "Hacer backup": ejecutar commit + push según protocolo de backup por fase (Contralor/ESTATUS_AVANCE.md). Formato commit: "FASE X completada: [descripción] - Aprobado por QA". Confirmar "Backup completado" tras el push.
+Ejecutar el plan de pruebas de navegación completo según QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md: etapas 1 (Login), 2 (Dashboard Admin PH 2.1–2.9), 3 (Platform Admin 3.1–3.6), 4 (Landing → Chatbot y botones 4.1–4.7), 5 (Páginas Residentes 5.1–5.5), 6 (Smoke test 6.1–6.5). Verificar que cada página y dashboard carguen bien (sin errores, sin tiempos excesivos). Anotar cualquier lentitud, error o mejora de experiencia de usuario (UX). Reportar resultado en QA/QA_FEEDBACK.md y actualizar la barra de progreso en el plan si aplica. Referencia: Contralor/ESTATUS_AVANCE.md.
+```
+
+**Para QA (probar build dentro de Docker):**
+```
+Probar el build dentro de una de las imágenes Docker: levantar el stack (docker compose up -d --build o equivalente), asegurar que la imagen de la app se construye sin error (npm run build dentro del contenedor). Si el build falla, reportar en QA/QA_FEEDBACK.md el mensaje de error y el paso donde falla; el Coder corrige. Referencia: Contralor/ESTATUS_AVANCE.md.
+```
+
+**Para QA (validar registro de abandono de sala – §E Coder):** ✅ **Ejecutada.** QA reportó NO IMPLEMENTADO (06 Feb 2026). Ver QA/QA_FEEDBACK.md § "QA Validación · Registro de abandono de sala (§E)".
+
+**Para Database (§E abandono de sala – script ya existe; ejecutar en la BD si no está creada la tabla):**
+```
+El script sql_snippets/100_resident_abandon_events.sql ya existe y crea la tabla resident_abandon_events. El Coder ya implementó la API POST /api/resident-abandon que usa esa tabla. Si en el entorno (Docker/local) la tabla aún no existe, ejecutar el script: desde la raíz del proyecto, `docker compose exec -T postgres psql -U postgres -d assembly < sql_snippets/100_resident_abandon_events.sql` (o equivalente según entorno). Sin la tabla, el POST devuelve 500. Al ejecutar el script, indicar en ESTATUS_AVANCE o QA_FEEDBACK que la tabla está creada para que QA pueda revalidar §E. Referencia: Database_DBA/INSTRUCCIONES_CODER_ABANDONO_SALA.md, Contralor/ESTATUS_AVANCE.md.
+```
+
+**Para Database (§E – crear tabla, cuando aún no exista script):** ✅ Script ya entregado (100_resident_abandon_events.sql). Solo falta **ejecutarlo en la BD** si la tabla no está creada.
+
+**Para Coder (§F, §G, §H – próxima tarea, Marketing):**
+```
+Implementar según Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md secciones §F, §G y §H. §F: Habilitar botones por estado de asamblea – Votación y Tema del día solo si hay asamblea activa; Asambleas, Calendario y Ceder poder siempre. Si no hay asamblea activa, mostrar Votación y Tema del día deshabilitados (gris) con texto tipo "No hay votación activa". §G: Ceder poder con formulario dentro del chat – campo "Correo del apoderado" + botón "Enviar poder", todo inline en el chat sin redirigir; validar correo y confirmar con mensaje del bot. §H: Validación demo por perfil – Asamblea activa: Votación y Tema del día habilitados; Asamblea programada: solo Asambleas y Calendario, Votación/Tema deshabilitados; Pre-registro: residente validado sin asambleas; Sin asambleas año en curso: mensaje "No hay asambleas programadas para el año en curso. ¿Consultar con el administrador?". Referencia: Contralor/ESTATUS_AVANCE.md.
+```
+
+**Para Coder (§E abandono de sala – ejecutar después de Database):**
+```
+Implementar el flujo de abandono de sala (§E) solo cuando Database haya finalizado (tabla/estructura para registrar abandono). Según QA/QA_FEEDBACK.md: (1) Reemplazar "Volver al inicio" por "Cerrar sesión" en contexto residente validado (ej. chat/page.tsx). (2) Al clic en "Cerrar sesión": mostrar alerta "Estás abandonando la votación. Esto afecta el quórum. ¿Cerrar sesión?". (3) Si confirma: limpiar sesión del residente y llamar API (POST) para registrar en BD la hora de abandono usando la tabla que Database creó. (4) Crear la ruta API que inserte en esa tabla (user/resident, assembly/session, abandoned_at). (5) En el dashboard Admin PH (monitor o vista asamblea): mostrar lista o mensaje "Residente [nombre/unidad] abandonó la sala a las [hora]" leyendo desde la BD. Referencia: Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md §E, QA/QA_FEEDBACK.md, Contralor/ESTATUS_AVANCE.md.
+```
+
+**Para Contralor (primera tarea – backup):**
+```
+Primera tarea prioritaria: cuando Henry autorice "Hacer backup", ejecutar commit + push según protocolo de backup por fase (Contralor/ESTATUS_AVANCE.md). Incluir en el commit: validaciones QA/Coder/Database §E, plan de pruebas, ESTATUS_AVANCE, cambios §E (API resident-abandon, script 100_resident_abandon_events.sql). Formato commit: "Backup: validaciones §E + plan pruebas + ESTATUS_AVANCE" (o "FASE X completada: [descripción] - Aprobado por QA" si aplica). Confirmar "Backup completado" tras el push.
 ```
 
 **Para QA (validación manual chatbot 4.1–4.7, si falta):**
@@ -1100,9 +1227,67 @@ Ejecutar validación manual del chatbot en navegador: abrir http://localhost:300
 
 **Para Coder (validación residente en chatbot – Opción B):** ✅ Completado.
 
+**Para Marketing (validación dashboard Henry):**
+```
+Validar el dashboard de Admin Plataforma (Henry): rutas /dashboard/admin, /platform-admin/monitoring, /platform-admin/clients, /platform-admin/business, /platform-admin/leads, /platform-admin/chatbot-config. Revisar que (1) la información mostrada sea correcta y útil para Henry y (2) que visualmente se vea inteligente y profesional. Entregar informe o checklist en la carpeta Marketing/ (ej. MARKETING_VALIDACION_DASHBOARD_HENRY.md). No crear carpetas nuevas sin consentimiento del Contralor; usar solo la carpeta Marketing/ existente para subir reportes. Referencia: Contralor/ESTATUS_AVANCE.md, Arquitecto/ARQUITECTURA_DASHBOARD_ADMIN_INTELIGENTE.md.
+```
+
+**Para Coder (informe Marketing UX chatbot navegación residente):**
+```
+Implementar según Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md. Incluir: (5) Página /chat; (6) Botones pills; §C Identidad residente; §D Responder dentro del chat; §E Cerrar sesión + alerta + registro abandono; §F Lógica botones (Votación/Tema del día solo si asamblea activa; Asambleas/Calendario/Ceder poder siempre); §G Ceder poder: formulario inline en chat; §H Validación demo: perfiles asamblea activa, programada, pre-registro, sin asambleas ("¿Consultar con admin?"). Y: (1) Persistir sesión; (2) "Volver al chat"; (3) ACTIVA/PROGRAMADA. Ver Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md.
+```
+
+**Para Coder (lógica chatbot residente – Marketing 26 Feb):**
+```
+Corregir lógica del chatbot residente en src/app/page.tsx: los botones (Votación, Asambleas, Calendario, etc.) deben mostrarse SOLO cuando el correo fue validado. Si no validado: mensaje "Contacta al administrador" y permitir reintentar; NO mostrar botones. Añadir estado residentEmailValidated. Ver Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md y Marketing/INSTRUCCIONES_CODER_PULIDO_CHATBOT_RESIDENTE.md §2.
+```
+
+**Para Arquitecto (referencia):**
+```
+Marketing reporta hallazgo en flujo chatbot residente: validación de correo debe controlar visibilidad de botones. Documento: Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md. Referencias: ARQUITECTURA_CHATBOT_IA.md, FLUJO_IDENTIFICACION_USUARIO.md.
+```
+
+**Para Coder (informe Marketing – lógica chatbot residente):**
+```
+Corregir en src/app/page.tsx usando residentEmailValidated y mostrando los botones de residente (Votación, Asambleas, Calendario, Tema del día, Ceder poder) solo cuando el correo esté validado. Si el correo no se reconoce, no mostrar botones y permitir reintentar. Referencia: Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md. Regla de negocio documentada en Arquitecto/FLUJO_IDENTIFICACION_USUARIO.md (sección "Regla: Chatbot landing – Flujo residente y botones"). Contralor/ESTATUS_AVANCE.md.
+```
+
+**Para Coder (informe Marketing – dashboard Henry):**
+```
+Ejecutar las instrucciones del informe de Marketing en Marketing/MARKETING_VALIDACION_DASHBOARD_HENRY.md (sección "INSTRUCCIONES PARA EL CODER"). Resumen: (1) Crear layout compartido para platform-admin con sidebar similar al dashboard principal. (2) Añadir enlace a Chatbot Config en el sidebar del dashboard. (3) Alinear enlaces de navegación: Funnel→leads, Tickets→tickets, Clientes→clients, CRM→crm (rutas reales). (4) Persistir cambios en Clients en BD o API. (5) Conectar el dashboard principal a vistas/APIs reales. (6) Ajustar precios VPS en Monitoring (CX51 ≈ $32/mes según arquitectura). (7) Corregir tildes (Gestión, Métricas, operación, etc.). Implementar en el proyecto según prioridades del documento. Referencia: Contralor/ESTATUS_AVANCE.md.
+```
+
+**Para Coder (botón retorno Platform Admin – observación QA):**
+```
+Añadir en cada página de platform-admin que aún no lo tenga un botón de retorno al dashboard (ej. "← Volver al Dashboard") que permita volver a /dashboard/admin o /dashboard/platform-admin. Usar como referencia la implementación ya existente en src/app/platform-admin/tickets/[id]/page.tsx (líneas 109-110). Páginas a revisar: monitoring, clients, business, leads, chatbot-config, crm. No generar código aquí; solo implementar en el proyecto. Referencia: QA/QA_FEEDBACK.md § "Botón de retorno en páginas Platform Admin".
+```
+
+**Para Coder (fallo de build por @types/react):** ✅ Aplicado
+```
+Si el build falla por ausencia de @types/react (o tipos de React), instalar los tipos: npm install --save-dev @types/react @types/react-dom. Asegurar que en el entorno donde se ejecuta el build (local y/o Docker) se instalen las devDependencies (npm install sin --production). Confirmar que el build pase por completo (npm run build). Referencia: Contralor/ESTATUS_AVANCE.md.
+```
+- **Estado:** Tipos instalados en package.json (devDependencies). En entornos donde npm omita devDependencies (p. ej. NODE_ENV=production), usar `npm install --include=dev`. Todos los Dockerfiles (Dockerfile, Dockerfile.webchat, Dockerfile.telegram, Dockerfile.whatsapp) usan `RUN npm install --include=dev`. Build verificado: `npm run build` pasa por completo (tipos, rutas API Next 15, Suspense useSearchParams, Stripe apiVersion).
+
 **Para Coder (cuando QA reporte otras correcciones):**
 ```
 Corregir los bloqueadores o errores indicados en QA/QA_FEEDBACK.md (etapa que corresponda del plan de pruebas). Implementar solo lo que QA reporta. Confirmar cuando esté listo.
+```
+
+**Para Database (Funnel de leads – QA reporta vacío 06 Feb 2026):**
+```
+Ejecutar en BD (instancia existente) para que Gestión de Leads muestre datos demo:
+1. docker compose exec -T postgres psql -U postgres -d assembly < sql_snippets/97_platform_leads.sql
+2. docker compose exec -T postgres psql -U postgres -d assembly < sql_snippets/seeds_leads_demo.sql
+
+Script seeds_leads_demo.sql creado por QA. 5 leads (new, qualified, demo_active, converted).
+Referencia: QA/QA_FEEDBACK.md § "Funnel de leads y Tickets".
+```
+
+**Para Coder (Funnel leads – seeds en init Docker):**
+```
+Añadir seeds_leads_demo.sql a la carpeta montada en /docker-entrypoint-initdb.d
+(ya está en sql_snippets/). Se ejecutará tras 97_platform_leads.sql (orden alfabético).
+Referencia: QA/QA_FEEDBACK.md, sql_snippets/README.md.
 ```
 
 **Para Database (tarea: usuarios residentes demo) – ejecutar primero:**

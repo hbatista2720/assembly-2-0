@@ -25,7 +25,23 @@
 | 5 | Páginas Residentes | ✅ Aprobado | /residentes/* todas 200. |
 | 6 | Smoke test rutas | ✅ Aprobado | /, /login, /demo, /pricing, /register → 200. |
 
-**Por donde vamos:** Plan de pruebas completado. Todas las etapas aprobadas.
+**Por donde vamos:** Plan de pruebas completado. Todas las etapas 1–6 aprobadas.
+
+**Validación §E (abandono de sala):** Fuera del alcance de las etapas 1–6. Según QA_FEEDBACK.md (06 Feb): BD + API listos; **QA puede revalidar §E** cuando la tabla `resident_abandon_events` exista en el entorno. Pendientes opcionales: botón "Cerrar sesión", alerta, vista Admin PH con abandonos. Estatus: revalidación §E pendiente cuando QA ejecute la prueba.
+
+### Hallazgo Marketing (26 Feb 2026) – Validación demo chatbot por perfil
+| Perfil | Qué validar |
+|--------|-------------|
+| Asamblea activa | Votación y Tema del día habilitados |
+| Asamblea programada | Solo Asambleas/Calendario habilitados; Votación/Tema deshabilitados |
+| Pre-registro | Residente validado sin asambleas; botones según contexto |
+| Sin asambleas año en curso | Mensaje "No hay asambleas programadas. ¿Consultar con el administrador?" |
+
+### Hallazgo Marketing (26 Feb 2026) – Lógica chatbot residente
+| Elemento | Hallazgo | Acción |
+|----------|----------|--------|
+| Botones residente | Se muestran aunque el correo NO esté validado | Coder: mostrar botones solo cuando `residentEmailValidated === true`. Ver Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md |
+| Flujo esperado | Si correo no encontrado: mensaje "Contacta al administrador" + NO botones; si validado: SÍ botones | Instrucciones en Marketing/INSTRUCCIONES_CODER_PULIDO_CHATBOT_RESIDENTE.md §2. |
 
 ### Resultado ejecución Punto 3 (Platform Admin) – anterior (pre-corrección)
 

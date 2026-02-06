@@ -31,9 +31,9 @@ type CalendarDay = {
 };
 
 const VPS_PLANS = [
-  { name: "CX51 (actual)", price: 150, capacity: 30 },
-  { name: "CX61", price: 250, capacity: 50 },
-  { name: "Multi-VPS", price: 400, capacity: 100 },
+  { name: "CX51 (actual)", price: 32, capacity: 30 },
+  { name: "CX61", price: 64, capacity: 50 },
+  { name: "Multi-VPS", price: 100, capacity: 100 },
 ];
 
 const ALERT_COLORS = {
@@ -67,7 +67,7 @@ function getRecommendation(active: number, reservedToday: number, maxWeek: numbe
   if (utilization <= 90) {
     return {
       status: "WARNING",
-      message: `Cerca del limite (${utilization}%). Monitorea los proximos dias.`,
+      message: `Cerca del límite (${utilization}%). Monitorea los próximos días.`,
       suggested: VPS_PLANS[1].name,
       estimatedCost: VPS_PLANS[1].price,
     };
@@ -179,11 +179,14 @@ export default function MonitoringPage() {
   };
 
   return (
-    <main className="container">
+    <>
       <div className="card" style={{ marginBottom: "16px" }}>
-        <h1 style={{ margin: 0 }}>Monitor de Recursos y Capacidad</h1>
+        <a href="/dashboard/admin" className="btn btn-ghost">
+          ← Volver al Dashboard
+        </a>
+        <h1 style={{ margin: "12px 0 0" }}>Monitor de Recursos y Capacidad</h1>
         <p className="muted" style={{ marginTop: "6px" }}>
-          Asambleas activas, calendario de ocupacion y recomendacion automatica de VPS.
+          Asambleas activas, calendario de ocupación y recomendación automática de VPS.
         </p>
       </div>
 
@@ -250,10 +253,10 @@ export default function MonitoringPage() {
       </div>
 
       <div className="card" style={{ marginTop: "16px" }}>
-        <h3 style={{ marginTop: 0 }}>Recomendacion automatica</h3>
+        <h3 style={{ marginTop: 0 }}>Recomendación automática</h3>
         <div className="card" style={{ background: "rgba(15,23,42,0.4)" }}>
           <h4 style={{ marginTop: 0 }}>
-            {recommendation.status === "OK" ? "✅ VPS actual es suficiente" : "⚠️ Requiere atencion"}
+            {recommendation.status === "OK" ? "✅ VPS actual es suficiente" : "⚠️ Requiere atención"}
           </h4>
           <p className="muted" style={{ marginTop: "6px" }}>
             {recommendation.message}
@@ -293,7 +296,7 @@ export default function MonitoringPage() {
       <div className="grid grid-2" style={{ marginTop: "16px" }}>
         <div className="card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3 style={{ marginTop: 0 }}>Calendario de ocupacion - Febrero 2026</h3>
+            <h3 style={{ marginTop: 0 }}>Calendario de ocupación - Febrero 2026</h3>
             <button className="btn btn-ghost" onClick={handleExportCalendar}>
               Exportar CSV
             </button>
@@ -414,6 +417,6 @@ export default function MonitoringPage() {
           ))}
         </div>
       </div>
-    </main>
+    </>
   );
 }

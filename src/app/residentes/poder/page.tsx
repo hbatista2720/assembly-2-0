@@ -8,8 +8,8 @@ export default function ResidentePoderPage() {
         <p className="muted" style={{ marginTop: "6px" }}>
           Envía tu poder digital y el sistema lo valida en minutos.
         </p>
-        <a className="btn btn-ghost" href="/">
-          Volver a la landing
+        <a className="btn btn-ghost" href="/chat">
+          Volver al chat
         </a>
       </div>
 

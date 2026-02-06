@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
 
@@ -17,7 +17,7 @@ type Lead = {
   created_at: string | null;
 };
 
-export default function LeadsPage() {
+function LeadsContent() {
   const params = useSearchParams();
   const stage = params.get("stage") || undefined;
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -74,9 +74,12 @@ export default function LeadsPage() {
   }
 
   return (
-    <main className="container">
+    <>
       <div className="card" style={{ marginBottom: "16px" }}>
-        <h1 style={{ margin: 0 }}>Gestión de Leads</h1>
+        <a href="/dashboard/admin" className="btn btn-ghost">
+          ← Volver al Dashboard
+        </a>
+        <h1 style={{ margin: "12px 0 0" }}>Gestión de Leads</h1>
         <p className="muted" style={{ marginTop: "6px" }}>
           Filtra, califica y activa demos. Datos desde chatbot y CRM.
         </p>
@@ -134,6 +137,14 @@ export default function LeadsPage() {
           </div>
         )}
       </div>
-    </main>
+    </>
+  );
+}
+
+export default function LeadsPage() {
+  return (
+    <Suspense fallback={<div className="card"><p className="muted">Cargando…</p></div>}>
+      <LeadsContent />
+    </Suspense>
   );
 }

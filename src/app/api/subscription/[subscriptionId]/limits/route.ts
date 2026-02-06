@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-export async function GET(_: Request, { params }: { params: { subscriptionId: string } }) {
-  const { subscriptionId } = params;
+export async function GET(_: Request, { params }: { params: Promise<{ subscriptionId: string }> }) {
+  const { subscriptionId } = await params;
 
   if (subscriptionId?.toLowerCase().includes("enterprise")) {
     return NextResponse.json({

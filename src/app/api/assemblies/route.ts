@@ -31,11 +31,10 @@ export async function POST(request: Request) {
     }
 
     const result = await sql.begin(async (tx) => {
-      const consumeRows = await tx<{ result: any }[]>`
-        SELECT consume_assembly_credits(${organizationId}, 1) AS result
-      `;
+      const consumeRows = await (tx as any)`SELECT consume_assembly_credits(${organizationId}, 1) AS result`;
+      const consumeRowsTyped = consumeRows as { result: any }[];
 
-      const consumeResult = consumeRows?.[0]?.result;
+      const consumeResult = consumeRowsTyped?.[0]?.result;
       if (!consumeResult?.success) {
         return {
           status: 403,
@@ -46,7 +45,7 @@ export async function POST(request: Request) {
         };
       }
 
-      const inserted = await tx`
+      const inserted = await (tx as any)`
         INSERT INTO assemblies (organization_id, title, scheduled_at)
         VALUES (${organizationId}, ${title}, ${scheduledAt})
         RETURNING *

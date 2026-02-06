@@ -120,7 +120,7 @@ export default function ActsPage() {
               </option>
             ))}
           </select>
-          <button className="btn btn-ghost" onClick={handleExportCsv}>
+          <button className="btn btn-ghost" onClick={() => handleExportCsv()}>
             Exportar CSV
           </button>
           <button className="btn btn-ghost" onClick={() => handleExportCsv("actas_assembly.xls")}>

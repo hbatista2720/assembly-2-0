@@ -32,11 +32,14 @@ export default function BusinessMetricsPage() {
   ];
 
   return (
-    <main className="container">
+    <>
       <div className="card" style={{ marginBottom: "16px" }}>
-        <h1 style={{ margin: 0 }}>Metricas de Negocio</h1>
+        <a href="/dashboard/admin" className="btn btn-ghost">
+          ← Volver al Dashboard
+        </a>
+        <h1 style={{ margin: "12px 0 0" }}>Métricas de Negocio</h1>
         <p className="muted" style={{ marginTop: "6px" }}>
-          Ingresos, churn y proyeccion de crecimiento.
+          Ingresos, churn y proyección de crecimiento.
         </p>
       </div>
 
@@ -85,6 +88,6 @@ export default function BusinessMetricsPage() {
           </p>
         </div>
       </div>
-    </main>
+    </>
   );
 }

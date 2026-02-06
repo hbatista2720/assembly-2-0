@@ -8,8 +8,8 @@ export default function ResidenteCalendarioPage() {
         <p className="muted" style={{ marginTop: "6px" }}>
           Próximas actividades y fechas clave del PH.
         </p>
-        <a className="btn btn-ghost" href="/">
-          Volver a la landing
+        <a className="btn btn-ghost" href="/chat">
+          Volver al chat
         </a>
       </div>
 

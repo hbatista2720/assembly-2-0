@@ -955,6 +955,32 @@ Validar el email del residente contra la BD (o API), no solo contra localStorage
 
 ---
 
+# QA Reporte · Dashboard Henry – Falta botón Volver al dashboard
+
+**Fecha:** 05 Febrero 2026
+
+## Hallazgo
+
+Al navegar por las páginas hijas del Dashboard Henry (Monitor VPS, Clientes, Negocio, Leads, Chatbot Config, CRM), **no hay botón para regresar al dashboard principal** (`/dashboard/admin` o `/dashboard/platform-admin`).
+
+## Páginas afectadas
+
+| Página | ¿Tiene botón Volver? |
+|--------|----------------------|
+| /platform-admin/monitoring | ❌ No |
+| /platform-admin/clients | ❌ No |
+| /platform-admin/business | ❌ No |
+| /platform-admin/leads | ❌ No |
+| /platform-admin/chatbot-config | ❌ No |
+| /platform-admin/crm | ❌ No |
+| /platform-admin/tickets/[id] | ✅ Sí ("← Volver al Dashboard") |
+
+## Acción requerida (Para Coder)
+
+Añadir en cada página afectada un enlace/botón "Volver al Dashboard" (o equivalente) que lleve a `/dashboard/admin` o `/dashboard/platform-admin`. Referencia: `src/app/platform-admin/tickets/[id]/page.tsx` líneas 109–110 (implementación existente).
+
+---
+
 # QA Re-validación · Chatbot tras fix Opción B
 
 **Fecha:** 05 Febrero 2026  
@@ -1000,6 +1026,53 @@ Validar el email del residente contra la BD (o API), no solo contra localStorage
 - **Fix Opción B:** ✅ Implementado. Emails demo reconocidos por lista fija.
 - **Chatbot:** ✅ Lógica correcta; no debe mostrar "No encuentro ese correo" para residente1@…residente5@.
 - **Login OTP + carga:** ✅ OK.
+
+---
+
+# QA Validación · Funnel de leads y Tickets (Dashboard Henry)
+
+**Fecha:** 06 Febrero 2026
+
+## Hallazgos
+
+| Sección | Estado | Origen datos |
+|---------|--------|--------------|
+| **Funnel de leads** (Gestión de Leads) | ❌ Vacío – "No hay leads registrados" | API `/api/leads` → tabla `platform_leads` |
+| **Tickets inteligentes** | ✅ Cargando – 3 tickets hardcodeados (TKT-2026-021, 019, 017) | Código estático en `dashboard/admin` y `platform-admin/tickets` |
+
+## Diagnóstico
+
+### Funnel de leads
+- **Causa:** La tabla `platform_leads` no existe en la instancia actual o está vacía.
+- **API:** `GET /api/leads` devuelve error `"relation platform_leads does not exist"` o `[]` si la tabla existe sin filas.
+- **Datos:** Los leads se cargan desde `platform_leads` (chatbot /registrarme, landing, CRM).
+
+### Tickets
+- Los tickets están hardcodeados en el código; no dependen de BD.
+- Deberían mostrarse siempre (3 tickets demo). Si se ven vacíos en algún contexto, revisar ruta o caché.
+
+## Información demo para validar
+
+### Para Database
+
+1. **Crear tabla** (si no existe): ejecutar `sql_snippets/97_platform_leads.sql`.
+2. **Cargar leads demo:** ejecutar `sql_snippets/seeds_leads_demo.sql` (5 leads: new, qualified, demo_active, converted).
+
+**Orden de ejecución (BD existente):**
+```bash
+docker compose exec -T postgres psql -U postgres -d assembly < sql_snippets/97_platform_leads.sql
+docker compose exec -T postgres psql -U postgres -d assembly < sql_snippets/seeds_leads_demo.sql
+```
+
+### Para Coder
+
+- **Integración init Docker:** Asegurar que `97_platform_leads.sql` y `seeds_leads_demo.sql` estén en `/docker-entrypoint-initdb.d` para nuevas instancias.
+- **Tickets:** Sin cambios; ya usan datos demo hardcodeados.
+
+## Archivos creados
+
+- `sql_snippets/seeds_leads_demo.sql` – 5 leads demo (lead1@empresa-a.com, lead2@ph-costablanca.com, etc.).
+- `sql_snippets/README.md` – Documentación de ejecución.
 - **Revalidación:** ✅ Completada. Chatbot residente (Opción B) aprobado.
 
 ---
@@ -1015,3 +1088,74 @@ Con la revalidación del chatbot residente cerrada, la siguiente tarea asignable
 | **QA** | Validación Docker/OTP | Según Contralor/VALIDACION_DOCKER_Y_OTP.md cuando aplique. |
 
 Ver instrucciones detalladas y texto para copiar/pegar al agente en **Contralor/ESTATUS_AVANCE.md** (sección "SIGUIENTE PASO" e "Instrucción para copiar y pegar").
+
+---
+
+# QA Observación · Botón de retorno en páginas Platform Admin
+
+**Fecha:** Febrero 2026  
+**Referencia:** Plan navegación (sidebar y páginas hijas).
+
+## Hallazgo
+
+En **src/app/platform-admin/tickets/[id]/page.tsx** (líneas 109-110) ya está implementado el botón de retorno al dashboard: botón "← Volver al Dashboard" que usa `router.back()` (o equivalente). Puede usarse como **base/referencia** para añadir el mismo patrón en el resto de páginas hijas de Platform Admin.
+
+## Páginas donde añadir botón de retorno (si no lo tienen)
+
+- `/platform-admin/monitoring`
+- `/platform-admin/clients`
+- `/platform-admin/business`
+- `/platform-admin/leads`
+- `/platform-admin/chatbot-config`
+- `/platform-admin/crm`
+
+**Objetivo:** Que el usuario pueda volver al dashboard principal (`/dashboard/admin` o `/dashboard/platform-admin`) desde cada una de estas páginas sin usar solo el navegador.
+
+## Instrucción para Coder (copiar y pegar)
+
+Ver bloque "Para Coder (botón retorno Platform Admin)" en **Contralor/ESTATUS_AVANCE.md**.
+
+---
+
+# QA Validación · Registro de abandono de sala (§E)
+
+**Fecha:** 06 Febrero 2026  
+**Referencia:** Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md §E, Contralor/ESTATUS_AVANCE.md
+
+## Objetivo
+
+Validar que el Coder implementó:
+1. Al cerrar sesión el residente desde el chatbot, se guarda en BD la hora en que abandonó la sala/votación.
+2. El Admin PH puede ver en su dashboard o en la vista de la asamblea/votación un registro del tipo "Residente [nombre/unidad] abandonó la sala a las [hora]".
+3. Tabla o campo en BD para el evento de abandono.
+4. UI del Admin PH muestra esa información (trazabilidad y cálculo correcto del quórum).
+
+## Resultado: 🟡 PARCIAL – BD + API listos (06 Feb). QA puede revalidar §E.
+
+### Incidencias detectadas
+
+| # | Requisito | Estado | Detalle |
+|---|-----------|--------|---------|
+| 1 | Botón "Cerrar sesión" en lugar de "Volver a la landing" | ❌ | `chat/page.tsx` línea 210: sigue "Volver al inicio" (Link href="/"). No hay "Cerrar sesión" en contexto residente. |
+| 2 | Alerta de confirmación al cerrar | ❌ | No existe alerta "Estás abandonando la votación. Esto afecta el quórum. ¿Cerrar sesión?". |
+| 3 | Registro en BD de hora de abandono | ✅ BD + API listos | ✅ **Database:** Tabla `resident_abandon_events` creada y script ejecutado en BD (06 Feb). ✅ **Coder:** API `POST /api/resident-abandon` implementada. **QA puede revalidar §E.** Ver Database_DBA/INSTRUCCIONES_CODER_ABANDONO_SALA.md. |
+| 4 | Admin PH ve "Residente X abandonó a las [hora]" | ❌ | Monitor, vista asamblea y dashboard Admin PH no muestran registro de abandonos. |
+| 5 | Trazabilidad y quórum | ❌ | Sin datos de abandono no hay trazabilidad ni ajuste de quórum por salida. |
+
+### Archivos revisados
+
+- `src/app/chat/page.tsx` – Botón "Volver al inicio", no "Cerrar sesión".
+- `src/app/residentes/*` – "Volver al chat", sin flujo de cierre con registro.
+- `src/app/dashboard/admin-ph/monitor/*` – Sin sección de abandonos.
+- `src/app/api/*` – ✅ POST /api/resident-abandon implementado. Tabla creada en BD.
+- `sql_snippets/*` – ✅ `100_resident_abandon_events.sql` ejecutado en BD (06 Feb). API implementada. Pendiente UI Admin PH si aplica. **QA puede revalidar §E.**
+
+## Acción requerida (Para Coder y Database)
+
+Según Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md §E:
+
+1. Reemplazar "Volver al inicio" por **"Cerrar sesión"** en contexto residente validado.
+2. Al clic en "Cerrar sesión": mostrar **alerta** "Estás abandonando la votación. Esto afecta el quórum. ¿Cerrar sesión?".
+3. Si confirma: limpiar sesión y **registrar en BD** la hora de abandono.
+4. **Database:** ~~Crear tabla `resident_abandon_events`~~ ✅ **COMPLETADO.** Script `sql_snippets/100_resident_abandon_events.sql`. Instrucciones Coder: `Database_DBA/INSTRUCCIONES_CODER_ABANDONO_SALA.md`.
+5. **Admin PH UI:** Mostrar en monitor o vista asamblea: "Residente [nombre/unidad] abandonó la sala a las [hora]".
