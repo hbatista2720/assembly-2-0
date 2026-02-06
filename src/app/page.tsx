@@ -271,9 +271,9 @@ function HomeContent() {
           recognized = true;
         }
         if (!recognized) {
-          pushBotMessage("No encuentro ese correo. Contacta al administrador de tu PH para validar.");
+          pushBotMessage("No encuentro ese correo. Contacta al administrador de tu PH para validar. Puedes escribir otro correo para reintentar.");
           setChatInput("");
-          return;
+          return; // No avanzar a step 8 ni mostrar botones; residente debe estar validado (Marketing §2)
         }
         setResidentEmailValidated(true);
         try {
@@ -1335,7 +1335,8 @@ function HomeContent() {
                   </button>
                 ))}
               </div>
-            ) : chatStep >= 8 && (chatRole === "residente" && residentEmailValidated) ? (
+            ) : chatStep >= 8 && chatRole === "residente" && residentEmailValidated ? (
+              // Marketing §2: botones solo cuando correo validado (residentEmailValidated); si no, no mostrar
               <div style={{ marginTop: "12px" }}>
                 {assemblyContext === "sin_asambleas" && (
                   <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#94a3b8" }}>

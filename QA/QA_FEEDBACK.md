@@ -1159,3 +1159,35 @@ Según Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md §E:
 3. Si confirma: limpiar sesión y **registrar en BD** la hora de abandono.
 4. **Database:** ~~Crear tabla `resident_abandon_events`~~ ✅ **COMPLETADO.** Script `sql_snippets/100_resident_abandon_events.sql`. Instrucciones Coder: `Database_DBA/INSTRUCCIONES_CODER_ABANDONO_SALA.md`.
 5. **Admin PH UI:** Mostrar en monitor o vista asamblea: "Residente [nombre/unidad] abandonó la sala a las [hora]".
+
+---
+
+# QA Revalidación §E – TAREA_2_QA Opción A (Completada)
+
+**Fecha:** 06 Febrero 2026  
+**Referencia:** Contralor/TAREA_2_QA.md, Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md §E
+
+## Objetivo
+
+Revalidar el flujo de abandono de sala (§E): tabla en BD, botón "Cerrar sesión", alerta y POST `/api/resident-abandon`.
+
+## Pasos ejecutados
+
+1. **Tabla en BD:** La tabla `resident_abandon_events` existe y está operativa.
+2. **API POST:** `curl -X POST http://localhost:3000/api/resident-abandon -H "Content-Type: application/json" -d '{"email":"residente1@demo.assembly2.com","organization_id":"11111111-1111-1111-1111-111111111111"}'` → **200 OK**, respuesta: `{"success":true,"id":"...","abandoned_at":"2026-02-06T18:55:17.404Z"}`.
+3. **API GET:** `curl "http://localhost:3000/api/resident-abandon?organizationId=11111111-1111-1111-1111-111111111111"` → **200 OK**, lista con evento registrado: `"Residente residente1@demo.assembly2.com abandonó la sala a las 18:55:17"`.
+4. **UI chat:** `chat/page.tsx` incluye botón "Cerrar sesión" (líneas ~224–265), alerta *"Estás abandonando la votación. Esto afecta el quórum. ¿Cerrar sesión?"* y llamada a `POST /api/resident-abandon` al confirmar.
+
+## Resultado
+
+✅ **OPCIÓN A COMPLETADA** – Sin fallos.
+
+| Requisito | Estado |
+|-----------|--------|
+| Tabla `resident_abandon_events` en BD | ✅ Operativa |
+| Botón "Cerrar sesión" en chat residente | ✅ Implementado |
+| Alerta de confirmación | ✅ Texto correcto |
+| POST /api/resident-abandon | ✅ 200 OK |
+| Registro en BD del evento | ✅ Verificado via GET |
+
+**Pendiente (no bloqueante para §E):** Admin PH aún no muestra lista de abandonos en monitor/vista asamblea.

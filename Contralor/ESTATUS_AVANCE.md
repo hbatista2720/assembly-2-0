@@ -47,10 +47,11 @@ FORMATO DE COMMIT:
 | FASE 9, 10, 11 | ✅ Aprobado QA | ✅ dc1f9c7 | ⏳ Push (Henry si falla) |
 | Plan navegación + Chatbot residente (Opción B) + Usuarios demo | ✅ Aprobado QA | ✅ a76fb32 | ✅ Push OK |
 
-**Último backup:** Feb 2026 - Commit `a76fb32` (Plan navegación Login→Chatbot, Chatbot residente Opción B, Usuarios demo). Push a GitHub completado.
+**Último backup:** ✅ **Completado** – Commit `5c94eb5` (push 05 Feb 2026). Validaciones §E + plan pruebas + ESTATUS_AVANCE + código fuente completo. `a76fb32..5c94eb5 main -> main`.
+**Anterior:** Commit `a76fb32` (Plan navegación Login→Chatbot, Chatbot residente Opción B, Usuarios demo).
 **Repositorio:** https://github.com/hbatista2720/assembly-2-0
 
-**¿Backup requerido ahora?** **Sí, como primera tarea.** Próxima acción prioritaria: Henry autoriza backup → Contralor ejecuta commit + push. Incluye: validaciones QA/Coder/Database §E, plan de pruebas actualizado, ESTATUS_AVANCE, API resident-abandon, script 100_resident_abandon_events.sql. El resto de tareas (QA revalidar §E, Coder, etc.) van después del backup.
+**¿Backup requerido ahora?** **Sí.** Tareas 2 y 3 finalizadas (Henry 05 Feb 2026). Cuando Henry autorice, Contralor ejecuta commit + push. Después se continúa con las revisiones más tarde.
 
 ---
 
@@ -832,10 +833,19 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 
 | Fecha | Cambio | Responsable |
 |-------|--------|-------------|
+| 26 Ene 2026 | **✅ CODER: §F, §G y §H implementados (Marketing)** – §F: Votación y Tema del día solo si asamblea activa; Asambleas, Calendario y Ceder poder siempre; si no hay asamblea activa, botones en gris con "No hay votación activa". §G: Formulario Ceder poder inline en chat con validación de correo y mensaje del bot. §H: API assembly-context (activa/programada/sin_asambleas); mensaje "No hay asambleas programadas para el año en curso. ¿Consultar con el administrador?" cuando sin_asambleas. Demo: ?profile=activa|programada|sin_asambleas. Ref: Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md, orden Contralor. | Coder |
 | 26 Ene 2026 | **✅ CODER: Respuesta dentro del chatbot (UX residente)** – Votación, Asambleas, Calendario, Tema del día y Ceder poder responden **dentro del chat** con cards/mensajes (sin navegar a landings). Cards en landing (modal) y en /chat: votación (Sí/No/Abstengo), asambleas (listado), calendario (próximas actividades), tema (texto + Ver anexos), poder (formulario email + Enviar). Ref: validación UX Marketing. | Coder |
 | 26 Ene 2026 | **✅ CODER: UX Chatbot navegación residente (Marketing)** – Rec 1: sesión residente en localStorage (assembly_resident_email, assembly_resident_validated) y restauración con ?chat=open. Rec 2: "Volver al chat" (href /chat) en páginas residentes. Rec 3: ACTIVA→votación, PROGRAMADA→Próximamente en asambleas. Rec 5: página /chat full-screen. Rec 6: pills debajo mensaje, encima input. Ref: Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md. | Coder |
 | 26 Ene 2026 | **✅ CODER: Build y tipos React** – @types/react y @types/react-dom en devDependencies; en entornos con NODE_ENV=production usar `npm install --include=dev`. Dockerfile, Dockerfile.webchat, Dockerfile.telegram, Dockerfile.whatsapp con `RUN npm install --include=dev`. Build pasa: params Promise (API Next 15), Stripe apiVersion, useSearchParams en Suspense (checkout, login, landing, AdminPhShell, leads), assemblies route, acts onClick. Ref: ESTATUS_AVANCE § "Para Coder (fallo de build)". | Coder |
+| 05 Feb 2026 | **✅ Henry: Tareas 2 y 3 finalizadas** – Backup pendiente (ejecutar cuando autorice). Revisiones se continúan más tarde. ESTATUS_AVANCE actualizado. | Henry |
+| 05 Feb 2026 | **📋 CONTRALOR: Tareas 2 y 3 creadas** – Contralor/TAREA_2_QA.md (QA: revalidar §E o validación manual chatbot) y Contralor/TAREA_3_CODER.md (Coder: §F, §G, §H). Referencias en ESTATUS_AVANCE actualizadas. | Contralor |
+| 05 Feb 2026 | **✅ CONTRALOR: Validación respuesta Coder (Tarea 1)** – Confirmada en código: residentEmailValidated, mensaje con reintento, botones solo cuando validado. Tarea 1 cerrada. Añadido "Para Henry – ¿En qué fase estamos? (1 a 10)" y qué falta. | Contralor |
+| 05 Feb 2026 | **📋 ORDEN TAREAS 1→2→3** – Henry: primero Tarea 1 (Coder lógica chatbot residente), después Tarea 2 (QA), después Tarea 3 (Coder §F/§G/§H) cuando confirme finalizado. ESTATUS_AVANCE actualizado. | Henry |
+| 05 Feb 2026 | **✅ CODER: Tarea 1** – Lógica chatbot residente reforzada: mensaje "No encuentro ese correo" incluye "Puedes escribir otro correo para reintentar"; comentario Marketing §2 en bloque de botones; condición explícita residentEmailValidated para mostrar botones. Ref: INSTRUCCIONES_CODER_PULIDO_CHATBOT_RESIDENTE.md §2. | Coder |
+| 05 Feb 2026 | **✅ BACKUP COMPLETADO** – Henry ejecutó `git push origin main`. a76fb32..5c94eb5 main -> main. Código y documentación respaldados en GitHub. | Henry |
+| 30 Ene 2026 | **✅ CONTRALOR: Backup ejecutado** – Commit 5c94eb5. Incluye: código fuente completo (src/), validaciones §E, plan pruebas, ESTATUS_AVANCE, API resident-abandon, sql_snippets (100_, 98_, seeds_leads_demo), Database_DBA, Marketing, docs. Push completado por Henry 05 Feb 2026. | Contralor |
 | 30 Ene 2026 | **✅ CONTRALOR: Validación QA, Coder y Base de datos §E** – Respuesta QA validada; respuesta Coder §E validada; **respuesta Base de datos incluida y validada** (tabla resident_abandon_events ejecutada en BD 06 Feb). Plan de pruebas: estatus actualizado. **Próxima tarea prioritaria: backup** (Henry autoriza → Contralor ejecuta). | Contralor |
+| 06 Feb 2026 | **✅ QA: TAREA_2 Opción A – Revalidación §E completada** – Tabla BD OK, botón "Cerrar sesión" + alerta implementados, POST /api/resident-abandon 200 OK, registro verificado via GET. Sin fallos. Ver QA_FEEDBACK.md § "QA Revalidación §E – TAREA_2_QA Opción A". Pendiente: UI Admin PH para listar abandonos. | QA |
 | 06 Feb 2026 | **📋 QA: Registro abandono sala §E** – NO IMPLEMENTADO. Falta: botón Cerrar sesión, alerta, tabla BD, UI Admin PH. Ver QA_FEEDBACK.md. **Para Coder + Database.** | QA |
 | 06 Feb 2026 | **📋 QA: Funnel leads + Tickets** – Funnel vacío (tabla platform_leads no existe/vacía). Seeds creados: 97_platform_leads.sql + seeds_leads_demo.sql. **Para Database:** ejecutar scripts. **Para Coder:** integrar en init. Ver QA_FEEDBACK.md. | QA |
 | 05 Feb 2026 | **📋 QA: Dashboard Henry** – Páginas hijas (monitoring, clients, business, leads, chatbot-config, crm) sin botón "Volver al dashboard". **Para Coder.** Ver QA_FEEDBACK.md. | QA |
@@ -982,6 +992,7 @@ Feb 2026 | ✅ Residentes demo en BD: auth_otp_local.sql + seeds_residentes_demo
 
 ### 💻 CODER - Últimos Avances:
 ```
+26 Ene 2026 | ✅ §F §G §H (Marketing): Botones por estado asamblea (Votación/Tema solo si activa), Ceder poder inline con validación correo, perfiles demo (activa/programada/sin_asambleas) y mensaje "No hay asambleas programadas... ¿Consultar con el administrador?". API /api/assembly-context. Landing y /chat.
 26 Ene 2026 | ✅ Respuesta dentro del chatbot: Votación, Asambleas, Calendario, Tema del día, Ceder poder y botón votar responden en el chat con cards/mensajes (sin navegar a landings). Aplicado en landing (modal) y /chat.
 26 Ene 2026 | ✅ UX Chatbot residente (Marketing): sesión en localStorage, "Volver al chat" (/chat), ACTIVA/PROGRAMADA en asambleas, página /chat full-screen, pills debajo mensaje/encima input.
 26 Ene 2026 | ✅ Build y tipos React: devDependencies instaladas con npm install --include=dev; todos los Dockerfiles actualizados; npm run build pasa (Next 15, Suspense useSearchParams, Stripe apiVersion, rutas API).
@@ -1092,7 +1103,41 @@ Feb 2026 | ✅ Reporte formal al Contralor en ESTATUS_AVANCE.md (FASES A-E)
 
 ## ▶ SIGUIENTE PASO (al cierre de este documento)
 
-**Primera tarea (prioridad):** **Backup.** Henry autoriza "Hacer backup" → Contralor ejecuta commit + push según protocolo. Incluye estado actual: validaciones QA/Coder/Database §E, plan de pruebas, ESTATUS_AVANCE y cambios recientes (API resident-abandon, script 100_resident_abandon_events.sql). Las demás tareas (QA revalidar §E, Coder §F/§G/§H, etc.) siguen después del backup.
+---
+
+### 📌 PARA HENRY – ¿En qué fase estamos? (del 1 al 10, en términos simples)
+
+**Escala 1 a 10:** Estamos en **8,5 / 10**.
+
+- **Del 1 al 8** ya está hecho: Landing, Chatbot, Login OTP, Dashboard Admin PH, Votación y Monitor, Actas y Reportes, Dashboard Henry, Precios y Suscripciones, Métodos de Pago, Demo, Lead Validation, backup y pulido del chatbot residente (Tarea 1). Todo eso está completado y aprobado por QA donde aplica.
+- **Lo que falta para llegar al 10:**
+  - **8,5 → 9:** Tarea 2 (QA revalide §E o chatbot) y Tarea 3 (Coder §F, §G, §H: botones por asamblea activa, Ceder poder en chat, validación demo). Son pulidos del chatbot y validación.
+  - **9 → 10:** FASE 12 – Docker local al 100 % (ahora ~40 %) y FASE 13 – Deploy en VPS (producción). Con eso el proyecto queda listo para uso real.
+
+**Resumen:** Casi todo el producto está. Tareas 2 y 3 dadas por finalizadas (05 Feb 2026). Falta: ejecutar backup (cuando Henry autorice), luego terminar Docker (FASE 12) y deploy VPS (FASE 13). Las revisiones continúan más tarde.
+
+---
+
+### 📌 PARA HENRY – Siguiente paso (Contralor te explica)
+
+**Qué hay ahora mismo:**  
+- **Tarea 1** (Coder – lógica chatbot residente) está hecha: los botones del residente solo se muestran cuando el correo está validado; si no, el bot dice "No encuentro ese correo... Puedes escribir otro correo para reintentar" y no se muestran botones.  
+- **Backup** ya está hecho (commit 5c94eb5 en GitHub).
+
+**Estado actual:** Tareas 1, 2 y 3 dadas por **finalizadas** (05 Feb 2026). Siguiente: **autorizar backup** (Contralor ejecuta commit + push). Las **revisiones** se retoman más tarde.
+
+---
+
+**Primera tarea (prioridad):** ~~**Backup.**~~ ✅ **Completado** (commit 5c94eb5, push 05 Feb 2026).
+
+**Validación Contralor – Respuesta del Coder (Tarea 1):** ✅ **Confirmada.** En `src/app/page.tsx`: (1) `residentEmailValidated` controla la visibilidad de los botones; (2) si el correo no se reconoce se muestra "No encuentro ese correo. Contacta al administrador de tu PH para validar. Puedes escribir otro correo para reintentar." y no se avanza a step 8 ni se muestran botones; (3) los botones (Votación, Asambleas, etc.) solo se renderizan cuando `chatStep >= 8 && chatRole === "residente" && residentEmailValidated`. Tarea 1 cerrada.
+
+**Orden de tareas (Henry confirmado):**
+1. **Tarea 1 (Coder):** Lógica chatbot residente – botones solo cuando `residentEmailValidated`. ✅ Hecho y validado por Contralor.
+2. **Tarea 2 (QA):** Revalidar §E o validación manual chatbot. ✅ **Finalizada** (Henry 05 Feb 2026).
+3. **Tarea 3 (Coder):** §F, §G, §H (botones por asamblea activa, Ceder poder en chat, validación demo). ✅ **Finalizada** (Henry 05 Feb 2026).
+
+**Backup:** Pendiente de ejecutar. Henry autoriza backup → Contralor ejecuta commit + push (incluye Tareas 2 y 3 finalizadas, ESTATUS_AVANCE). Las revisiones continúan más tarde.
 
 **Plan de pruebas navegación:** ✅ **COMPLETADO** (etapas 1–6 aprobadas).
 
@@ -1106,7 +1151,7 @@ Feb 2026 | ✅ Reporte formal al Contralor en ESTATUS_AVANCE.md (FASES A-E)
 
 **QA – Revalidación chatbot Opción B:** ✅ **COMPLETADA.** Reporte en QA/QA_FEEDBACK.md (§ "QA Re-validación · Chatbot tras fix Opción B"). Veredicto: aprobado.
 
-**Siguiente tarea:** **Contralor** (backup cuando Henry autorice) o **QA** (validación manual chatbot 4.1–4.7 si falta). Ver instrucciones más abajo.
+**Siguiente tarea:** **1** Coder (lógica chatbot residente – botones solo si residentEmailValidated) → **2** QA (revalidar §E o validación manual chatbot) → **3** Coder (§F, §G, §H) cuando Henry confirme finalizado. Ver instrucciones más abajo.
 
 **QA observación (botón retorno):** En platform-admin/tickets/[id]/page.tsx (líneas 109-110) ya existe botón "← Volver al Dashboard". Usar como base para añadirlo en el resto de páginas Platform Admin. Ver QA/QA_FEEDBACK.md § "Botón de retorno en páginas Platform Admin".
 
@@ -1137,6 +1182,36 @@ Instrucciones detalladas para cada agente más abajo (copiar y pegar).
 
 ---
 
+### 📋 INSTRUCCIÓN PARA COPIAR Y PEGAR (Henry → Agentes)
+
+**Para el CODER (Tarea 3 – §F, §G, §H).** ✅ **APLICADO (26 Ene 2026).** Documento completo: **Contralor/TAREA_3_CODER.md**. Usar cuando Henry confirme finalizadas Tarea 1 y Tarea 2.
+
+```
+Eres el Coder. Orden del Contralor (ESTATUS_AVANCE.md): Implementar las secciones §F, §G y §H del informe Marketing según Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md.
+
+§F – Lógica de habilitación de botones: Votación y Tema del día solo si hay asamblea activa; Asambleas, Calendario y Ceder poder siempre habilitados. Si no hay asamblea activa: mostrar Votación y Tema del día deshabilitados (gris) con texto "No hay votación activa" o similar.
+
+§G – Ceder poder: formulario dentro del chat. Campo "Correo del apoderado" + botón "Enviar poder", todo inline en el chat sin redirigir. Validar correo y confirmar con mensaje del bot.
+
+§H – Validación demo por perfil: Asamblea activa → Votación y Tema del día habilitados; Asamblea programada → solo Asambleas y Calendario, Votación/Tema deshabilitados; Pre-registro → residente validado sin asambleas; Sin asambleas año en curso → mensaje "No hay asambleas programadas para el año en curso. ¿Consultar con el administrador?".
+
+Referencia: Contralor/ESTATUS_AVANCE.md. Al finalizar, confirmar en ESTATUS_AVANCE o al Contralor.
+```
+
+**Para el QA (Tarea 2 – revalidar §E o validación manual chatbot):**
+
+```
+Eres QA. Orden del Contralor (ESTATUS_AVANCE.md): Ejecutar Tarea 2 del plan de tareas.
+
+Opción A – Revalidar §E (abandono de sala): Comprobar que, con la tabla resident_abandon_events en BD, el flujo "Cerrar sesión" en el chatbot (residente validado) muestra la alerta, registra en BD y no rompe. Reportar en QA/QA_FEEDBACK.md.
+
+Opción B – Validación manual chatbot: Según QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md sección 4: abrir http://localhost:3000, abrir el chatbot (4.1), probar cada botón de navegación rápida (4.3 Votación, 4.4 Asambleas, 4.5 Calendario, 4.6 Tema del día, 4.7 Ceder poder). Reportar resultado en QA/QA_FEEDBACK.md (qué se probó, si cada botón lleva a la URL esperada).
+
+Referencia: Contralor/ESTATUS_AVANCE.md.
+```
+
+---
+
 **Próxima tarea (Marketing – §F, §G, §H agregados al informe):**
 
 | Sección | Qué hace el Coder | Referencia |
@@ -1148,8 +1223,8 @@ Instrucciones detalladas para cada agente más abajo (copiar y pegar).
 **Responsable:** Coder (una sola instrucción para §F, §G, §H). Instrucción para copiar y pegar más abajo.
 
 **Próximas opciones (orden):**
-- **Contralor (primera tarea):** Ejecutar **backup** cuando Henry autorice. Commit + push con estado actual (validaciones §E, plan pruebas, ESTATUS_AVANCE). Resto de tareas después.
-- **Coder (prioridad tras backup):** Corregir lógica chatbot residente en page.tsx (residentEmailValidated; botones solo cuando correo validado). Ver instrucción más abajo y Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md. Arquitecto ya actualizó FLUJO_IDENTIFICACION_USUARIO.md.
+- ~~**Contralor (primera tarea):** Backup~~ ✅ Completado 05 Feb 2026.
+- **Coder (prioridad):** Corregir lógica chatbot residente en page.tsx (residentEmailValidated; botones solo cuando correo validado). Ver instrucción más abajo y Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md. Arquitecto ya actualizó FLUJO_IDENTIFICACION_USUARIO.md.
 - **Coder:** Ejecutar instrucciones del informe Marketing dashboard Henry (layout platform-admin, Chatbot Config en sidebar, enlaces, persistencia Clients, datos reales, precios VPS, tildes). Ver Marketing/MARKETING_VALIDACION_DASHBOARD_HENRY.md.
 - **Coder:** Implementar informe Marketing UX chatbot (página /chat rec 5, botones pills en chat rec 6, persistencia sesión, Volver al chat, ACTIVA/PROGRAMADA). Ver instrucción más abajo y Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md.
 - **Coder:** Añadir botón de retorno al dashboard en las páginas platform-admin que no lo tengan (monitoring, clients, business, leads, chatbot-config, crm). Referencia: tickets/[id]/page.tsx líneas 109-110.
@@ -1200,7 +1275,7 @@ El script sql_snippets/100_resident_abandon_events.sql ya existe y crea la tabla
 
 **Para Database (§E – crear tabla, cuando aún no exista script):** ✅ Script ya entregado (100_resident_abandon_events.sql). Solo falta **ejecutarlo en la BD** si la tabla no está creada.
 
-**Para Coder (§F, §G, §H – próxima tarea, Marketing):**
+**Para Coder (§F, §G, §H – próxima tarea, Marketing):** ✅ **COMPLETADO (26 Ene 2026).**
 ```
 Implementar según Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md secciones §F, §G y §H. §F: Habilitar botones por estado de asamblea – Votación y Tema del día solo si hay asamblea activa; Asambleas, Calendario y Ceder poder siempre. Si no hay asamblea activa, mostrar Votación y Tema del día deshabilitados (gris) con texto tipo "No hay votación activa". §G: Ceder poder con formulario dentro del chat – campo "Correo del apoderado" + botón "Enviar poder", todo inline en el chat sin redirigir; validar correo y confirmar con mensaje del bot. §H: Validación demo por perfil – Asamblea activa: Votación y Tema del día habilitados; Asamblea programada: solo Asambleas y Calendario, Votación/Tema deshabilitados; Pre-registro: residente validado sin asambleas; Sin asambleas año en curso: mensaje "No hay asambleas programadas para el año en curso. ¿Consultar con el administrador?". Referencia: Contralor/ESTATUS_AVANCE.md.
 ```
