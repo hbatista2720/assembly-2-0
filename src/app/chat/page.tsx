@@ -21,11 +21,19 @@ export default function ChatPage() {
   type ChatCard = "votacion" | "asambleas" | "calendario" | "tema" | "poder";
   const [chatMessages, setChatMessages] = useState<Array<{ from: "bot" | "user"; text: string; card?: ChatCard }>>([]);
   const [residentVoteSent, setResidentVoteSent] = useState(false);
+  const [residentVoteParticiparClicked, setResidentVoteParticiparClicked] = useState(false);
   const [poderSubmitted, setPoderSubmitted] = useState(false);
   const [poderEmail, setPoderEmail] = useState("");
   type AssemblyContext = "activa" | "programada" | "sin_asambleas";
   const [assemblyContext, setAssemblyContext] = useState<AssemblyContext>("activa");
   const [webPrompt] = useState("Hola, soy Lex. ¿Qué perfil tienes?");
+  type ResidentProfile = { organization_name: string; unit: string | null; resident_name: string; email: string } | null;
+  const [residentProfile, setResidentProfile] = useState<ResidentProfile>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [chatMessages]);
 
   useEffect(() => {
     fetch("/api/chatbot/config")
@@ -64,7 +72,10 @@ export default function ChatPage() {
     if (!sessionRestored.current || !residentEmailValidated || chatRole !== "residente" || chatMessages.length !== 1) return;
     if (chatMessages[0].from !== "bot") return;
     sessionRestored.current = false;
-    setChatMessages((prev) => [...prev, { from: "bot", text: "Correo reconocido. Te conecto con tu administrador." }]);
+    const email = typeof window !== "undefined" ? localStorage.getItem("assembly_resident_email") || "" : "";
+    const prefix = email.split("@")[0] || "";
+    const displayName = /^residente\d*$/i.test(prefix) ? `Residente ${prefix.replace(/^residente/i, "") || "1"}` : prefix || "residente";
+    setChatMessages((prev) => [...prev, { from: "bot", text: `Hola ${displayName}. Soy Lex, tu asistente para votaciones, asambleas y gestión de tu PH en Assembly 2.0.` }]);
   }, [residentEmailValidated, chatRole, chatMessages]);
 
   useEffect(() => {
@@ -75,6 +86,27 @@ export default function ChatPage() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.context) setAssemblyContext(data.context);
+      })
+      .catch(() => {});
+  }, [chatRole, residentEmailValidated]);
+
+  useEffect(() => {
+    if (chatRole !== "residente" || !residentEmailValidated) return;
+    const email = typeof window !== "undefined" ? localStorage.getItem("assembly_resident_email") : null;
+    if (!email) return;
+    fetch(`/api/resident-profile?email=${encodeURIComponent(email)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.organization_name != null) {
+          setResidentProfile({
+            organization_name: data.organization_name ?? "PH",
+            unit: data.unit ?? null,
+            resident_name: data.resident_name ?? data.email ?? email,
+            email: data.email ?? email,
+          });
+        }
+        if (data?.user_id) try { localStorage.setItem("assembly_user_id", data.user_id); } catch {}
+        if (data?.organization_id) try { localStorage.setItem("assembly_organization_id", data.organization_id); } catch {}
       })
       .catch(() => {});
   }, [chatRole, residentEmailValidated]);
@@ -217,8 +249,35 @@ export default function ChatPage() {
               <img src="/avatars/chatbot.png" alt="Lex" style={{ width: "100%", height: "100%" }} />
             </div>
             <div>
-              <strong style={{ letterSpacing: "0.01em" }}>Lex · Asistente</strong>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                <strong style={{ letterSpacing: "0.01em" }}>Lex · Asistente</strong>
+                {residentEmailValidated && chatRole === "residente" && assemblyContext === "activa" && (
+                  <span className="pill" style={{ fontSize: "10px", padding: "2px 8px", background: "rgba(34,197,94,0.25)", color: "#86efac", border: "1px solid rgba(34,197,94,0.4)" }}>Asamblea activa</span>
+                )}
+              </div>
               <div style={{ fontSize: "12px", color: "#94a3b8" }}>Assembly 2.0</div>
+              {residentEmailValidated && chatRole === "residente" && (
+                <div style={{ marginTop: "6px", paddingTop: "6px", borderTop: "1px solid rgba(148,163,184,0.2)" }}>
+                  {residentProfile ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "2px", fontSize: "11px" }}>
+                      <div style={{ color: "#64748b" }}>Nombre del PH</div>
+                      <div style={{ color: "#e2e8f0", fontWeight: 500 }}>{residentProfile.organization_name}</div>
+                      <div style={{ display: "flex", gap: "12px", marginTop: "4px", color: "#94a3b8" }}>
+                        {residentProfile.unit && <span>Unidad: <strong style={{ color: "#cbd5e1" }}>{residentProfile.unit}</strong></span>}
+                        <span>Usuario: <strong style={{ color: "#cbd5e1" }}>{residentProfile.resident_name}</strong></span>
+                        <span>Correo: <strong style={{ color: "#cbd5e1" }}>{residentProfile.email}</strong></span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: "11px", color: "#94a3b8" }}>
+                      Usuario: {typeof window !== "undefined" ? localStorage.getItem("assembly_resident_email") || "—" : "—"}
+                      {typeof window !== "undefined" && localStorage.getItem("assembly_resident_email") && (
+                        <> · Correo: <strong style={{ color: "#cbd5e1" }}>{localStorage.getItem("assembly_resident_email")}</strong></>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           {residentEmailValidated && chatRole === "residente" ? (
@@ -233,8 +292,8 @@ export default function ChatPage() {
                   const organizationId = localStorage.getItem("assembly_organization_id");
                   const payload: Record<string, string | null | undefined> = {
                     assembly_id: null,
-                    resident_name: null,
-                    unit: null,
+                    resident_name: residentProfile?.resident_name ?? null,
+                    unit: residentProfile?.unit ?? null,
                   };
                   if (userId) payload.user_id = userId;
                   if (email) payload.email = email;
@@ -253,7 +312,7 @@ export default function ChatPage() {
                     localStorage.removeItem("assembly_email");
                     localStorage.removeItem("assembly_organization_id");
                   } catch {}
-                  window.location.href = "/";
+                  window.location.href = "/residentes/chat";
                 }
               }}
             >
@@ -320,27 +379,43 @@ export default function ChatPage() {
                 >
                   {message.card === "votacion" && (
                     <>
-                      <div style={{ fontWeight: 600, marginBottom: "8px" }}>Aprobación de presupuesto</div>
-                      <div className="muted" style={{ fontSize: "12px", marginBottom: "12px" }}>Estado: Abierto</div>
-                      {!residentVoteSent ? (
-                        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                          {(["Sí", "No", "Abstengo"] as const).map((op) => (
-                            <button
-                              key={op}
-                              className="btn btn-primary btn-demo"
-                              style={{ borderRadius: "999px", padding: "8px 14px" }}
-                              onClick={() => {
-                                setResidentVoteSent(true);
-                                pushUserMessage(`Voto: ${op}`);
-                                pushBotMessage("Tu voto quedó registrado con trazabilidad legal.");
-                              }}
-                            >
-                              {op}
-                            </button>
-                          ))}
-                        </div>
+                      {!residentVoteParticiparClicked ? (
+                        <>
+                          <div style={{ fontWeight: 600, marginBottom: "8px" }}>Votación activa</div>
+                          <p style={{ margin: "0 0 12px", fontSize: "13px" }}>Tienes una votación abierta. ¿Participar?</p>
+                          <button
+                            className="btn btn-primary btn-demo"
+                            style={{ borderRadius: "999px", padding: "8px 16px" }}
+                            onClick={() => setResidentVoteParticiparClicked(true)}
+                          >
+                            Ir a votar
+                          </button>
+                        </>
                       ) : (
-                        <span className="muted" style={{ fontSize: "12px" }}>Tu voto fue registrado.</span>
+                        <>
+                          <div style={{ fontWeight: 600, marginBottom: "8px" }}>Aprobación de presupuesto</div>
+                          <div className="muted" style={{ fontSize: "12px", marginBottom: "12px" }}>Estado: Abierto</div>
+                          {!residentVoteSent ? (
+                            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                              {(["Sí", "No", "Abstengo"] as const).map((op) => (
+                                <button
+                                  key={op}
+                                  className="btn btn-primary btn-demo"
+                                  style={{ borderRadius: "999px", padding: "8px 14px" }}
+                                  onClick={() => {
+                                    setResidentVoteSent(true);
+                                    pushUserMessage(`Voto: ${op}`);
+                                    pushBotMessage("Tu voto quedó registrado con trazabilidad legal.");
+                                  }}
+                                >
+                                  {op}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="muted" style={{ fontSize: "12px" }}>Tu voto fue registrado.</span>
+                          )}
+                        </>
                       )}
                     </>
                   )}
@@ -442,6 +517,7 @@ export default function ChatPage() {
               )}
             </div>
           ))}
+          <div ref={messagesEndRef} style={{ height: 1 }} aria-hidden />
         </div>
 
         {/* Pills: debajo del último mensaje, encima del input */}
@@ -482,7 +558,7 @@ export default function ChatPage() {
             )}
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
               {[
-                { label: "Votación", msg: "Aquí tienes la votación activa del día.", card: "votacion" as ChatCard, primary: true, onlyWhenActive: true },
+                { label: "Votación", msg: "Tienes una votación abierta. ¿Participar?", card: "votacion" as ChatCard, primary: true, onlyWhenActive: true },
                 { label: "Asambleas", msg: "Te muestro el listado de asambleas activas.", card: "asambleas" as ChatCard, primary: false, onlyWhenActive: false },
                 { label: "Calendario", msg: "Aquí tienes el calendario de tu PH.", card: "calendario" as ChatCard, primary: false, onlyWhenActive: false },
                 { label: "Tema del día", msg: "Tema activo: aprobación de presupuesto.", card: "tema" as ChatCard, primary: false, onlyWhenActive: true },

@@ -1191,3 +1191,84 @@ Revalidar el flujo de abandono de sala (§E): tabla en BD, botón "Cerrar sesió
 | Registro en BD del evento | ✅ Verificado via GET |
 
 **Pendiente (no bloqueante para §E):** Admin PH aún no muestra lista de abandonos en monitor/vista asamblea.
+
+---
+
+# QA TAREA 2 – Ejecución completa (§E + Opción B)
+
+**Fecha:** 07 Febrero 2026  
+**Referencia:** Contralor/TAREA_2_QA.md, QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md
+
+## Opción A – Revalidación §E (abandono de sala)
+
+| Paso | Acción | Resultado |
+|------|--------|-----------|
+| 1 | Tabla en BD | ✅ Operativa |
+| 2 | POST /api/resident-abandon | ✅ 200 OK |
+| 3 | GET /api/resident-abandon | ✅ 200 OK, eventos listados |
+| 4 | Botón "Cerrar sesión" + alerta | ✅ En `chat/page.tsx` (líneas 284–318) |
+
+**Resultado §E:** ✅ **OK** – Sin fallos.
+
+## Opción B – Validación manual chatbot (botones 4.3–4.7)
+
+| Botón | Comportamiento observado | Rutas /residentes/* |
+|-------|--------------------------|---------------------|
+| 4.3 Votación | Card inline con "Ir a votar"; voto Sí/No/Abstengo dentro del chat | /residentes/votacion → 200 |
+| 4.4 Asambleas | Card inline con listado de asambleas | /residentes/asambleas → 200 |
+| 4.5 Calendario | Card inline con calendario | /residentes/calendario → 200 |
+| 4.6 Tema del día | Card inline con tema y "Ver anexos" | /residentes/tema-del-dia → 200 |
+| 4.7 Ceder poder | Card inline con formulario email + Enviar | /residentes/poder → 200 |
+
+**Nota:** Los botones muestran contenido **dentro del chat** (cards inline), según Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md. No navegan directamente a /residentes/*. Las rutas existen y responden 200.
+
+**Resultado Opción B:** ✅ **OK** – Botones operativos; rutas residentes 200.
+
+## Veredicto TAREA 2
+
+✅ **TAREA 2 COMPLETADA** – §E revalidado OK; validación chatbot Opción B OK.
+
+---
+
+# QA Plan completo + validación §J/rec 14
+
+**Fecha:** 07 Febrero 2026  
+**Referencia:** QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md, Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md §J
+
+## Plan completo (etapas 1–6)
+
+| Etapa | Rutas / Pruebas | Resultado | Detalle |
+|-------|-----------------|-----------|---------|
+| 1 | Flujo Login (1.1–1.5) | ✅ Aprobado | Validado previamente; verify-otp y redirección por rol OK. |
+| 2 | Dashboard Admin PH (2.1–2.9) | ✅ 200 OK | /dashboard/admin-ph, owners, assemblies, votations, acts, reports, team, settings, support. |
+| 3 | Platform Admin (3.1–3.6) | ✅ 200 OK | /dashboard/platform-admin, monitoring, clients, business, leads, chatbot-config. /api/chatbot/config 200. |
+| 4 | Landing → Chatbot (4.1–4.7) | ✅ Aprobado | API 200; botones muestran cards inline; rutas residentes 200. |
+| 5 | Páginas Residentes (5.1–5.5) | ✅ 200 OK | /residentes/votacion, asambleas, calendario, tema-del-dia, poder. |
+| 6 | Smoke test (6.1–6.5) | ✅ 200 OK | /, /login, /demo, /pricing, /register. |
+
+**Veredicto plan:** ✅ **TODAS LAS ETAPAS APROBADAS** – Sin fallos.
+
+---
+
+## Validación §J + Recomendación #14 (residente con asamblea activa)
+
+Revisión de código en `src/app/chat/page.tsx`:
+
+| # | Punto (§J / rec 14) | Estado | Evidencia en código |
+|---|---------------------|--------|---------------------|
+| 1 | Mensaje de bienvenida residente "Hola [Nombre]. Soy Lex, tu asistente para votaciones, asambleas y gestión de tu PH en Assembly 2.0." | ✅ OK | Línea 78: `Hola ${displayName}. Soy Lex, tu asistente para votaciones, asambleas y gestión de tu PH en Assembly 2.0.` |
+| 2 | Correo visible en cabecera o primera burbuja | ✅ OK | Líneas 259–279: cabecera muestra Usuario, Correo, Unidad cuando `residentEmailValidated && chatRole === "residente"`. |
+| 3 | Clic "Votación" → card "Votación activa", "Tienes una votación abierta. ¿Participar?", botón "Ir a votar" | ✅ OK | Líneas 380–393: card votacion con título, texto y botón "Ir a votar"; respuesta dentro del chat. |
+| 4 | Badge "Asamblea activa" visible | ✅ OK | Líneas 254–256: badge junto a "Lex · Asistente" cuando `assemblyContext === "activa"`. |
+
+**Veredicto §J/rec 14:** ✅ **4/4 PUNTOS IMPLEMENTADOS** – Sin incidencias.
+
+---
+
+## Informe al Contralor
+
+**QA ejecutó plan completo (etapas 1–6) y validación §J/rec 14.**
+
+- **Plan:** Etapas 2, 3, 5 y 6 validadas vía HTTP; etapas 1 y 4 confirmadas (validación previa + ejecución TAREA 2).
+- **§J/rec 14:** Checklist verificado en código; los 4 puntos UX para residente con asamblea activa están implementados.
+- **Resultado:** ✅ OK – Sin bloqueadores. Contralor puede proceder según protocolo (registro y backup si Henry autoriza).

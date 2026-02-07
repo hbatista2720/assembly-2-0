@@ -285,6 +285,21 @@ function HomeContent() {
         pushBotMessage("Correo reconocido. Te conecto con tu administrador.");
         setChatStep(8);
         setChatInput("");
+        // Marketing §A: llevar a página solo chatbot (sin distracciones de la landing)
+        const profileParam = searchParams.get("profile")?.trim();
+        const chatQuery = profileParam ? `?profile=${encodeURIComponent(profileParam)}` : "";
+        fetch(`/api/resident-profile?email=${encodeURIComponent(emailLower)}`)
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => {
+            try {
+              if (data?.user_id) localStorage.setItem("assembly_user_id", data.user_id);
+              if (data?.organization_id) localStorage.setItem("assembly_organization_id", data.organization_id);
+            } catch {}
+            router.push(`/residentes/chat${chatQuery}`);
+          })
+          .catch(() => {
+            router.push(`/residentes/chat${chatQuery}`);
+          });
         return;
       }
 
@@ -1118,7 +1133,7 @@ function HomeContent() {
                         localStorage.removeItem("assembly_organization_id");
                       } catch {}
                       setChatbotOpen(false);
-                      window.location.href = "/";
+                      window.location.href = "/residentes/chat";
                     }
                   }}
                 >

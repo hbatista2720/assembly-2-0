@@ -9,7 +9,7 @@
 
 ---
 
-## Barra de progreso de la prueba
+## Barra de progreso de la prueba1q
 
 ```
 [✅ 1.Login] [✅ 2.Admin PH] [✅ 3.Platform Admin] [✅ 4.Chatbot] [✅ 5.Residentes] [✅ 6.Smoke]
@@ -28,6 +28,29 @@
 **Por donde vamos:** Plan de pruebas completado. Todas las etapas 1–6 aprobadas.
 
 **Validación §E (abandono de sala):** Fuera del alcance de las etapas 1–6. Según QA_FEEDBACK.md (06 Feb): BD + API listos; **QA puede revalidar §E** cuando la tabla `resident_abandon_events` exista en el entorno. Pendientes opcionales: botón "Cerrar sesión", alerta, vista Admin PH con abandonos. Estatus: revalidación §E pendiente cuando QA ejecute la prueba.
+
+### Validación §J + Recomendación #14 (Marketing) – Residente con asamblea activa
+**Registro:** §J y recomendación #14 están registrados en Contralor/ESTATUS_AVANCE.md con instrucción explícita para el Coder. Este bloque es el **checklist de validación** que QA debe ejecutar cuando corresponda.
+
+**Fuente:** Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md – Sección §J y Recomendación #14.
+
+Cuando QA ejecute pruebas de chatbot con **residente validado y asamblea activa**, validar:
+
+| # | Punto (§J / rec 14) | Qué validar | OK / Pendiente |
+|---|---------------------|-------------|----------------|
+| 1 | Mensaje de bienvenida | Texto específico para residente: "Hola [Nombre]. Soy Lex, tu asistente para votaciones, asambleas y gestión de tu PH en Assembly 2.0." – NO texto B2B (leads/demos). | ☐ |
+| 2 | Identidad / correo en chat | Correo del residente visible en cabecera o primera burbuja (además de nombre y unidad). | ☐ |
+| 3 | Clic en "Votación" | Respuesta **dentro del chat**: card/mensaje con título "Votación activa", texto "Tienes una votación abierta. ¿Participar?", botón "Ir a votar" – sin redirigir hasta que el usuario confirme. | ☐ |
+| 4 | Badge "Asamblea activa" | Indicador visible (badge junto a cabecera o inicio del chat) cuando hay asamblea activa. | ☐ |
+
+Reportar resultado en QA/QA_FEEDBACK.md (sección §J / rec 14). Referencia: Contralor/ESTATUS_AVANCE.md.
+
+### Hallazgo Marketing (26 Ene 2026) – Página chatbot residentes §I
+| Perfil | Entrada | Destino tras validar / cerrar sesión |
+|--------|---------|--------------------------------------|
+| Perfil 1 | Landing `/` | Validar correo → `/residentes/chat`; Cerrar sesión → `/residentes/chat` |
+| Perfil 2 | Link directo `/residentes/chat` | Validar correo en esa página; Cerrar sesión → permanece en `/residentes/chat` |
+**Regla:** El residente nunca termina en landing tras cerrar sesión; siempre va a `/residentes/chat`.
 
 ### Hallazgo Marketing (26 Feb 2026) – Validación demo chatbot por perfil
 | Perfil | Qué validar |

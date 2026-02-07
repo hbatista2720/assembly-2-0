@@ -143,6 +143,40 @@ Para pruebas y demo, validar el chatbot con estos **perfiles de contexto**:
 
 ---
 
+### I. Página de chatbot de residentes + flujos por perfil de usuario
+
+**Contexto:** Los residentes registrados no deben terminar en la landing de ventas. Debe existir una **página de inicio del chatbot de residentes** como destino por defecto.
+
+**Recomendación:**
+
+1. **Crear página de chatbot de residentes** (ej. `/residentes/chat` o `/residentes`): página centrada en el chatbot, sin contenido de ventas. Es el "hogar" del residente validado.
+
+2. **Al cerrar sesión o finalizar chat:** Redirigir al residente a la **página de chatbot de residentes** (no a la landing `/`). El residente ve el chatbot vacío con campo para volver a validar correo o iniciar sesión.
+
+3. **Dos perfiles de usuario residente:**
+
+| Perfil | Entrada | Destino tras validar / finalizar |
+|--------|---------|-----------------------------------|
+| **Perfil 1** | Entra por **landing** (`/`) | Tras validar correo → ir a **página chatbot residentes** (`/residentes/chat`). Tras cerrar sesión → volver a **página chatbot residentes**. |
+| **Perfil 2** | Entra **directo** con link al chatbot de residentes (`/residentes/chat`) | Validación de correo en esa misma página. Cerrar sesión → permanece en **página chatbot residentes** (sin ir a landing). |
+
+**Ruta sugerida:** `/residentes/chat` o `/residentes` como página de inicio del chatbot para residentes. La landing (`/`) queda solo para captación de leads; el residente nunca "aterriza" en landing tras cerrar sesión.
+
+---
+
+### J. Mejoras UX – Residente con asamblea activa (validación captura 26 Ene 2026)
+
+**Contexto:** Al validar la interfaz del chatbot con residente y asamblea activa, se detectaron estos 4 puntos de mejora:
+
+| # | Punto | Estado actual | Mejora sugerida |
+|---|-------|---------------|-----------------|
+| **1** | **Mensaje de bienvenida** | Texto genérico B2B: *"Eres Lex, asistente de Assembly 2.0. Califica leads y ofrece demos."* – no corresponde a residentes. | Mensaje específico para residente: *"Hola [Nombre]. Soy Lex, tu asistente para votaciones, asambleas y gestión de tu PH en Assembly 2.0."* (o similar según tono de marca). |
+| **2** | **Identidad del residente** | Nombre y unidad en cabecera; correo no visible en el chat. | Mostrar **correo** en el chat (cabecera o primera burbuja) para que el residente confirme que está logueado con la cuenta correcta. Complementa §C. |
+| **3** | **Acción al clic en "Votación"** | El botón "Votación" solo se resalta; no hay respuesta al clic. | Al hacer clic, responder **dentro del chat** (card o mensaje): título "Votación activa", texto "Tienes una votación abierta. ¿Participar?", botón "Ir a votar". Todo inline, sin redirigir hasta que el usuario confirme. |
+| **4** | **Indicador visual "Asamblea activa"** | No hay badge ni indicador visible. | Añadir badge o indicador (ej. *"Asamblea activa"* junto a la cabecera o al inicio del chat) para que el residente entienda de inmediato por qué Votación y Tema del día están disponibles. |
+
+---
+
 ## 🎯 RECOMENDACIONES PARA EL CODER
 
 ### 1. Persistir sesión del residente validado (prioridad alta)
@@ -204,7 +238,7 @@ Para pruebas y demo, validar el chatbot con estos **perfiles de contexto**:
 - En chatbot de residentes validados: **reemplazar** botón "Volver a la landing" por **"Cerrar sesión"**.
 - Al cerrar sesión: mostrar **alerta** *"Estás abandonando la votación. Esto afecta el quórum. ¿Cerrar sesión?"*.
 - **Registrar en BD** la hora en que el residente abandonó (tabla/evento para Admin PH: ver quién abandonó y cuándo; afecta quórum).
-- El Admin PH debe poder consultar: residente X abandonó a las [hora].
+- **Redirigir tras cerrar sesión:** a la **página de chatbot de residentes** (`/residentes/chat`), **no** a la landing `/`.
 
 ### 10. Lógica de habilitación de botones (ver §F)
 
@@ -220,6 +254,21 @@ Para pruebas y demo, validar el chatbot con estos **perfiles de contexto**:
 ### 12. Validación usuario demo – perfiles (ver §H)
 
 - Validar chatbot con: **(1) Asamblea activa** – Votación y Tema del día habilitados; **(2) Asamblea programada** – solo Asambleas/Calendario; **(3) Pre-registro** – contexto sin asambleas; **(4) Sin asambleas año en curso** – mensaje *"No hay asambleas programadas. ¿Consultar con el administrador?"*.
+
+### 13. Página chatbot residentes + flujos por perfil (ver §I)
+
+- **Crear página** `/residentes/chat` (o `/residentes`): página de inicio del chatbot para residentes, sin contenido de ventas.
+- **Al cerrar sesión o finalizar chat:** redirigir a `/residentes/chat`, **no** a la landing `/`.
+- **Perfil 1 (entra por landing):** Tras validar correo en `/` → redirigir a `/residentes/chat`. Tras cerrar sesión → `/residentes/chat`.
+- **Perfil 2 (entra directo):** Link directo a `/residentes/chat`. Validación de correo en esa misma página. Cerrar sesión → permanece en `/residentes/chat`.
+- La landing (`/`) queda solo para captación; el residente nunca termina en landing tras cerrar sesión.
+
+### 14. Mejoras UX residente con asamblea activa (ver §J)
+
+- **(1) Mensaje de bienvenida residente:** No usar el texto B2B ("Califica leads y ofrece demos"). Usar mensaje específico: *"Hola [Nombre]. Soy Lex, tu asistente para votaciones, asambleas y gestión de tu PH en Assembly 2.0."*
+- **(2) Mostrar correo en el chat:** Incluir correo del residente en cabecera o primera burbuja (además de nombre y unidad) para confirmar cuenta.
+- **(3) Acción al clic "Votación":** Al hacer clic, mostrar card/mensaje dentro del chat: título "Votación activa", texto "Tienes una votación abierta. ¿Participar?", botón "Ir a votar" – todo inline, sin redirigir hasta confirmar.
+- **(4) Badge "Asamblea activa":** Añadir indicador visible (badge junto a cabecera o inicio del chat) cuando hay asamblea activa, para que el residente entienda por qué Votación y Tema del día están habilitados.
 
 ---
 
