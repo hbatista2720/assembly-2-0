@@ -169,16 +169,18 @@ return 'visitante';
 
 ---
 
-## 📌 REGLA: CHATBOT LANDING – FLUJO RESIDENTE Y BOTONES
+## 📌 REGLA: CHATBOT LANDING – FLUJO RESIDENTE, PIN Y BOTONES
 
-**Referencia:** Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md (Feb 2026).
+**Referencia:** Arquitecto/LOGICA_CHATBOT_RESIDENTE_PIN.md (Feb 2026). Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md.
 
-En el chatbot de la landing, cuando el usuario elige rol **Residente** e introduce un correo:
+En el chatbot de la landing (y en `/residentes/chat`), cuando el usuario elige rol **Residente**:
 
-- **Correo no validado (no reconocido):** Se muestra el mensaje "No encuentro ese correo. Contacta al administrador de tu PH para validar." **No** se muestran los botones de acciones rápidas (Votación, Asambleas, Calendario, Tema del día, Ceder poder). El usuario puede reintentar con otro correo.
-- **Correo validado (reconocido):** Se muestra "Correo reconocido. Te conecto con tu administrador." **Sí** se muestran los botones de acciones rápidas.
+1. **Correo no reconocido:** Mensaje "No encuentro ese correo. Contacta al administrador de tu PH para validar." **No** mostrar botones. Permitir reintentar con otro correo.
+2. **Correo reconocido:** **No** dar acceso aún. Enviar **PIN al correo** y pedir al usuario que lo ingrese.
+3. **PIN correcto:** Solo entonces considerar al residente validado y **sí** mostrar los botones de acciones rápidas (Votación, Asambleas, Calendario, Tema del día, Ceder poder).
+4. **Habilitación de botones:** **Votación** y **Tema del día** solo habilitados si hay **asamblea activa**; **Asambleas**, **Calendario**, **Ceder poder** siempre habilitados una vez validado.
 
-**Estado a usar en implementación:** `residentEmailValidated` (boolean). Los botones se muestran solo cuando `chatRole === "residente"` **y** `residentEmailValidated === true`. No basta con `chatStep === 8` si el correo no fue validado.
+**Estado a usar:** `residentEmailValidated` (boolean) = `true` **solo cuando correo existe Y PIN correcto verificado**. Los botones se muestran solo cuando `chatRole === "residente"` **y** `residentEmailValidated === true`, y se habilitan/deshabilitan según asamblea activa (ver LOGICA_CHATBOT_RESIDENTE_PIN.md).
 
 ---
 

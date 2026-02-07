@@ -1173,6 +1173,9 @@ Paginación: [1] 2 3 ... 10  (20 por página)
 └─────────────────────────┘
 ```
 
+**Configuración Face ID por residente (Arquitecto/FACE_ID_OPCIONAL_ADMIN_RESIDENTE.md):**  
+El Admin PH puede **activar o desactivar** el uso de Face ID por perfil de residente. En la vista de detalle/edición del residente (o unidad), incluir control **"Permitir Face ID"** (activar/desactivar). Si está desactivado o el residente no puede usarlo, el sistema debe ofrecer siempre **OTP** como opción.
+
 ---
 
 ### **4.6 Voto Manual (Para anti-tecnología)**

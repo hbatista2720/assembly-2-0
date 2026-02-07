@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PLANS } from "../lib/types/pricing";
 
@@ -8,6 +9,8 @@ function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [chatbotOpen, setChatbotOpen] = useState(false);
+  const [hoverResidentChat, setHoverResidentChat] = useState(false);
+  const [hoverAdminAccess, setHoverAdminAccess] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatStep, setChatStep] = useState(0);
   const [chatRole, setChatRole] = useState<"admin" | "junta" | "residente" | "demo" | "">("");
@@ -16,7 +19,9 @@ function HomeContent() {
   const [chatMessages, setChatMessages] = useState<Array<{ from: "bot" | "user"; text: string; card?: ChatCard }>>([]);
   const [residentVoteSent, setResidentVoteSent] = useState(false);
   const [poderSubmitted, setPoderSubmitted] = useState(false);
+  const [hasPendingPowerRequest, setHasPendingPowerRequest] = useState(false);
   const [poderEmail, setPoderEmail] = useState("");
+  const [poderApoderadoNombre, setPoderApoderadoNombre] = useState("");
   type AssemblyContext = "activa" | "programada" | "sin_asambleas";
   const [assemblyContext, setAssemblyContext] = useState<AssemblyContext>("activa");
   const [webPrompt, setWebPrompt] = useState("Hola, soy Lex. Antes de continuar, ¿que perfil tienes?");
@@ -25,6 +30,10 @@ function HomeContent() {
     role: "",
     demoEmail: "",
   });
+  const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
+  const [abandonConfirmPhrase, setAbandonConfirmPhrase] = useState("");
+  const [residentEmailPending, setResidentEmailPending] = useState<string | null>(null);
+  const ABANDON_CONFIRM_PHRASE = "Si abandonar";
   // Emails residentes org demo (lista fija; ref QA_FEEDBACK.md, ESTATUS_AVANCE)
   const DEMO_RESIDENT_EMAILS = [
     "residente1@demo.assembly2.com",
@@ -168,7 +177,10 @@ function HomeContent() {
   useEffect(() => {
     if (chatRole !== "residente" || !residentEmailValidated) return;
     const profile = searchParams.get("profile")?.trim() || "";
-    const q = profile ? `?profile=${encodeURIComponent(profile)}` : "";
+    const organizationId = typeof window !== "undefined" ? localStorage.getItem("assembly_organization_id") : null;
+    let q = "";
+    if (profile) q = `?profile=${encodeURIComponent(profile)}`;
+    else if (organizationId) q = `?organization_id=${encodeURIComponent(organizationId)}`;
     fetch(`/api/assembly-context${q}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -176,6 +188,18 @@ function HomeContent() {
       })
       .catch(() => {});
   }, [chatRole, residentEmailValidated, searchParams]);
+
+  useEffect(() => {
+    if (chatRole !== "residente" || !residentEmailValidated) return;
+    const userId = typeof window !== "undefined" ? localStorage.getItem("assembly_user_id") : null;
+    if (!userId) return;
+    fetch(`/api/power-requests?user_id=${encodeURIComponent(userId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.has_pending) setHasPendingPowerRequest(true);
+      })
+      .catch(() => {});
+  }, [chatRole, residentEmailValidated]);
 
   const pushBotMessage = (text: string) => {
     setChatMessages((prev) => [...prev, { from: "bot", text }]);
@@ -245,6 +269,83 @@ function HomeContent() {
       return;
     }
 
+    if (chatRole === "residente" && residentEmailValidated && chatStep >= 8) {
+      setChatInput("");
+      const email = typeof window !== "undefined" ? localStorage.getItem("assembly_resident_email") || "" : "";
+      const history = chatMessages.slice(-12).map((m) => ({ role: m.from === "user" ? "user" : "model", text: m.text }));
+      fetch("/api/chat/resident", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: trimmed,
+          history,
+          context: { email, assemblyContext },
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.reply) pushBotMessage(data.reply);
+          else pushBotMessage(data.error || "No pude procesar tu mensaje. ¿Quieres usar los botones de abajo?");
+        })
+        .catch(() => pushBotMessage("No pude conectar. Intenta de nuevo o usa los botones (Votación, Asambleas, etc.)."));
+      return;
+    }
+
+    if (chatRole === "residente" && chatStep === 4 && residentEmailPending) {
+      const reenviar = /^reenvia(r)?\s*(pin)?$/i.test(trimmed.trim()) || trimmed.trim().toLowerCase() === "reenviar pin";
+      if (reenviar) {
+        fetch("/api/auth/request-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: residentEmailPending }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.success) pushBotMessage(`Te reenviamos un nuevo PIN a ${residentEmailPending}. Revisa tu bandeja e ingrésalo aquí.`);
+            else pushBotMessage(data?.error || "No se pudo reenviar el PIN.");
+          })
+          .catch(() => pushBotMessage("No se pudo reenviar el PIN."));
+        setChatInput("");
+        return;
+      }
+      fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: residentEmailPending, code: trimmed }),
+      })
+        .then((res) => res.json().then((data) => ({ res, data })))
+        .then(({ res, data }) => {
+          if (res.ok && data?.user?.role === "RESIDENTE") {
+            setResidentEmailValidated(true);
+            setResidentEmailPending(null);
+            setChatStep(8);
+            try {
+              localStorage.setItem("assembly_resident_email", residentEmailPending);
+              localStorage.setItem("assembly_resident_validated", String(Date.now()));
+              if (data.user.id) localStorage.setItem("assembly_user_id", data.user.id);
+              if (data.user.organization_id) localStorage.setItem("assembly_organization_id", data.user.organization_id);
+            } catch {}
+            const profileParam = searchParams.get("profile")?.trim();
+            const chatQuery = profileParam ? `?profile=${encodeURIComponent(profileParam)}` : "";
+            fetch(`/api/resident-profile?email=${encodeURIComponent(residentEmailPending)}`)
+              .then((r) => (r.ok ? r.json() : null))
+              .then((profileData) => {
+                try {
+                  if (profileData?.user_id) localStorage.setItem("assembly_user_id", profileData.user_id);
+                  if (profileData?.organization_id) localStorage.setItem("assembly_organization_id", profileData.organization_id);
+                } catch {}
+                router.push(`/residentes/chat${chatQuery}`);
+              })
+              .catch(() => router.push(`/residentes/chat${chatQuery}`));
+          } else {
+            pushBotMessage("PIN incorrecto o vencido. ¿Reenviar PIN? Escribe el nuevo código o «Reenviar PIN».");
+          }
+        })
+        .catch(() => pushBotMessage("Error al verificar. Intenta de nuevo o escribe «Reenviar PIN»."));
+      setChatInput("");
+      return;
+    }
+
     if (chatStep === 3) {
       const isValidEmail = /\S+@\S+\.\S+/.test(trimmed);
       if (!isValidEmail) {
@@ -273,32 +374,31 @@ function HomeContent() {
         if (!recognized) {
           pushBotMessage("No encuentro ese correo. Contacta al administrador de tu PH para validar. Puedes escribir otro correo para reintentar.");
           setChatInput("");
-          return; // No avanzar a step 8 ni mostrar botones; residente debe estar validado (Marketing §2)
+          return;
         }
-        setResidentEmailValidated(true);
-        try {
-          localStorage.setItem("assembly_resident_email", emailLower);
-          localStorage.setItem("assembly_resident_validated", String(Date.now()));
-        } catch {
-          // ignore
-        }
-        pushBotMessage("Correo reconocido. Te conecto con tu administrador.");
-        setChatStep(8);
+        setResidentEmailPending(emailLower);
+        setChatStep(4);
         setChatInput("");
-        // Marketing §A: llevar a página solo chatbot (sin distracciones de la landing)
-        const profileParam = searchParams.get("profile")?.trim();
-        const chatQuery = profileParam ? `?profile=${encodeURIComponent(profileParam)}` : "";
-        fetch(`/api/resident-profile?email=${encodeURIComponent(emailLower)}`)
-          .then((res) => (res.ok ? res.json() : null))
+        fetch("/api/auth/request-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: emailLower }),
+        })
+          .then((res) => res.json())
           .then((data) => {
-            try {
-              if (data?.user_id) localStorage.setItem("assembly_user_id", data.user_id);
-              if (data?.organization_id) localStorage.setItem("assembly_organization_id", data.organization_id);
-            } catch {}
-            router.push(`/residentes/chat${chatQuery}`);
+            if (data?.success) {
+              pushBotMessage(`Te enviamos un PIN a ${emailLower}. Revisa tu bandeja (y spam) e ingrésalo aquí.`);
+              if (data?.otp) pushBotMessage(`Código de prueba (modo local): ${data.otp}`);
+            } else {
+              pushBotMessage(data?.error || "No se pudo enviar el PIN. Intenta más tarde.");
+              setResidentEmailPending(null);
+              setChatStep(3);
+            }
           })
           .catch(() => {
-            router.push(`/residentes/chat${chatQuery}`);
+            pushBotMessage("No se pudo enviar el PIN. Intenta más tarde.");
+            setResidentEmailPending(null);
+            setChatStep(3);
           });
         return;
       }
@@ -349,9 +449,20 @@ function HomeContent() {
             <a
               className="btn btn-ghost btn-access"
               href="/login"
-              title="Acceso seguro"
-              aria-label="Acceso seguro"
-              style={{ padding: 0, border: "none", background: "transparent" }}
+              title="Administrador"
+              aria-label="Administrador"
+              style={{
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                display: "inline-flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "4px",
+                textDecoration: "none",
+              }}
+              onMouseEnter={() => setHoverAdminAccess(true)}
+              onMouseLeave={() => setHoverAdminAccess(false)}
             >
               <span
                 className="icon-badge"
@@ -362,22 +473,39 @@ function HomeContent() {
                   background:
                     "radial-gradient(circle at 30% 30%, rgba(236, 72, 153, 0.8), transparent 55%), linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.95))",
                   border: "1px solid rgba(236, 72, 153, 0.7)",
-                  boxShadow: "0 14px 32px rgba(236, 72, 153, 0.35)",
+                  boxShadow: hoverAdminAccess ? "0 14px 32px rgba(236, 72, 153, 0.5)" : "0 14px 32px rgba(236, 72, 153, 0.35)",
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
                   overflow: "hidden",
+                  transition: "box-shadow 0.2s ease",
                 }}
               >
-                <img src="/icons/acceso-seguro.png" alt="Acceso seguro" style={{ width: "70%", height: "70%" }} />
+                <img src="/icons/acceso-seguro.png" alt="Administrador" style={{ width: "70%", height: "70%" }} />
               </span>
+              {hoverAdminAccess && (
+                <span style={{ fontSize: "11px", fontWeight: 600, color: "#f9a8d4", whiteSpace: "nowrap", letterSpacing: "0.02em" }}>
+                  Administrador
+                </span>
+              )}
             </a>
-            <button
-              className="btn btn-primary btn-demo"
-              onClick={() => setChatbotOpen(true)}
-              title="Solicita un demo"
-              aria-label="Solicita un demo"
-              style={{ padding: 0, border: "none", background: "transparent" }}
+            <Link
+              href="/residentes/chat"
+              title="Acceso de residentes"
+              aria-label="Acceso de residentes"
+              style={{
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                display: "inline-flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "4px",
+                textDecoration: "none",
+                position: "relative",
+              }}
+              onMouseEnter={() => setHoverResidentChat(true)}
+              onMouseLeave={() => setHoverResidentChat(false)}
             >
               <span
                 className="icon-badge"
@@ -388,16 +516,22 @@ function HomeContent() {
                   background:
                     "radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.85), transparent 55%), linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.95))",
                   border: "1px solid rgba(99, 102, 241, 0.7)",
-                  boxShadow: "0 14px 32px rgba(99, 102, 241, 0.35)",
+                  boxShadow: hoverResidentChat ? "0 14px 32px rgba(99, 102, 241, 0.5)" : "0 14px 32px rgba(99, 102, 241, 0.35)",
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
                   overflow: "hidden",
+                  transition: "box-shadow 0.2s ease",
                 }}
               >
-                <img src="/avatars/chatbot.png" alt="Solicita un demo" style={{ width: "70%", height: "70%" }} />
+                <img src="/avatars/chatbot.png" alt="Acceso de residentes" style={{ width: "70%", height: "70%" }} />
               </span>
-            </button>
+              {hoverResidentChat && (
+                <span style={{ fontSize: "11px", fontWeight: 600, color: "#a5b4fc", whiteSpace: "nowrap", letterSpacing: "0.02em" }}>
+                  Acceso de residentes
+                </span>
+              )}
+            </Link>
           </div>
         </div>
         <div className="nav-secondary">
@@ -1104,38 +1238,7 @@ function HomeContent() {
                 <button
                   type="button"
                   className="btn btn-ghost"
-                  onClick={() => {
-                    const msg = "Estás abandonando la votación. Esto afecta el quórum. ¿Cerrar sesión?";
-                    if (typeof window !== "undefined" && window.confirm(msg)) {
-                      const userId = localStorage.getItem("assembly_user_id");
-                      const email = localStorage.getItem("assembly_resident_email") || localStorage.getItem("assembly_email");
-                      const organizationId = localStorage.getItem("assembly_organization_id");
-                      const payload: Record<string, string | null | undefined> = {
-                        assembly_id: null,
-                        resident_name: null,
-                        unit: null,
-                      };
-                      if (userId) payload.user_id = userId;
-                      if (email) payload.email = email;
-                      if (organizationId) payload.organization_id = organizationId;
-                      if (userId || email) {
-                        fetch("/api/resident-abandon", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify(payload),
-                        }).catch(() => {});
-                      }
-                      try {
-                        localStorage.removeItem("assembly_resident_email");
-                        localStorage.removeItem("assembly_resident_validated");
-                        localStorage.removeItem("assembly_user_id");
-                        localStorage.removeItem("assembly_email");
-                        localStorage.removeItem("assembly_organization_id");
-                      } catch {}
-                      setChatbotOpen(false);
-                      window.location.href = "/residentes/chat";
-                    }
-                  }}
+                  onClick={() => { setShowAbandonConfirm(true); setAbandonConfirmPhrase(""); }}
                 >
                   Cerrar sesión
                 </button>
@@ -1275,44 +1378,72 @@ function HomeContent() {
                         <>
                           {!poderSubmitted ? (
                             <>
-                              <label style={{ display: "block", marginBottom: "8px", fontSize: "12px", color: "#94a3b8" }}>Correo del apoderado</label>
+                              <label style={{ display: "block", marginBottom: "8px", fontSize: "12px", color: "#94a3b8" }}>Correo del apoderado *</label>
                               <input
                                 type="email"
                                 placeholder="apoderado@correo.com"
                                 value={poderEmail}
                                 onChange={(e) => setPoderEmail(e.target.value)}
-                                style={{
-                                  width: "100%",
-                                  boxSizing: "border-box",
-                                  padding: "10px 12px",
-                                  borderRadius: "12px",
-                                  border: "1px solid rgba(148,163,184,0.3)",
-                                  background: "rgba(15,23,42,0.6)",
-                                  color: "#e2e8f0",
-                                  marginBottom: "10px",
-                                }}
+                                style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "12px", border: "1px solid rgba(148,163,184,0.3)", background: "rgba(15,23,42,0.6)", color: "#e2e8f0", marginBottom: "10px" }}
+                              />
+                              <label style={{ display: "block", marginBottom: "8px", fontSize: "12px", color: "#94a3b8" }}>Nombre completo del apoderado *</label>
+                              <input
+                                type="text"
+                                placeholder="Nombre y apellidos"
+                                value={poderApoderadoNombre}
+                                onChange={(e) => setPoderApoderadoNombre(e.target.value)}
+                                style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "12px", border: "1px solid rgba(148,163,184,0.3)", background: "rgba(15,23,42,0.6)", color: "#e2e8f0", marginBottom: "10px" }}
                               />
                               <button
                                 className="btn btn-primary btn-demo"
                                 style={{ borderRadius: "999px" }}
                                 onClick={() => {
-                                  const raw = poderEmail.trim();
-                                  const email = raw || "";
-                                  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-                                  if (!validEmail || !email) {
+                                  const email = poderEmail.trim().toLowerCase();
+                                  const nombre = poderApoderadoNombre.trim();
+                                  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
                                     pushBotMessage("Indica un correo válido para el apoderado.");
                                     return;
                                   }
-                                  setPoderSubmitted(true);
-                                  pushUserMessage(`Poder enviado a ${email}`);
-                                  pushBotMessage("Recibido. Lo validamos en minutos y te confirmamos.");
+                                  if (!nombre) {
+                                    pushBotMessage("Indica el nombre completo del apoderado.");
+                                    return;
+                                  }
+                                  const userId = typeof window !== "undefined" ? localStorage.getItem("assembly_user_id") : null;
+                                  const organizationId = typeof window !== "undefined" ? localStorage.getItem("assembly_organization_id") : null;
+                                  if (!userId || !organizationId) {
+                                    pushBotMessage("No se pudo enviar. Vuelve a iniciar sesión como residente.");
+                                    return;
+                                  }
+                                  fetch("/api/power-requests", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      resident_user_id: userId,
+                                      organization_id: organizationId,
+                                      apoderado_tipo: "residente_ph",
+                                      apoderado_email: email,
+                                      apoderado_nombre: nombre,
+                                    }),
+                                  })
+                                    .then((res) => res.json())
+                                    .then((data) => {
+                                      if (data?.success) {
+                                        setPoderSubmitted(true);
+                                        setHasPendingPowerRequest(true);
+                                        pushUserMessage(`Solicitud de poder para ${email}`);
+                                        pushBotMessage("Solicitud enviada. Está pendiente por aprobar por el administrador de tu PH. Te confirmamos en minutos.");
+                                      } else {
+                                        pushBotMessage(data?.error || "No se pudo enviar la solicitud. Intenta de nuevo.");
+                                      }
+                                    })
+                                    .catch(() => pushBotMessage("No se pudo enviar la solicitud. Intenta de nuevo."));
                                 }}
                               >
-                                Enviar poder
+                                Enviar solicitud de poder
                               </button>
                             </>
                           ) : (
-                            <span className="muted" style={{ fontSize: "12px" }}>Poder enviado. Te confirmamos en minutos.</span>
+                            <span className="muted" style={{ fontSize: "12px" }}>Solicitud enviada. Pendiente por aprobar. Te confirmamos en minutos.</span>
                           )}
                         </>
                       )}
@@ -1327,7 +1458,6 @@ function HomeContent() {
                 {[
                   { label: "Administrador PH", value: "admin" },
                   { label: "Junta Directiva", value: "junta" },
-                  { label: "Residente", value: "residente" },
                   { label: "Solo demo", value: "demo" },
                 ].map((option) => (
                   <button
@@ -1340,7 +1470,6 @@ function HomeContent() {
                     }}
                     onClick={() => {
                       setChatRole(option.value as typeof chatRole);
-                      if (option.value === "residente") setResidentEmailValidated(false);
                       pushUserMessage(option.label);
                       pushBotMessage(getRoleEmailPrompt(option.value as typeof chatRole));
                       setChatStep(3);
@@ -1349,6 +1478,29 @@ function HomeContent() {
                     {option.label}
                   </button>
                 ))}
+              </div>
+            ) : chatRole === "residente" && chatStep === 4 && residentEmailPending ? (
+              <div style={{ marginTop: "12px" }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ borderRadius: "999px", border: "1px solid rgba(148,163,184,0.3)" }}
+                  onClick={() => {
+                    fetch("/api/auth/request-otp", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ email: residentEmailPending }),
+                    })
+                      .then((res) => res.json())
+                      .then((data) => {
+                        if (data?.success) pushBotMessage(`Te reenviamos un nuevo PIN a ${residentEmailPending}. Revisa tu bandeja e ingrésalo aquí.`);
+                        else pushBotMessage(data?.error || "No se pudo reenviar el PIN.");
+                      })
+                      .catch(() => pushBotMessage("No se pudo reenviar el PIN."));
+                  }}
+                >
+                  Reenviar PIN
+                </button>
               </div>
             ) : chatStep >= 8 && chatRole === "residente" && residentEmailValidated ? (
               // Marketing §2: botones solo cuando correo validado (residentEmailValidated); si no, no mostrar
@@ -1364,25 +1516,38 @@ function HomeContent() {
                     { label: "Asambleas", msg: "Te muestro el listado de asambleas activas.", card: "asambleas" as ChatCard, primary: false, onlyWhenActive: false },
                     { label: "Calendario", msg: "Aquí tienes el calendario de tu PH.", card: "calendario" as ChatCard, primary: false, onlyWhenActive: false },
                     { label: "Tema del día", msg: "Tema activo: aprobación de presupuesto.", card: "tema" as ChatCard, primary: false, onlyWhenActive: true },
-                    { label: "Ceder poder", msg: "Cede el poder y lo validamos en minutos.", card: "poder" as ChatCard, primary: false, onlyWhenActive: false },
-                  ].map(({ label, msg, card, primary, onlyWhenActive }) => {
+                    {
+                      label: hasPendingPowerRequest ? "Poder en proceso de validación y aprobación" : "Ceder poder",
+                      msg: "Completa los datos de la persona que acepta el poder.",
+                      card: "poder" as ChatCard,
+                      primary: false,
+                      onlyWhenActive: false,
+                      isPoder: true,
+                    },
+                  ].map(({ label, msg, card, primary, onlyWhenActive, isPoder }) => {
                     const active = assemblyContext === "activa";
                     const disabled = onlyWhenActive && !active;
+                    const poderDisabled = isPoder && hasPendingPowerRequest;
                     return (
                       <button
-                        key={label}
-                        className={primary && !disabled ? "btn btn-primary btn-demo" : "btn btn-ghost"}
+                        key={card}
+                        className={primary && !disabled && !poderDisabled ? "btn btn-primary btn-demo" : "btn btn-ghost"}
                         style={{
                           borderRadius: "999px",
-                          border: primary && !disabled ? undefined : "1px solid rgba(148,163,184,0.3)",
-                          background: disabled ? "rgba(71,85,105,0.4)" : primary ? undefined : "rgba(15,23,42,0.7)",
-                          opacity: disabled ? 0.8 : 1,
-                          cursor: disabled ? "not-allowed" : "pointer",
+                          border: primary && !disabled && !poderDisabled ? undefined : "1px solid rgba(148,163,184,0.3)",
+                          background: disabled || poderDisabled ? "rgba(71,85,105,0.4)" : primary ? undefined : "rgba(15,23,42,0.7)",
+                          opacity: disabled || poderDisabled ? 0.8 : 1,
+                          cursor: disabled || poderDisabled ? "not-allowed" : "pointer",
                         }}
-                        title={disabled ? "No hay votación activa" : undefined}
-                        disabled={disabled}
+                        title={disabled ? "No hay votación activa" : poderDisabled ? "Pendiente por aprobar" : undefined}
+                        disabled={disabled || poderDisabled}
                         onClick={() => {
                           if (disabled) return;
+                          if (isPoder && hasPendingPowerRequest) {
+                            pushUserMessage("Ceder poder");
+                            pushBotMessage("Ya tienes una solicitud de poder pendiente por aprobar. Te confirmamos cuando el administrador la revise.");
+                            return;
+                          }
                           handleQuickActionInChat(label, msg, card);
                         }}
                       >
@@ -1433,6 +1598,114 @@ function HomeContent() {
           </div>
         </div>
       ) : null}
+
+      {showAbandonConfirm && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="abandon-dialog-title-landing"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(2,6,23,0.85)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: "24px",
+          }}
+          onClick={(e) => e.target === e.currentTarget && setShowAbandonConfirm(false)}
+        >
+          <div
+            style={{
+              background: "linear-gradient(180deg, rgba(30,41,59,0.98), rgba(15,23,42,0.98))",
+              border: "1px solid rgba(148,163,184,0.3)",
+              borderRadius: "20px",
+              boxShadow: "0 25px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.15)",
+              maxWidth: "400px",
+              width: "100%",
+              padding: "28px 24px",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="abandon-dialog-title-landing" style={{ margin: "0 0 12px", fontSize: "18px", fontWeight: 600, color: "#f1f5f9" }}>
+              Cerrar sesión de asamblea
+            </h3>
+            <p style={{ margin: "0 0 20px", fontSize: "14px", color: "#94a3b8", lineHeight: 1.5 }}>
+              Estás abandonando la votación. Esto afecta el quórum.
+            </p>
+            <p style={{ margin: "0 0 16px", fontSize: "13px", color: "#cbd5e1" }}>
+              Para confirmar, escribe: <strong style={{ color: "#e2e8f0" }}>{ABANDON_CONFIRM_PHRASE}</strong>
+            </p>
+            <input
+              type="text"
+              value={abandonConfirmPhrase}
+              onChange={(e) => setAbandonConfirmPhrase(e.target.value)}
+              placeholder={ABANDON_CONFIRM_PHRASE}
+              autoFocus
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "12px 14px",
+                borderRadius: "12px",
+                border: "1px solid rgba(148,163,184,0.4)",
+                background: "rgba(15,23,42,0.8)",
+                color: "#e2e8f0",
+                fontSize: "14px",
+                marginBottom: "20px",
+              }}
+            />
+            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => { setShowAbandonConfirm(false); setAbandonConfirmPhrase(""); }}
+                style={{ borderRadius: "12px" }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-demo"
+                disabled={abandonConfirmPhrase.trim().toLowerCase() !== ABANDON_CONFIRM_PHRASE.toLowerCase()}
+                style={{ borderRadius: "12px", opacity: abandonConfirmPhrase.trim().toLowerCase() === ABANDON_CONFIRM_PHRASE.toLowerCase() ? 1 : 0.6 }}
+                onClick={() => {
+                  const userId = localStorage.getItem("assembly_user_id");
+                  const email = localStorage.getItem("assembly_resident_email") || localStorage.getItem("assembly_email");
+                  const organizationId = localStorage.getItem("assembly_organization_id");
+                  const payload: Record<string, string | null | undefined> = {
+                    assembly_id: null,
+                    resident_name: null,
+                    unit: null,
+                  };
+                  if (userId) payload.user_id = userId;
+                  if (email) payload.email = email;
+                  if (organizationId) payload.organization_id = organizationId;
+                  if (userId || email) {
+                    fetch("/api/resident-abandon", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(payload),
+                    }).catch(() => {});
+                  }
+                  try {
+                    localStorage.removeItem("assembly_resident_email");
+                    localStorage.removeItem("assembly_resident_validated");
+                    localStorage.removeItem("assembly_user_id");
+                    localStorage.removeItem("assembly_email");
+                    localStorage.removeItem("assembly_organization_id");
+                  } catch {}
+                  setShowAbandonConfirm(false);
+                  setChatbotOpen(false);
+                  window.location.href = "/residentes/chat";
+                }}
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

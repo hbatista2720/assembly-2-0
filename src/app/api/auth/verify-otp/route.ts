@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { sql } from "../../../../lib/db";
 
 const OTP_MAX_VERIFY_PER_HOUR = Number(process.env.OTP_MAX_VERIFY_PER_HOUR || 5);
+const OTP_DEBUG = process.env.OTP_DEBUG === "true";
+const effectiveMaxVerify = OTP_DEBUG ? Math.max(OTP_MAX_VERIFY_PER_HOUR, 50) : OTP_MAX_VERIFY_PER_HOUR;
 
 export async function POST(req: Request) {
   try {
@@ -20,7 +22,7 @@ export async function POST(req: Request) {
         AND attempt_type = 'otp_verify'
         AND created_at > NOW() - INTERVAL '1 hour'
     `;
-    if (count >= OTP_MAX_VERIFY_PER_HOUR) {
+    if (count >= effectiveMaxVerify) {
       return NextResponse.json({ error: "Demasiados intentos. Intenta más tarde." }, { status: 429 });
     }
 

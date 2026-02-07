@@ -31,6 +31,16 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Residente no encontrado" }, { status: 404 });
     }
 
+    let faceIdEnabled = true;
+    try {
+      const [row2] = await sql<{ face_id_enabled: boolean | null }[]>`
+        SELECT face_id_enabled FROM users WHERE id = ${row.user_id} LIMIT 1
+      `;
+      if (row2 && typeof row2.face_id_enabled === "boolean") faceIdEnabled = row2.face_id_enabled !== false;
+    } catch {
+      // Columna face_id_enabled puede no existir si no se ejecutó 101_face_id_enabled_users.sql
+    }
+
     const prefix = row.email.split("@")[0] || "";
     const numPart = prefix.replace(/^residente/i, "") || "1";
     const residentName =
@@ -44,6 +54,7 @@ export async function GET(req: Request) {
       unit: unit,
       resident_name: residentName,
       email: row.email,
+      face_id_enabled: faceIdEnabled,
     });
   } catch (e) {
     console.error("[resident-profile]", e);

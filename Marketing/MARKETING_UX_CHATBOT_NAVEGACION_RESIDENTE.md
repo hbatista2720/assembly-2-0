@@ -120,11 +120,11 @@ Ejemplo de copy: *"Hola, María · Unidad A-101 · residente@email.com"* o en el
 
 ### G. Ceder poder: formulario dentro del chat
 
-**Recomendación:** Al seleccionar "Ceder poder", el bot debe mostrar un **formulario inline** dentro del chat:
-- Campo "Correo del apoderado"
-- Botón "Enviar poder"
-- No navegar a otra página; mantener la experiencia de chat.
-- Validar correo y enviar la solicitud; confirmación como mensaje del bot.
+**Recomendación:** Al seleccionar "Ceder poder", el bot debe mostrar un **formulario inline** dentro del chat (sin navegar a otra página). Lógica completa en **Arquitecto/LOGICA_CEDER_PODER_CHATBOT.md**.
+
+- **Formulario:** Datos **del que acepta** el poder: tipo (residente del mismo PH / titular mayor de edad), correo, nombre, cédula, teléfono, vigencia, botón "Enviar solicitud de poder".
+- **Estado:** Solicitud creada como **pendiente por aprobar**. Confirmación en el chat: "Solicitud enviada. Pendiente por aprobar. Te confirmamos en minutos."
+- **Botón cuando hay pendiente:** Si el residente ya tiene una solicitud pendiente, el botón "Ceder poder" debe mostrar **"Poder en proceso de validación y aprobación"** (o "Pendiente por aprobar") y estar deshabilitado hasta que el Admin PH apruebe o rechace.
 
 ---
 
@@ -161,6 +161,28 @@ Para pruebas y demo, validar el chatbot con estos **perfiles de contexto**:
 | **Perfil 2** | Entra **directo** con link al chatbot de residentes (`/residentes/chat`) | Validación de correo en esa misma página. Cerrar sesión → permanece en **página chatbot residentes** (sin ir a landing). |
 
 **Ruta sugerida:** `/residentes/chat` o `/residentes` como página de inicio del chatbot para residentes. La landing (`/`) queda solo para captación de leads; el residente nunca "aterriza" en landing tras cerrar sesión.
+
+---
+
+### K. Mensaje y botones en página chatbot residentes (post cierre de sesión) – Henry 07 Feb 2026
+
+**Problema:** Tras cerrar sesión, el residente va a `/residentes/chat` (según §I) pero ve:
+- Mensaje incorrecto: *"Eres Lex, asistente de Assembly 2.0. Califica leads y ofrece demos."* – corresponde a B2B/landing, no a residentes.
+- Los 4 botones de perfil (Administrador PH, Junta Directiva, Residente, Solo demo) visibles – no son apropiados en la página de residentes.
+
+**Recomendación:**
+
+1. **Mensaje en página chatbot residentes (`/residentes/chat`):**
+   - **NO** usar "Califica leads y ofrece demos".
+   - Usar: *"Soy Lex, chatbot para asambleas de PH (propiedades horizontales)."* o similar.
+   - Este mensaje debe mostrarse **cuando el chatbot valida al usuario** (o al cargar la página de residentes, antes o después de validar).
+
+2. **Botones según perfil:**
+   - **No** mostrar los 4 botones de perfil (Admin, Junta, Residente, Demo) en la página de chatbot de residentes.
+   - En `/residentes/chat`: solo flujo de residente (validar correo si no está validado; si ya validó, mostrar pills Votación/Asambleas/etc.).
+   - Los 4 perfiles quedan solo para la **landing** (`/`) o chatbot B2B.
+
+3. **Resumen:** La página `/residentes/chat` es para residentes. Mensaje = "chatbot para asambleas de PH"; sin botones Admin/Junta/Demo. Botones de perfil visibles solo en landing.
 
 ---
 
@@ -263,7 +285,13 @@ Para pruebas y demo, validar el chatbot con estos **perfiles de contexto**:
 - **Perfil 2 (entra directo):** Link directo a `/residentes/chat`. Validación de correo en esa misma página. Cerrar sesión → permanece en `/residentes/chat`.
 - La landing (`/`) queda solo para captación; el residente nunca termina en landing tras cerrar sesión.
 
-### 14. Mejoras UX residente con asamblea activa (ver §J)
+### 14. Mensaje y botones en página chatbot residentes (ver §K)
+
+- En `/residentes/chat`: **no** usar mensaje "Califica leads y ofrece demos". Usar: *"Soy Lex, chatbot para asambleas de PH (propiedades horizontales)."* (o similar). Este mensaje al validar usuario.
+- En `/residentes/chat`: **no** mostrar los 4 botones de perfil (Administrador PH, Junta Directiva, Residente, Solo demo). Solo flujo residente (validar correo o pills Votación/Asambleas/etc. si ya validado).
+- Los 4 perfiles solo en landing (`/`).
+
+### 15. Mejoras UX residente con asamblea activa (ver §J)
 
 - **(1) Mensaje de bienvenida residente:** No usar el texto B2B ("Califica leads y ofrece demos"). Usar mensaje específico: *"Hola [Nombre]. Soy Lex, tu asistente para votaciones, asambleas y gestión de tu PH en Assembly 2.0."*
 - **(2) Mostrar correo en el chat:** Incluir correo del residente en cabecera o primera burbuja (además de nombre y unidad) para confirmar cuenta.

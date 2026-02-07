@@ -1272,3 +1272,333 @@ Revisión de código en `src/app/chat/page.tsx`:
 - **Plan:** Etapas 2, 3, 5 y 6 validadas vía HTTP; etapas 1 y 4 confirmadas (validación previa + ejecución TAREA 2).
 - **§J/rec 14:** Checklist verificado en código; los 4 puntos UX para residente con asamblea activa están implementados.
 - **Resultado:** ✅ OK – Sin bloqueadores. Contralor puede proceder según protocolo (registro y backup si Henry autoriza).
+
+---
+
+# QA Validación · Face ID opcional (TAREA 5)
+
+**Fecha:** 07 Febrero 2026  
+**Referencia:** Arquitecto/FACE_ID_OPCIONAL_ADMIN_RESIDENTE.md, Contralor/ESTATUS_AVANCE.md (TAREA 5)
+
+## Objetivo
+
+Validar Face ID opcional por residente: (1) Admin PH puede activar/desactivar Face ID por residente; (2) Flujo residente con fallback OTP.
+
+## Revisión de código
+
+| Elemento | Estado | Evidencia |
+|----------|--------|-----------|
+| BD – columna `face_id_enabled` | ⚠️ Pendiente script | `sql_snippets/101_face_id_enabled_users.sql` existe; debe ejecutarse en BD. |
+| API GET /api/admin-ph/residents | ⚠️ 500 en entorno | Lista residentes con `face_id_enabled`. Código OK; probable falta columna en BD. |
+| API GET/PUT /api/admin-ph/residents/[userId]/settings | ⚠️ 500 en entorno | Lectura/actualización de `face_id_enabled`. Código OK. |
+| API GET /api/resident-profile | ⚠️ 500 en entorno | Incluye `face_id_enabled` para flujo residente. Código OK. |
+| UI Admin PH – Propietarios | ✅ Implementado | `/dashboard/admin-ph/owners`: toggle "Permitir Face ID" por residente; llama PUT settings. |
+| Flujo residente – Login | ✅ OTP actual | Login es solo OTP; comentario en `login/page.tsx` para futuro WebAuthn + fallback OTP. |
+
+## Pruebas HTTP (entorno local)
+
+| Endpoint | Resultado |
+|----------|-----------|
+| GET /api/admin-ph/residents?organization_id=... | 500 – Error al listar residentes |
+| GET /api/admin-ph/residents/[userId]/settings | 500 |
+| PUT /api/admin-ph/residents/[userId]/settings | 500 |
+| GET /api/resident-profile?email=... | 500 – Error al obtener perfil |
+
+**Causa probable:** La columna `face_id_enabled` no existe en la tabla `users`. El script `101_face_id_enabled_users.sql` no ha sido ejecutado en la BD.
+
+## Veredicto
+
+🟡 **PARCIAL** – Código implementado según especificación. **Bloqueador:** BD sin columna `face_id_enabled`.
+
+### Acción para Database
+
+Ejecutar en la BD:
+
+```bash
+docker compose exec -T postgres psql -U postgres -d assembly < sql_snippets/101_face_id_enabled_users.sql
+```
+
+Tras ejecutar, QA puede revalidar las APIs.
+
+### Resumen para Contralor
+
+- **Admin PH:** UI toggle en Propietarios ✅; APIs implementadas; requieren columna en BD.
+- **Flujo residente:** OTP actual (fallback garantizado cuando se implemente WebAuthn).
+- **Siguiente:** Database ejecuta script 101 → QA revalida.
+
+---
+
+# QA Revalidación Face ID (TAREA 5)
+
+**Fecha:** 07 Febrero 2026 (revalidación)  
+**Referencia:** QA/QA_FEEDBACK.md § "QA Validación · Face ID opcional"
+
+## Pruebas HTTP ejecutadas
+
+| Endpoint | Resultado | Detalle |
+|----------|-----------|---------|
+| GET /api/admin-ph/residents?organization_id=... | ✅ **200 OK** | Lista residentes con `face_id_enabled` (true/false). Columna en BD operativa. |
+| GET /api/resident-profile?email=residente1@demo.assembly2.com | ✅ **200 OK** | Respuesta incluye `face_id_enabled: true`. |
+| GET /api/admin-ph/residents/[userId]/settings | ❌ **500** | Module not found: `../../../../../lib/db` en `settings/route.ts`. |
+| PUT /api/admin-ph/residents/[userId]/settings | ❌ **500** | Mismo error de import. |
+
+**Causa del 500 en settings:** Ruta de import incorrecta en `src/app/api/admin-ph/residents/[userId]/settings/route.ts`. El archivo está un nivel más profundo y requiere `../../../../../../lib/db` (6 niveles). **Para Coder:** corregir import.
+
+## Veredicto revalidación
+
+🟡 **PARCIAL** – Script 101 ejecutado; columna `face_id_enabled` operativa. GET residents y resident-profile OK.
+
+| Elemento | Estado |
+|----------|--------|
+| BD – columna `face_id_enabled` | ✅ Operativa (script 101 ejecutado) |
+| GET /api/admin-ph/residents | ✅ 200 OK |
+| GET /api/resident-profile | ✅ 200 OK (incluye face_id_enabled) |
+| GET/PUT /api/admin-ph/residents/[userId]/settings | ❌ 500 – Import path incorrecto |
+| UI Admin PH – Propietarios | ✅ Implementada (toggle; depende de PUT settings) |
+
+### Acción para Coder
+
+Corregir import en `src/app/api/admin-ph/residents/[userId]/settings/route.ts`:
+- Actual: `import { sql } from "../../../../../lib/db";`
+- Sugerido: `import { sql } from "../../../../../../lib/db";` (6 niveles desde `settings/route.ts` hasta `src/`)
+
+Tras la corrección, el toggle en Propietarios podrá guardar el valor vía PUT.
+
+---
+
+# QA Validación · Error PIN y visualización en Docker local
+
+**Fecha:** 07 Febrero 2026  
+**Referencia:** Captura de pantalla – modal Lex "Error al verificar"; docs/COMO_EJECUTAR_Y_VER_PIN.md
+
+## 1. Dónde está el error PIN
+
+**Mensaje mostrado:** *"Error al verificar. Intenta de nuevo o escribe «Reenviar PIN»."*
+
+**Ubicación en código:**
+- `src/app/chat/page.tsx` línea 232: `.catch(() => pushBotMessage("Error al verificar..."))`
+- `src/app/page.tsx` línea 304: mismo `.catch()` en el flujo verify-otp
+
+**Causa raíz (bug):** En la cadena de `fetch("/api/auth/verify-otp")` se usa `res.ok` dentro del segundo `.then((data) => {...})`, pero `res` **no está en el alcance** de ese callback:
+
+```javascript
+.then((res) => res.json())
+.then((data) => {
+  if (res.ok && data?.user?.role === "RESIDENTE") {  // ❌ res no está definido aquí
+```
+
+El segundo `.then()` solo recibe `data` (resultado de `res.json()`). Al evaluar `res.ok` se produce `ReferenceError`, se ejecuta el `.catch()` y se muestra "Error al verificar" aunque el PIN sea correcto.
+
+**Solución para Coder:** Pasar `res` y `data` juntos al siguiente handler, por ejemplo:
+```javascript
+.then((res) => res.json().then((data) => ({ res, data })))
+.then(({ res, data }) => {
+  if (res.ok && data?.user?.role === "RESIDENTE") { ...
+```
+
+---
+
+## 2. Versión de prueba – Dónde ver el PIN en Docker local
+
+Según `docs/COMO_EJECUTAR_Y_VER_PIN.md`:
+
+| Ubicación | Dónde verlo |
+|-----------|-------------|
+| **Chat** | Segunda burbuja del bot: *"Código de prueba (modo local): XXXXXX"* |
+| **Logs del contenedor** | `docker compose logs -f app` → buscar `[OTP] Email=... OTP=XXXXXX` |
+| **Base de datos** | `docker compose exec postgres psql -U postgres -d assembly -c "SELECT pin, ... FROM auth_pins ..."` |
+
+**Requisito:** La variable `OTP_DEBUG=true` debe estar activa en el contenedor `app` (por defecto en `docker-compose.yml` línea 90).
+
+**Verificar OTP_DEBUG:**
+```bash
+docker compose exec app printenv OTP_DEBUG
+```
+
+**Verificar que la API devuelve el PIN:**
+```bash
+curl -s -X POST http://localhost:3000/api/auth/request-otp \
+  -H "Content-Type: application/json" \
+  -d '{"email":"residente1@demo.assembly2.com"}'
+```
+La respuesta debe incluir `"otp": "XXXXXX"` cuando `OTP_DEBUG=true`.
+
+---
+
+# QA Revalidación Face ID (segunda)
+
+**Fecha:** 07 Febrero 2026  
+**Referencia:** Arquitecto/FACE_ID_OPCIONAL_ADMIN_RESIDENTE.md
+
+## Pruebas HTTP ejecutadas
+
+| Endpoint | Resultado | Detalle |
+|----------|-----------|---------|
+| GET /api/admin-ph/residents?organization_id=... | ✅ **200 OK** | Lista residentes con `face_id_enabled`. |
+| GET /api/resident-profile?email=residente1@demo.assembly2.com | ✅ **200 OK** | Incluye `face_id_enabled: true`. |
+| GET /api/admin-ph/residents/[userId]/settings | ✅ **200 OK** | `{"face_id_enabled":true}`. |
+| PUT /api/admin-ph/residents/[userId]/settings | ✅ **200 OK** | Actualización a `false` correcta. |
+
+## Veredicto
+
+✅ **FACE ID APROBADO** – Todas las APIs operativas. El toggle en Propietarios puede leer y guardar `face_id_enabled` por residente.
+
+---
+
+# QA Prueba · PH A y PH B con assembly-context
+
+**Fecha:** 07 Febrero 2026  
+**Referencia:** Database_DBA/INSTRUCCIONES_CODER_ASSEMBLY_CONTEXT_BD.md, QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md
+
+## Pruebas ejecutadas
+
+| # | Prueba | Parámetro | Resultado |
+|---|--------|-----------|-----------|
+| 1 | PH A (Demo - P.H. Urban Tower) | `?organization_id=11111111-1111-1111-1111-111111111111` | ✅ `{"context":"activa"}` |
+| 2 | PH B (P.H. Torres del Pacífico) | `?organization_id=22222222-2222-2222-2222-222222222222` | ✅ `{"context":"programada"}` |
+| 3 | Override demo activa | `?profile=activa` | ✅ `{"context":"activa"}` |
+| 4 | Override demo programada | `?profile=programada` | ✅ `{"context":"programada"}` |
+| 5 | Override demo sin asambleas | `?profile=sin_asambleas` | ✅ `{"context":"sin_asambleas"}` |
+
+## Veredicto
+
+✅ **APROBADO** – La API assembly-context devuelve correctamente:
+- PH A (Demo): asamblea activa → botones Votación y Tema del día habilitados.
+- PH B (Torres): asamblea programada → Votación/Tema deshabilitados; Asambleas/Calendario habilitados.
+- Override `?profile=` funciona para pruebas demo.
+
+---
+
+# QA Análisis · Chatbot inteligente – Preguntas simples en asamblea
+
+**Fecha:** 07 Febrero 2026  
+**Referencia:** Captura de prueba (residente validado – "como voto", "puede validar si mi voto de registro"), Marketing/MARKETING_SUGERENCIA_CHATBOT_INTELIGENTE_GEMINI.md
+
+## Prueba ejecutada
+
+| Mensaje usuario | Respuesta esperada | Respuesta actual |
+|-----------------|--------------------|------------------|
+| "como voto" | Instrucciones breves para votar (Face ID, Sí/No/Abstención) | Mensaje genérico: "Soy Lex... Puedes usar los botones..." |
+| "puede validar si mi voto ya se registro" | Confirmación de estado o instrucción para verificar | Mensaje genérico repetido |
+
+## Causa raíz
+
+1. **API /api/chat/resident** usa Gemini para texto libre cuando el residente está validado.
+2. **Cuando Gemini falla o devuelve vacío**, el backend responde con `FALLBACK_REPLY` genérico (siempre el mismo texto).
+3. **Prueba directa a la API:** Las consultas "como voto" y "puede validar si mi voto ya se registro" devuelven el fallback → Gemini no está generando respuestas específicas (error, vacío o bloqueo).
+4. **Solo existe detección de intención** para "¿cómo te llamas?" / identidad; no hay patrones para votación ni estado de voto.
+
+## Recomendaciones para el Contralor
+
+### 1. Fallbacks por intención (sin depender de Gemini)
+
+Añadir en `src/app/api/chat/resident/route.ts` detección de intenciones como `isAskingForName()`:
+
+| Intención | Patrones ejemplo | Respuesta sugerida |
+|-----------|------------------|--------------------|
+| Cómo votar | "como voto", "cómo voto", "como puedo votar" | "Para votar: usa el botón Votación de abajo, elige Sí/No/Abstención y confirma. Si es tu primera vez, puede pedirte Face ID. ¿Quieres que te lleve a la votación?" |
+| Estado del voto | "mi voto registrado", "validar voto", "ya voté" | "Si ya usaste el botón Votación y elegiste Sí/No/Abstención, tu voto quedó registrado. Para confirmar en tiempo real, entra a la votación activa desde el botón de abajo." |
+| Cuál es el tema | "cuál es el tema", "qué se vota" | Usar temaActivo del contexto o mensaje genérico con opción de ir a Votación. |
+
+Estas respuestas funcionarían **aunque Gemini falle**, mejorando la experiencia de forma inmediata.
+
+### 2. API para consultar estado de voto (post-MVP)
+
+Crear `GET /api/resident-vote-status?email=...&assembly_id=...` que consulte BD y devuelva si el residente ya votó. Lex podría responder con datos reales: "Sí, tu voto está registrado" o "Aún no has votado en este tema".
+
+### 3. Revisar Gemini
+
+- Comprobar que `GEMINI_API_KEY` es válida y con cuota.
+- Revisar logs del servidor cuando se llama a `/api/chat/resident` (errores, tiempo de respuesta).
+- Evaluar `GET /api/chat/resident?validate=1` para validar conexión con Gemini.
+
+### 4. Base de conocimiento
+
+El archivo `docs/chatbot-knowledge-resident.md` ya incluye "Cómo votar" y contexto. Verificar que el sistema prompt de Gemini lo use correctamente y que el modelo reciba el tema activo (`temaActivo`) para respuestas más precisas.
+
+## Detalle (resumen ejecutivo)
+
+- **Prueba:** Residente validado escribe "como voto", "puede validar si mi voto ya se registro". En ambos casos el chatbot responde con el mismo mensaje genérico ("Soy Lex... Puedes usar los botones...").
+- **Causa:** La API `/api/chat/resident` delega en Gemini; cuando Gemini falla o devuelve vacío se usa un `FALLBACK_REPLY` único. No hay detección de intención para votación ni estado de voto (solo para "¿cómo te llamas?").
+- **Impacto:** El residente no obtiene respuestas útiles a preguntas frecuentes en asamblea; la experiencia del chatbot "inteligente" se percibe como genérica.
+
+## Recomendaciones (prioridad)
+
+| # | Recomendación | Responsable | Prioridad |
+|---|---------------|-------------|-----------|
+| 1 | Añadir en `src/app/api/chat/resident/route.ts` detección de intenciones (cómo votar, estado de voto, cuál es el tema) con respuestas predefinidas; ejecutar antes de Gemini o como fallback. | Coder | Alta |
+| 2 | Revisar que `GEMINI_API_KEY` sea válida y con cuota; revisar logs al llamar `/api/chat/resident`. | Coder | Media |
+| 3 | Verificar que el prompt de Gemini use la base de conocimiento y reciba `temaActivo` para respuestas precisas. | Coder | Media |
+| 4 | (Post-MVP) Crear `GET /api/resident-vote-status` para que Lex responda con datos reales sobre si el residente ya votó. | Coder | Baja |
+
+## Resumen para Contralor
+
+- **Problema:** Preguntas como "¿cómo voto?" o "¿mi voto está registrado?" reciben siempre la misma respuesta genérica.
+- **Origen:** Fallback cuando Gemini no devuelve respuesta válida; no hay respuestas específicas por intención.
+- **Propuesta prioritaria:** Añadir detección de intenciones (cómo votar, estado de voto, tema) con respuestas predefinidas en la API de chat residente.
+
+### Revalidación (post-Coder)
+
+**Prueba ejecutada:** POST /api/chat/resident con mensaje "como voto".  
+**Resultado:** Sigue devolviendo mensaje genérico. La detección de intenciones (isAskingHowToVote, isAskingVoteStatus, etc.) no está implementada. Solo existe isAskingForName().  
+**Acción:** Coder debe implementar las funciones de detección y respuestas predefinidas según la tabla anterior.
+
+---
+
+# QA Hallazgo crítico · Residente entra como Admin PH
+
+**Fecha:** 07 Febrero 2026  
+**Referencia:** Captura de prueba – residente2@demo.assembly2.com en login
+
+## Problema
+
+Al iniciar sesión con **residente2@demo.assembly2.com** (usuario con rol RESIDENTE en BD), el sistema lo redirige al **Dashboard Admin PH** con acceso a Propietarios, Asambleas, Votaciones, Monitor. Muestra "Admin PH · Plan Standard" como si fuera administrador.
+
+**Comportamiento esperado:** Un residente debe ser redirigido al **chatbot** (`/residentes/chat` o `/chat`), sin acceso al dashboard de administración.
+
+## Causa raíz
+
+En `src/app/login/page.tsx` la lógica de redirección tras verify-otp es:
+
+1. Si `is_platform_owner` o `role === "ADMIN_PLATAFORMA"` → `/dashboard/platform-admin`
+2. Si `user.is_demo` → `/dashboard/admin-ph?mode=demo`
+3. En caso contrario → `/dashboard/admin-ph`
+
+**No existe comprobación para `role === "RESIDENTE"`.**  
+La org Demo tiene `is_demo = true`, por lo que residente2@ (RESIDENTE de esa org) cumple la condición `user.is_demo` y se redirige a admin-ph.
+
+## Validación en BD
+
+- `residente2@demo.assembly2.com` tiene `role = 'RESIDENTE'` en `users` (seeds_residentes_demo.sql, auth_otp_local.sql).
+- La API verify-otp devuelve correctamente `user.role: "RESIDENTE"`.
+- El login no usa ese campo para la redirección.
+
+## Acción requerida
+
+En `login/page.tsx`, comprobar `role === "RESIDENTE"` **antes** de `is_demo` y redirigir a `/residentes/chat` con la sesión de residente configurada (assembly_resident_email, assembly_resident_validated, etc.). **Contralor asigna al Coder** según bloque **"Para CODER (login – residente no debe entrar como Admin PH)"** en Contralor/ESTATUS_AVANCE.md. **Prioridad crítica.** Lista de usuarios demo y roles: docs/USUARIOS_DEMO_BD.md.
+
+---
+
+## Cierre – Implementación Coder (informe al Contralor)
+
+**Fecha:** Febrero 2026  
+**Estado:** ✅ Coder completó e informó al Contralor.
+
+### Detalle implementado
+
+| Recomendación QA | Estado | Detalle |
+|------------------|--------|---------|
+| Identidad / nombre del bot | ✅ Implementado | Detección `isAskingForName()`: "como te llamas", "tu nombre", "quién eres" → respuesta fija "Me llamo Lex. Soy el asistente de Assembly 2.0...". No depende de Gemini. |
+| Base de conocimiento | ✅ Implementado | Archivo `docs/chatbot-knowledge-resident.md` (cómo votar, quórum, Ley 284, opciones). Se carga en el prompt de Gemini (~3500 caracteres). Fuente: Marketing/BASE_CONOCIMIENTO_CHATBOT_LEX.md. |
+| Validar API en entorno | ✅ Implementado | GET `/api/chat/resident?validate=1` hace una llamada real a Gemini; devuelve `{ ok: true }` o `{ ok: false, error, detail }`. Documentación: `docs/REVISAR_ENTORNO_CHATBOT_GEMINI.md`. |
+| Fallback y robustez | ✅ Implementado | Fallback incluye "Soy Lex...". generationConfig (temperature, maxOutputTokens, topP). Extracción de texto con respaldo desde `candidates` si `response.text()` falla. |
+| Detección "cómo votar" / "estado voto" / "tema" | 🟡 En prompt/knowledge | El prompt y la base de conocimiento indican a Gemini cómo responder. Respuestas predefinidas explícitas (como para el nombre) para estas intenciones pueden añadirse en siguiente iteración si QA lo solicita. |
+
+### Recomendaciones pendientes (referencia)
+
+- Revisar que `GEMINI_API_KEY` sea válida y con cuota en cada entorno; usar `?validate=1` para comprobarlo.
+- (Post-MVP) API `GET /api/resident-vote-status` para que Lex responda con datos reales de si el residente ya votó.
+
+### Informe al Contralor
+
+Coder informó al Contralor: tarea "chatbot más inteligente – preguntas simples" completada. Registro en Contralor/ESTATUS_AVANCE.md (bloque "Para CODER (chatbot más inteligente – preguntas simples)" y historial). **Próxima actividad:** Contralor asigna (p. ej. QA revalidar o backup).

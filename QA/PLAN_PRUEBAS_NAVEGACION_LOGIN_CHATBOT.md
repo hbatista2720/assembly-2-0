@@ -9,7 +9,7 @@
 
 ---
 
-## Barra de progreso de la prueba1q
+## Barra de progreso de las pruebas
 
 ```
 [✅ 1.Login] [✅ 2.Admin PH] [✅ 3.Platform Admin] [✅ 4.Chatbot] [✅ 5.Residentes] [✅ 6.Smoke]
@@ -26,6 +26,8 @@
 | 6 | Smoke test rutas | ✅ Aprobado | /, /login, /demo, /pricing, /register → 200. |
 
 **Por donde vamos:** Plan de pruebas completado. Todas las etapas 1–6 aprobadas.
+
+**Fase actual de las pruebas (Contralor confirma):** Etapas 1–6 del plan de navegación **completadas y aprobadas**. Face ID (TAREA 5): Database ejecutó script 101; QA revalidó Face ID e informó al Contralor. **Estado:** cerrado. Próxima tarea la asigna el Contralor.
 
 **Validación §E (abandono de sala):** Fuera del alcance de las etapas 1–6. Según QA_FEEDBACK.md (06 Feb): BD + API listos; **QA puede revalidar §E** cuando la tabla `resident_abandon_events` exista en el entorno. Pendientes opcionales: botón "Cerrar sesión", alerta, vista Admin PH con abandonos. Estatus: revalidación §E pendiente cuando QA ejecute la prueba.
 
@@ -45,12 +47,86 @@ Cuando QA ejecute pruebas de chatbot con **residente validado y asamblea activa*
 
 Reportar resultado en QA/QA_FEEDBACK.md (sección §J / rec 14). Referencia: Contralor/ESTATUS_AVANCE.md.
 
+### Hallazgo Marketing (07 Feb 2026) – §K Mensaje y botones /residentes/chat
+| Qué validar | Esperado |
+|-------------|----------|
+| Tras cerrar sesión en /residentes/chat | Mensaje "chatbot para asambleas de PH" (no "Califica leads") |
+| Botones en /residentes/chat | NO los 4 perfiles (Admin/Junta/Residente/Demo); solo flujo residente |
+
+### Hallazgo Marketing (07 Feb 2026) – Chatbot más inteligente + Gemini
+| Qué validar | Esperado |
+|-------------|----------|
+| Residente validado escribe "¿Qué más hay?" | Respuesta coherente (opciones Votación, Asambleas, etc.), NO "No encuentro ese correo" |
+| Residente validado escribe "ya estoy registrado" | Confirmación y oferta de ayuda, NO validación de correo |
+| Conexión Gemini | API responde; GEMINI_API_KEY configurada |
+
+### Prueba sugerida: Chatbot Gemini (residente validado + texto libre)
+**Origen:** Reporte Coder al Contralor. Validación sugerida para QA según ESTATUS_AVANCE § "Para QA – Validación Chatbot más inteligente con Gemini".
+
+**Prerequisitos:** App corriendo (local o Docker). Variable `GEMINI_API_KEY` configurada en el entorno de la app (si no está, la API devuelve 503 y el bot mostrará mensaje de error).
+
+**Pasos:**
+
+| Paso | Acción | Resultado esperado | OK / Fallo |
+|------|--------|--------------------|------------|
+| 1 | Abrir **http://localhost:3000** (o **/residentes/chat**). | Carga el chat (Lex). | ☐ |
+| 2 | Elegir perfil **Residente** (escribir "residente" o clic si aplica). | Bot pide correo registrado en el PH. | ☐ |
+| 3 | Escribir un correo de prueba: `residente1@demo.assembly2.com`. | Bot indica envío de PIN (y en modo local puede mostrar "Código de prueba: XXXXXX"). | ☐ |
+| 4 | Escribir el PIN recibido (o el mostrado en modo local). | Mensaje de bienvenida "Hola ... Soy Lex..." y botones (Votación, Asambleas, etc.). | ☐ |
+| 5 | Escribir **"¿Qué más hay?"** y Enviar. | Lex responde con opciones (Votación, Asambleas, Calendario, Tema del día, Ceder poder). **NO** debe decir "No encuentro ese correo". | ☐ |
+| 6 | Escribir **"ya estoy registrado"** (o "ya toy registrado") y Enviar. | Lex confirma que está validado y ofrece ayuda/opciones. **NO** debe pedir correo ni decir "No encuentro ese correo". | ☐ |
+| 7 | (Opcional) Escribir **"¿Cómo voto?"** o **"¿Cuál es el tema?"**. | Respuesta coherente (instrucciones breves o tema activo). | ☐ |
+
+**Criterio de aprobación:** Los pasos 5 y 6 son obligatorios: el bot **nunca** responde "No encuentro ese correo" cuando el residente ya está validado y escribe texto libre.
+
+**Si GEMINI_API_KEY no está configurada:** El bot puede mostrar "No pude conectar..." o "Chat con Gemini no configurado". En ese caso documentar en QA_FEEDBACK.md como "Chatbot Gemini: no ejecutado – falta GEMINI_API_KEY".
+
+**Reportar resultado en:** QA/QA_FEEDBACK.md (sección Chatbot Gemini). Informar al Contralor al finalizar.
+
 ### Hallazgo Marketing (26 Ene 2026) – Página chatbot residentes §I
 | Perfil | Entrada | Destino tras validar / cerrar sesión |
 |--------|---------|--------------------------------------|
 | Perfil 1 | Landing `/` | Validar correo → `/residentes/chat`; Cerrar sesión → `/residentes/chat` |
 | Perfil 2 | Link directo `/residentes/chat` | Validar correo en esa página; Cerrar sesión → permanece en `/residentes/chat` |
 **Regla:** El residente nunca termina en landing tras cerrar sesión; siempre va a `/residentes/chat`.
+
+### Prueba: PH A y PH B con assembly-context
+**Objetivo:** Validar que la API `GET /api/assembly-context` devuelve el contexto correcto según BD (PH A activa, PH B programada) y según override `?profile=`.
+
+**Referencia:** Database_DBA/INSTRUCCIONES_CODER_ASSEMBLY_CONTEXT_BD.md
+
+| # | Prueba | Parámetro | Resultado esperado |
+|---|--------|-----------|-------------------|
+| 1 | PH A (Demo) | `?organization_id=11111111-1111-1111-1111-111111111111` | `{"context":"activa"}` |
+| 2 | PH B (Torres) | `?organization_id=22222222-2222-2222-2222-222222222222` | `{"context":"programada"}` |
+| 3 | Override activa | `?profile=activa` | `{"context":"activa"}` |
+| 4 | Override programada | `?profile=programada` | `{"context":"programada"}` |
+| 5 | Override sin asambleas | `?profile=sin_asambleas` | `{"context":"sin_asambleas"}` |
+
+**Reportar en:** QA/QA_FEEDBACK.md § "PH A y PH B assembly-context".
+
+---
+
+## Tarea QA: Validación redirección por rol (todos los perfiles)
+
+**Objetivo:** Verificar que cada rol se redirige a la zona correcta tras login OTP. Revisar todos los perfiles según docs/USUARIOS_DEMO_BD.md.
+
+**Orden Contralor:** Primero se hace **backup** de todo (Henry autoriza → Contralor commit + push). Después QA ejecuta esta tarea.
+
+**Usuarios de prueba:** Ver docs/USUARIOS_DEMO_BD.md (emails y roles).
+
+| # | Rol | Usuario de prueba | Zona esperada tras login | Qué validar | OK / Fallo |
+|---|-----|-------------------|--------------------------|--------------|------------|
+| 1 | **Residente** | residente1@demo.assembly2.com o residente2@demo.assembly2.com | **/residentes/chat** (chatbot de residentes) | No debe ir a Dashboard Admin PH ni a Platform Admin. Debe ver el chat Lex y flujo residente. | ☐ |
+| 2 | **Admin PH** | demo@assembly2.com (PH A) | **/dashboard/admin-ph** (zona Admin PH) | Dashboard con Propietarios, Asambleas, Votaciones, etc. | ☐ |
+| 3 | **Admin PH** | admin@torresdelpacifico.com (PH B) | **/dashboard/admin-ph** | Idem. | ☐ |
+| 4 | **Platform Admin (Henry)** | henry.batista27@gmail.com | **/dashboard/platform-admin** (zona Henry) | Dashboard plataforma (monitoring, clients, leads, etc.). | ☐ |
+
+**Criterio de aprobación:** Los 4 perfiles redirigen a la zona indicada. En especial: **ningún residente** (role RESIDENTE) debe terminar en `/dashboard/admin-ph`.
+
+**Reportar resultado en:** QA/QA_FEEDBACK.md (sección "Validación redirección por rol"). Informar al Contralor al finalizar.
+
+---
 
 ### Hallazgo Marketing (26 Feb 2026) – Validación demo chatbot por perfil
 | Perfil | Qué validar |
@@ -111,9 +187,9 @@ Reportar resultado en QA/QA_FEEDBACK.md (sección §J / rec 14). Referencia: Con
 |---|------|--------|--------------------|
 | 1.1 | Email | Ir a `/login`, ingresar email (ej. `demo@assembly2.com` o el configurado en BD). | Sin error; paso a ingreso de OTP. |
 | 1.2 | OTP | Ver código (pantalla con OTP_DEBUG, o logs/SQL). Ingresar código. | Sin error; redirección según rol. |
-| 1.3 | Redirección Admin PH | Login con usuario que no es platform-admin ni demo. | Redirección a `/dashboard/admin-ph`. |
-| 1.4 | Redirección Demo | Login con usuario demo. | Redirección a `/dashboard/admin-ph?mode=demo`. |
-| 1.5 | Redirección Platform Admin | Login con usuario `is_platform_owner` o rol ADMIN_PLATAFORMA. | Redirección a `/dashboard/platform-admin`. |
+| 1.3 | Redirección **Residente** | Login con residente1@demo.assembly2.com o residente2@ (rol RESIDENTE). | Redirección a **/residentes/chat** (chatbot). No a Admin PH. |
+| 1.4 | Redirección Admin PH | Login con demo@assembly2.com o admin@torresdelpacifico.com (rol ADMIN_PH). | Redirección a `/dashboard/admin-ph` (demo con ?mode=demo si aplica). |
+| 1.5 | Redirección Platform Admin (Henry) | Login con henry.batista27@gmail.com (ADMIN_PLATAFORMA). | Redirección a `/dashboard/platform-admin`. |
 
 ---
 

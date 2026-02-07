@@ -4,6 +4,8 @@ import { sql } from "../../../../lib/db";
 const OTP_TTL_MINUTES = Number(process.env.OTP_TTL_MINUTES || 10);
 const OTP_DEBUG = process.env.OTP_DEBUG === "true";
 const OTP_MAX_PER_HOUR = Number(process.env.OTP_MAX_PER_HOUR || 5);
+// En modo debug/demo no bloquear pruebas: límite mucho mayor
+const effectiveMaxPerHour = OTP_DEBUG ? Math.max(OTP_MAX_PER_HOUR, 50) : OTP_MAX_PER_HOUR;
 
 function generateOtp() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -38,7 +40,7 @@ export async function POST(req: Request) {
         AND attempt_type = 'otp_request'
         AND created_at > NOW() - INTERVAL '1 hour'
     `;
-    if (count >= OTP_MAX_PER_HOUR) {
+    if (count >= effectiveMaxPerHour) {
       return NextResponse.json({ error: "Demasiados intentos. Intenta más tarde." }, { status: 429 });
     }
 

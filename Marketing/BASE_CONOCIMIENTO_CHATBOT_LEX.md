@@ -315,6 +315,49 @@ Contacta a tu administrador o tesorería.
 
 ---
 
+### **TEMA 4B: Residente validado – Preguntas en contexto de asamblea**
+
+**Contexto:** El residente ya validó su correo (residentEmailValidated) y está en el chat. Puede hacer preguntas libres como:
+- "¿Qué más hay?" / "¿Hay otro tema?" / "que mas brindar hay otro tema?"
+- "Ya estoy registrado" / "ya toy registrado"
+- "¿Cómo voto en este tema?"
+- "¿Cuál es el tema actual?"
+
+**Regla crítica:** NUNCA responder "No encuentro ese correo" cuando el residente está validado. Esas frases son preguntas o aclaraciones, no intentos de validación.
+
+**Respuesta sugerida para "¿Qué más hay? / ¿Hay otro tema?":**
+```
+Puedes:
+
+• **Votación** – Participar en el tema actual (si hay votación activa)
+• **Tema del día** – Ver el tema en discusión
+• **Asambleas** – Ver lista de asambleas activas y programadas
+• **Calendario** – Próximas fechas importantes
+• **Ceder poder** – Delegar tu voto a otra persona
+
+¿En cuál quieres que te ayude?
+```
+
+**Respuesta para "Ya estoy registrado":**
+```
+Perfecto. Ya estás validado. ¿En qué puedo ayudarte?
+
+Puedes usar los botones de abajo: Votación, Asambleas, Calendario, Tema del día o Ceder poder.
+
+O escríbeme qué necesitas, por ejemplo: "¿Cómo voto?" o "¿Cuál es el tema?"
+```
+
+**Respuesta para "¿Cuál es el tema?" (con asamblea activa):**
+```
+El tema actual es: [Nombre del tema del día]
+
+[Breve descripción si está disponible]
+
+¿Quieres participar en la votación? Usa el botón "Votación" o dime "Quiero votar".
+```
+
+---
+
 ### **TEMA 5: Cómo Votar (Tutorial Paso a Paso)**
 
 **Respuesta para Propietario:**

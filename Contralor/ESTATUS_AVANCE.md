@@ -4,6 +4,10 @@
 **Última actualización:** Febrero 2026  
 **Responsable:** Contralor
 
+**Rol Contralor con Henry:** Ser directo. Toda instrucción = **Tarea** + **Agente** + **dónde está** (plan de navegación de pruebas o avances). No rodeos.
+
+**Regla de cierre de tarea:** Al terminar, el agente informa al Contralor. El Contralor valida y dice la próxima actividad en una frase, ej.: «Coder: realizar [tarea X]» o «QA: validar [Y]».
+
 **Recordatorio para todos los agentes (Arquitecto, Contralor, Database, Coder, Marketing, QA):** No crear carpetas innecesarias. Usar la estructura existente del proyecto (Contralor/, QA/, Coder/, Arquitecto/, Marketing/, etc.) para evitar confusiones. Ver Contralor/EQUIPO_AGENTES_CURSOR.md – Regla 9.
 
 **Informar a Marketing (carpeta para reportes):** Los reportes e informes de Marketing deben subirse **solo en la carpeta Marketing/** (ya existente). No crear carpetas nuevas sin consentimiento del Contralor.
@@ -47,10 +51,13 @@ FORMATO DE COMMIT:
 | FASE 9, 10, 11 | ✅ Aprobado QA | ✅ dc1f9c7 | ⏳ Push (Henry si falla) |
 | Plan navegación + Chatbot residente (Opción B) + Usuarios demo | ✅ Aprobado QA | ✅ a76fb32 | ✅ Push OK |
 
-**Último backup:** Commit `7140ba2` (05 Feb 2026). **Falta backup** tras las 4 tareas (ver más abajo).
+**Último backup:** Commit **639557d** creado (Backup: Coder listo login residente + tarea QA redirección por rol + ESTATUS_AVANCE). **Falta:** Henry ejecuta `git push origin main` para subir a GitHub.
 **Repositorio:** https://github.com/hbatista2720/assembly-2-0
 
-**¿Backup requerido ahora?** **Sí. Falta el backup.** Las 4 tareas (Tarea 1 Coder, Tarea 2 QA, Tarea 3 Database si aplica, Tarea 4 Plan navegación) se realizaron. Cuando Henry autorice, Contralor ejecuta commit + push.
+**¿Backup requerido ahora?** Commit hecho. **Completar backup:** ejecutar en tu terminal: `git push origin main`. Luego QA ejecuta tarea "Validación redirección por rol" (QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md § "Tarea QA: Validación redirección por rol (todos los perfiles)").
+
+**¿Por qué el Contralor no puede hacer el backup directo (push)?**  
+El **commit** sí se hace desde aquí (Contralor/Cursor). El **push** a GitHub no: GitHub pide usuario y contraseña o token. Esas credenciales solo están en tu sesión (tu máquina, tu IDE, tu cuenta). Por eso el flujo es: (1) Contralor hace commit cuando autorizas; (2) tú ejecutas `git push origin main` en tu terminal para subir a GitHub. Así el backup queda completo.
 
 ---
 
@@ -573,6 +580,20 @@ CREAR TABLAS PARA FASE 4:
 
 ## 📋 SUGERENCIAS PARA AGENTES
 
+### Para CODER (assembly-context PH A / PH B) – Contralor reenvía información de Database
+**Referencia:** Database_DBA/INSTRUCCIONES_CODER_ASSEMBLY_CONTEXT_BD.md  
+**Estado:** ✅ Coder informó listo. Contralor valida. Próxima actividad: Contralor asigna en una frase.
+
+Database informó al Contralor. Contralor reenvía al Coder: leer y aplicar ese documento. Resumen: script 102 ejecutado (PH A asamblea activa, PH B programada). Actualizar API `src/app/api/assembly-context/route.ts`: si `?organization_id=xxx` (sin profile), consultar BD por status (active → "activa", scheduled → "programada", sin filas → "sin_asambleas"). Detalle, query y emails de prueba en el documento.
+```
+📋 INFORMACIÓN DATABASE (Contralor reenvía al Coder):
+   Documento obligatorio: Database_DBA/INSTRUCCIONES_CODER_ASSEMBLY_CONTEXT_BD.md
+   Script 102_demo_ph_a_ph_b_assemblies.sql ya ejecutado. PH A: asamblea activa. PH B: asamblea programada.
+   Coder: actualizar API assembly-context según el documento. Al finalizar, informar al Contralor.
+```
+
+**Reporte Coder – Completado:** ✅ **Aplicado.** API `GET /api/assembly-context` actualizada: (1) `?profile=activa|programada|sin_asambleas` sigue como override. (2) `?organization_id=xxx` (sin profile) consulta BD: `assemblies` por organization_id y status (active → "activa", scheduled → "programada", sin filas → "sin_asambleas"). (3) Chat y landing pasan `organization_id` cuando no hay profile (desde residentProfile o localStorage). Bloque actualizado. **Coder informa al Contralor: tarea finalizada.**
+
 ### Para CODER:
 ```
 🎯 NOTIFICACIÓN CONTRALOR: FASE 9 - Documentos alineados por Arquitecto
@@ -673,6 +694,166 @@ Tras aplicar en BD existente, recargar la página de Gestión de Leads; debe car
 📋 Pendiente (si aplica): UI Admin PH "Residente [nombre/unidad] abandonó a las [hora]" en monitor/vista asamblea.
 📋 QA puede revalidar §E.
 ```
+
+### Para CODER – Chatbot residente: PIN por correo + habilitación de botones (orden Contralor):
+```
+🎯 INSTRUCCIÓN: Implementar validación por PIN enviado al correo antes de dar acceso al chat de residentes, y habilitar botones según asamblea activa.
+
+📖 ESPECIFICACIÓN (obligatorio leer):
+   Arquitecto/LOGICA_CHATBOT_RESIDENTE_PIN.md
+
+RESUMEN DE LÓGICA:
+
+1) Flujo residente actual se cambia a:
+   • Usuario elige "Residente" → escribe correo.
+   • Si correo NO existe en BD/lista demo → mensaje "No encuentro ese correo. Contacta al administrador de tu PH para validar." No avanzar. No mostrar botones.
+   • Si correo SÍ existe → enviar PIN al correo (SMTP existente o servicio configurado). Mensaje: "Te enviamos un PIN a [correo]. Revisa tu bandeja e ingrésalo aquí."
+   • Usuario escribe PIN → backend valida (PIN correcto + no expirado, ej. 5–10 min).
+   • Si PIN incorrecto/expirado → "PIN incorrecto o vencido. ¿Reenviar PIN?" Reintentar o reenviar.
+   • Si PIN correcto → marcar residente como validado (residentEmailValidated = true). Mostrar chat y botones.
+
+2) Botones de residente (solo después de validado por PIN):
+   • Votación: HABILITADO solo cuando el Admin PH ha activado la votación (existe votación abierta/activa para la asamblea en curso). Cronograma: quórum aprobado → orden del día aprobado → temas del día → Admin inicia votación → entonces el chatbot habilita "Votación". Ver Arquitecto/LOGICA_ASAMBLEA_CRONOGRAMA_VOTACION_CHATBOT.md.
+   • Tema del día: habilitado cuando hay asamblea en curso y hay tema actual (agenda); recomendación: al menos cuando hay votación abierta o tema actual en agenda.
+   • Si no hay votación activa: botón Votación deshabilitado (gris) con texto "No hay votación activa" o "Habilitado cuando el administrador abra la votación".
+   • Asambleas, Calendario, Ceder poder: siempre habilitados una vez validado.
+
+3) Backend: endpoint(s) para (a) enviar PIN al correo (generar y guardar PIN con expiración), (b) validar PIN. BD o cache para PIN por correo/sesión y expiración.
+
+4) No mostrar botones hasta que correo + PIN estén validados. Mantener regla: residentEmailValidated = true solo tras PIN correcto.
+
+Referencias adicionales: Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md, Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md (§F, §J), QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md.
+```
+
+### Para CODER – Lógica asamblea, cronograma y botón Votación (Arquitecto)
+```
+🎯 REFINAMIENTO: El botón "Votación" en el chatbot debe habilitarse solo cuando el Admin PH ha activado la votación (no solo "asamblea activa").
+
+📖 ESPECIFICACIÓN OBLIGATORIA: Arquitecto/LOGICA_ASAMBLEA_CRONOGRAMA_VOTACION_CHATBOT.md
+
+• Cronograma asamblea: (1) Quórum aprobado → (2) Orden del día aprobado → (3) Temas del día indicados → (4) Admin inicia/activa votación para un tema. Entonces los residentes pueden votar y el chatbot debe mostrar "Votación" habilitado.
+• Fuente de verdad para el botón: existe al menos una votación abierta/activa para la asamblea actual del PH (iniciada por el Admin desde el dashboard). La API que alimenta el chatbot (ej. assembly-context o equivalente) debe exponer "hay votación abierta" además de "asamblea en curso".
+• Al implementar o refinar: usar "votación abierta/activa" como condición para habilitar "Votación" en el chatbot; reflejar el cronograma en el flujo del dashboard y en BD si aplica.
+Al finalizar, informar al Contralor.
+```
+
+### Para CODER (bug verify-otp chatbot residente)
+```
+🔴 BLOQUEADOR: El chatbot residente muestra "Error al verificar" al ingresar el PIN correcto.
+
+CAUSA: Bug en la cadena fetch("/api/auth/verify-otp") en dos archivos. En el segundo .then((data) => {...}) se usa res.ok pero res no está en scope (solo data). Eso lanza ReferenceError → se ejecuta .catch() → mensaje "Error al verificar".
+
+ARCHIVOS A CORREGIR:
+1. src/app/chat/page.tsx – líneas ~213-232
+2. src/app/page.tsx – líneas ~276-304
+
+SOLUCIÓN: Pasar res y data juntos al siguiente handler. Ejemplo:
+
+  .then((res) => res.json().then((data) => ({ res, data })))
+  .then(({ res, data }) => {
+    if (res.ok && data?.user?.role === "RESIDENTE") {
+      // ... flujo éxito
+    } else {
+      pushBotMessage("PIN incorrecto o vencido. ¿Reenviar PIN? ...");
+    }
+  })
+  .catch(() => pushBotMessage("Error al verificar. Intenta de nuevo o escribe «Reenviar PIN»."));
+
+Referencia: QA/QA_FEEDBACK.md § "QA Validación · Error PIN y visualización en Docker local".
+Al finalizar, confirmar al Contralor.
+```
+
+### Para CODER (login – residente no debe entrar como Admin PH) – 🔴 Prioridad crítica
+
+**Estado:** ✅ **Coder informó listo.** Contralor registra. Siguiente: **1) Backup** (Henry autoriza → Contralor commit + push). **2) QA** ejecuta tarea "Validación redirección por rol" (plan en QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md § "Tarea QA: Validación redirección por rol (todos los perfiles)").
+
+**Nota Contralor:** Lista de usuarios demo y roles: **docs/USUARIOS_DEMO_BD.md**.
+
+```
+🔴 BLOQUEADOR / PRIORIDAD CRÍTICA: Residente (ej. residente2@demo.assembly2.com) entra al Dashboard Admin PH en lugar del chatbot.
+
+CAUSA: En src/app/login/page.tsx la redirección tras verify-otp NO comprueba role === "RESIDENTE". La org Demo tiene is_demo=true, así que residente2@ cumple user.is_demo y va a /dashboard/admin-ph.
+
+SOLUCIÓN: Añadir check ANTES de is_demo:
+  if (user.role === "RESIDENTE") {
+    try {
+      localStorage.setItem("assembly_role", "residente");
+      localStorage.setItem("assembly_resident_email", trimmedEmail);
+      localStorage.setItem("assembly_resident_validated", String(Date.now()));
+      if (user.id) localStorage.setItem("assembly_user_id", user.id);
+      if (user.organization_id) localStorage.setItem("assembly_organization_id", user.organization_id);
+    } catch {}
+    router.push("/residentes/chat");
+    return;
+  }
+Orden de checks: 1) RESIDENTE → /residentes/chat. 2) platform-admin. 3) is_demo → admin-ph demo. 4) else → admin-ph.
+
+Referencia: QA/QA_FEEDBACK.md § "QA Hallazgo crítico · Residente entra como Admin PH". Usuarios demo: docs/USUARIOS_DEMO_BD.md.
+Al finalizar, informar al Contralor.
+```
+
+### Para CODER (chatbot más inteligente – preguntas simples) – Orden Contralor según QA
+
+**Estado:** ✅ **Coder informó completado.** Contralor puede asignar próxima actividad (p. ej. QA revalidar o backup).
+
+**Fase actual:** Pulido del chatbot residente (post–Gemini integrado). QA reportó que preguntas como "¿cómo voto?" y "¿mi voto está registrado?" reciben respuesta genérica; el Contralor asigna esta corrección al Coder.
+
+**Dónde debe buscar el Coder:** QA/QA_FEEDBACK.md – Sección **"QA Análisis · Chatbot inteligente – Preguntas simples en asamblea"** (detalle, causa raíz, recomendaciones y tabla de intenciones).
+
+```
+🎯 INSTRUCCIÓN (Contralor): Corregir el chatbot para que responda mejor según el análisis de QA. Residentes validados que preguntan "¿cómo voto?", "¿mi voto está registrado?" deben recibir respuestas específicas, no el mensaje genérico.
+
+TAREAS (según QA_FEEDBACK.md § "QA Análisis · Chatbot inteligente – Preguntas simples en asamblea"):
+
+1. En src/app/api/chat/resident/route.ts añadir detección de intenciones (similar a isAskingForName), con respuestas predefinidas:
+   - "como voto", "cómo voto", "como puedo votar" → "Para votar: usa el botón Votación de abajo, elige Sí/No/Abstención y confirma. Si es tu primera vez, puede pedirte Face ID. ¿Quieres que te lleve a la votación?"
+   - "mi voto registrado", "validar voto", "ya voté" → "Si ya usaste el botón Votación y elegiste Sí/No/Abstención, tu voto quedó registrado. Para confirmar en tiempo real, entra a la votación activa desde el botón de abajo."
+   - "cuál es el tema", "qué se vota" → usar temaActivo del contexto o mensaje con opción de ir a Votación.
+
+2. Ejecutar estas respuestas ANTES de llamar a Gemini (o como fallback si Gemini falla o devuelve vacío).
+
+3. Revisar GEMINI_API_KEY (válida y con cuota) y que el prompt use la base de conocimiento y temaActivo.
+
+Referencia completa: QA/QA_FEEDBACK.md – "QA Análisis · Chatbot inteligente – Preguntas simples en asamblea" (detalle y recomendaciones).
+Al finalizar, informar al Contralor.
+```
+
+**✅ CODER informó al Contralor (chatbot más inteligente – preguntas simples):** Implementado en `src/app/api/chat/resident/route.ts`: (1) Detección de identidad: preguntas "¿cómo te llamas?", "tu nombre", etc. → respuesta fija "Me llamo Lex...". (2) Base de conocimiento desde archivo: `docs/chatbot-knowledge-resident.md` cargado en el prompt (resumen residente: cómo votar, quórum, Ley 284). (3) Validación API en entorno: GET `/api/chat/resident?validate=1` hace llamada real a Gemini y devuelve ok/error. (4) Fallback cuando Gemini falla o vacío: mensaje incluye "Soy Lex...". (5) generationConfig y extracción robusta de texto (candidates como respaldo). Documentación: `docs/REVISAR_ENTORNO_CHATBOT_GEMINI.md`. Detalle y recomendaciones aplicadas/registradas en QA/QA_FEEDBACK.md § "QA Análisis · Chatbot inteligente – Preguntas simples en asamblea". **Próxima actividad:** Contralor asigna (p. ej. QA revalidar preguntas "como voto" / "mi voto registrado" o backup).
+
+**Validación Contralor – Respuesta QA (bug PIN chatbot residente):** ✅ **Validada.** El reporte de QA es coherente: APIs request-otp y verify-otp OK; el fallo es en frontend: `res.ok` usado en el segundo `.then()` sin estar en scope → ReferenceError → "Error al verificar" con PIN correcto. Archivos: `src/app/chat/page.tsx` y `src/app/page.tsx`. Instrucción para Coder en el bloque anterior. **Próxima actividad:** Coder corrige el bug; al finalizar informa al Contralor.
+
+**Validación Contralor – Respuesta QA (listo):** ✅ **Validada.** QA informó tarea completada (listo). Contralor confirma la respuesta. Próxima actividad: Contralor asigna en una frase.
+
+**Último reporte QA (listo):** ✅ Registrado. QA informó listo. Contralor valida. Próxima actividad: Contralor asigna en una frase.
+
+### Para CODER – Face ID opcional (orden Arquitecto)
+**Dónde empezar:** `Arquitecto/FACE_ID_OPCIONAL_ADMIN_RESIDENTE.md`  
+**Estado:** ✅ Completado. Database ejecutó script 101; QA revalidó Face ID. Cerrado. Ver "Face ID – dónde quedamos" en TAREA 5.
+
+### Para CODER – Ceder poder en chatbot (orden Arquitecto + Marketing §G)
+
+**Validación Contralor – Reporte Arquitecto (poderes) y observaciones Marketing:** ✅ **Validadas.** Arquitecto: Arquitecto/LOGICA_CEDER_PODER_CHATBOT.md (formulario inline, datos del que acepta, estado pendiente por aprobar, botón "en proceso..." cuando hay solicitud pendiente, Ley 284 – cédula opcional). Marketing: §G en Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md (formulario inline, pendiente por aprobar, misma lógica). Contralor coordina: instrucción al Coder debajo. Al finalizar, Coder informa al Contralor.
+
+**Dónde debe buscar el Coder para empezar:** `Arquitecto/LOGICA_CEDER_PODER_CHATBOT.md` y §G en `Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md`.
+
+```
+🎯 INSTRUCCIÓN (Contralor, según Arquitecto + Marketing): Al hacer clic en "Ceder poder", desplegar formulario inline con datos del que acepta (residente mismo PH o titular mayor de edad). Estado "pendiente por aprobar"; si hay solicitud pendiente, botón "Poder en proceso de validación y aprobación" (deshabilitado).
+
+📖 ESPECIFICACIÓN: Arquitecto/LOGICA_CEDER_PODER_CHATBOT.md (incluye DOCUMENTO DE MEJORA – Ley 284 y cédula)
+
+• Formulario inline: tipo apoderado, correo, nombre, cédula (opcional), teléfono, vigencia, "Enviar solicitud de poder".
+• Cédula: Residente mismo PH → no requerida. Titular mayor de edad → opcional. Ver DOCUMENTO DE MEJORA en el archivo del Arquitecto.
+• Crear solicitud en BD estado PENDIENTE; mensaje en chat: "Solicitud enviada. Pendiente por aprobar."
+• Notificación: mensaje en el chat y email al correo del residente (confirmación).
+• Si ya hay solicitud PENDIENTE: botón → "Poder en proceso de validación y aprobación", deshabilitado.
+• API: crear solicitud desde chatbot; enviar email al residente; consultar si hay pendiente por residente/unidad.
+
+Referencia Marketing: Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md §G. Al finalizar, informar al Contralor.
+```
+
+**Reporte Coder – Completado:** ✅ **Aplicado.** Revisado Arquitecto/LOGICA_CEDER_PODER_CHATBOT.md y Marketing §G. Implementado: (1) Tabla `power_requests` (sql_snippets/103_power_requests_chatbot.sql). (2) API POST /api/power-requests (crear solicitud PENDING; validación residente mismo PH por correo en misma org). (3) API GET /api/power-requests?user_id= (consultar si hay pendiente). (4) Formulario inline completo en chat y landing: tipo apoderado (Residente del mismo PH | Titular mayor de edad), correo, nombre, cédula opcional, teléfono opcional, vigencia opcional, botón "Enviar solicitud de poder". (5) Mensaje en chat: "Solicitud enviada. Está pendiente por aprobar por el administrador de tu PH. Te confirmamos en minutos." (6) Si hay solicitud pendiente: botón "Poder en proceso de validación y aprobación" (deshabilitado); al clic mensaje "Ya tienes una solicitud de poder pendiente por aprobar...". **Pendiente (opcional):** envío de email al residente con confirmación (doc lo indica; no implementado en esta entrega). **Coder informa al Contralor: tarea finalizada.**
+
+**📋 PENDIENTE (Contralor):** Prueba QA – Ceder poder (§G). Validar en navegador: residente validado → clic "Ceder poder" → formulario completo → Enviar solicitud → mensaje "Solicitud enviada. Pendiente por aprobar"; tras enviar, botón debe mostrarse "Poder en proceso de validación y aprobación" (deshabilitado). Plan: QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md (4.7 Ceder poder). Contralor anota como pendiente hasta que QA (o Henry) ejecute y reporte.
 
 ### Para CODER (AssembliesPage – duplicate export, aprobado por Contralor):
 ```
@@ -832,8 +1013,28 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 
 | Fecha | Cambio | Responsable |
 |-------|--------|-------------|
+| 07 Feb 2026 | **📋 ORDEN MARKETING: Chatbot más inteligente con Gemini** – Orden registrada en ESTATUS_AVANCE: bloque "Para CODER – Chatbot más inteligente con Gemini (orden Marketing 07 Feb 2026)". Coder: ramificar handleChatSubmit; POST /api/chat/resident con Gemini; GEMINI_API_KEY; base conocimiento PERFIL 5, TEMA 4B. Referencia: Marketing/MARKETING_SUGERENCIA_CHATBOT_INTELIGENTE_GEMINI.md. | Marketing / Contralor |
+| Feb 2026 | **✅ CODER: Chatbot más inteligente con Gemini – Completado** – Implementado POST /api/chat/resident (Gemini), rama en chat/page.tsx y page.tsx para residente validado + texto libre. Reporte y sugerencia QA en ESTATUS_AVANCE. Prueba sugerida en QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md § Chatbot Gemini. | Coder |
+| Feb 2026 | **✅ CONTRALOR: Reportes agentes validados – Fase listo. Requisito 2 PH para pruebas** – Contralor valida reportes de esta fase; fase cerrada. Para probar funcionalidades: 2 PH necesarios (uno con asamblea activa para votar, otro agendada no activa). **Responsable datos:** Database. **Responsable pruebas:** QA. | Contralor |
+| Feb 2026 | **✅ CONTRALOR: Validación respuesta Marketing – Instrucción al Coder (chatbot Gemini)** – Marketing indicó: ramificar handleChatSubmit (residente validado + texto libre → no validar email); crear POST /api/chat/resident con Gemini; GEMINI_API_KEY; base conocimiento PERFIL 5, TEMA 4B. Contralor valida. Instrucción en bloque "Para CODER – Chatbot más inteligente con Gemini". Coder informa al Contralor al finalizar. | Contralor |
+| Feb 2026 | **✅ CONTRALOR: Validación respuesta QA (listo)** – QA informó tarea completada. Contralor valida. Próxima actividad la asigna el Contralor en una frase. | Contralor |
+| Feb 2026 | **✅ CONTRALOR: Validación respuesta QA – Bug PIN chatbot residente** – QA informó: "Error al verificar" con PIN correcto; causa `res.ok` fuera de scope en chat/page.tsx y page.tsx. Contralor valida el reporte. Coder: corregir según bloque "Para CODER (bug verify-otp chatbot residente)". Al finalizar informa al Contralor. | Contralor |
+| Feb 2026 | **✅ CONTRALOR: Database + QA Face ID** – Database ejecutó script 101 (face_id_enabled). QA revalidó Face ID e informó. Contralor confirma. Plan de navegación: etapas 1–6 aprobadas; Face ID cerrado. Próxima tarea: Contralor asigna en una frase. | Contralor |
+| Feb 2026 | **✅ CONTRALOR: Coder completó TAREA 5 Face ID** – QA valida Face ID, informa al Contralor; Contralor valida respuesta y asigna próxima tarea. | Contralor |
 | 07 Feb 2026 | **✅ CONTRALOR: Validación avances** – Las 4 tareas realizadas (Tarea 1 Coder, Tarea 2 QA, Tarea 3 Database, Tarea 4 Plan navegación). Falta el backup. Cuando Henry autorice, Contralor ejecuta commit + push. Tabla de validación y bloque "BACKUP – Falta ejecutar" añadidos en ESTATUS_AVANCE. | Contralor |
 | 07 Feb 2026 | **✅ DATABASE: Verificación §E** – Tabla resident_abandon_events existe en BD. Script 100_resident_abandon_events.sql no fue necesario ejecutar. QA puede revalidar §E. Informe al Contralor. | Database |
+| Feb 2026 | **📋 CONTRALOR: Prueba Ceder poder (§G) – Pendiente** – Coder completó implementación; BD lista (script 103). Pendiente: ejecutar prueba QA (formulario inline, enviar solicitud, mensaje pendiente por aprobar, botón "Poder en proceso..." deshabilitado). Plan: QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md 4.7. Contralor anota hasta que QA/Henry reporte. | Contralor |
+| Feb 2026 | **✅ CODER informa al Contralor: Ceder poder en chatbot (§G) – Completado** – Revisados Arquitecto/LOGICA_CEDER_PODER_CHATBOT.md y Marketing §G. Tabla power_requests (103), API POST/GET power-requests, formulario completo (tipo, correo, nombre, cédula/tel/vigencia opcionales), mensaje "Solicitud enviada. Pendiente por aprobar", botón "Poder en proceso de validación y aprobación" cuando hay pendiente. Chat y landing. Pendiente opcional: email confirmación al residente. | Coder |
+| Feb 2026 | **✅ CODER informa al Contralor: Chatbot más inteligente – preguntas simples – Completado** – Detección identidad (Lex), base de conocimiento desde docs/chatbot-knowledge-resident.md, GET /api/chat/resident?validate=1 para validar API Gemini, fallback "Soy Lex", generationConfig y extracción robusta. Detalle y recomendaciones en QA/QA_FEEDBACK.md § "QA Análisis · Chatbot inteligente – Preguntas simples en asamblea". Contralor asigna próxima actividad. | Coder |
+| Feb 2026 | **✅ CODER informa al Contralor: assembly-context desde BD – Completado** – Aplicado Database_DBA/INSTRUCCIONES_CODER_ASSEMBLY_CONTEXT_BD.md. API GET /api/assembly-context: con organization_id consulta BD (active→activa, scheduled→programada, sin filas→sin_asambleas). Chat y landing envían organization_id cuando no hay profile. Bloque actualizado en ESTATUS_AVANCE. | Coder |
+| Feb 2026 | **✅ CONTRALOR: Coder listo (login residente) + Tarea QA redirección por rol + Backup primero** – Coder finalizó corrección login (residente no entra como Admin PH). Contralor actualiza: (1) Backup de todo **primero** (Henry autoriza → Contralor commit, Henry push). (2) QA ejecuta tarea "Validación redirección por rol" (todos los perfiles: residente→chatbot, Admin PH→su zona, Henry→platform-admin). Plan: QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md § "Tarea QA: Validación redirección por rol (todos los perfiles)". Usuarios: docs/USUARIOS_DEMO_BD.md. | Contralor |
+| Feb 2026 | **✅ CONTRALOR: Doc usuarios demo + login residente prioridad crítica** – Creado docs/USUARIOS_DEMO_BD.md (lista usuarios demo en BD con rol y org para pruebas). QA Hallazgo crítico § "Residente entra como Admin PH" coordinado: bloque "Para CODER (login – residente no debe entrar como Admin PH)" con prioridad crítica. Orden: primero validar chatbot cuando Coder termine recomendaciones; corrección login residente = prioridad crítica. | Contralor |
+| Feb 2026 | **✅ CONTRALOR: QA Análisis chatbot inteligente – Asignación al Coder** – QA reportó (QA_FEEDBACK.md § "QA Análisis · Chatbot inteligente – Preguntas simples en asamblea"): preguntas "¿cómo voto?" y "¿mi voto está registrado?" reciben respuesta genérica. Contralor valida. Fase: pulido chatbot residente. Instrucción en bloque "Para CODER (chatbot más inteligente – preguntas simples)": detección intenciones en /api/chat/resident, fallbacks, revisar Gemini. Coder informa al Contralor al finalizar. | Contralor |
+| Feb 2026 | **✅ CONTRALOR: Validación reporte Arquitecto (poderes) + observaciones Marketing §G** – Arquitecto: LOGICA_CEDER_PODER_CHATBOT.md (formulario inline, pendiente por aprobar, botón "en proceso...", Ley 284). Marketing §G alineado. Instrucción al Coder en bloque "Para CODER – Ceder poder en chatbot". Dónde empezar: Arquitecto/LOGICA_CEDER_PODER_CHATBOT.md y Marketing §G. Coder informa al Contralor al finalizar. | Contralor |
+| Feb 2026 | **✅ CONTRALOR: QA listo** – QA informó tarea completada. Contralor valida. Próxima actividad: Contralor asigna en una frase. | Contralor |
+| Feb 2026 | **✅ CONTRALOR: Coder listo (assembly-context BD)** – Coder informó tarea completada. Contralor valida. Próxima actividad: Contralor asigna en una frase. | Contralor |
+| Feb 2026 | **✅ CONTRALOR: Reenvío al Coder – Respuesta Database (assembly-context)** – Database respondió con referencia a Database_DBA/INSTRUCCIONES_CODER_ASSEMBLY_CONTEXT_BD.md. Contralor reenvía al Coder: aplicar ese documento (API assembly-context desde BD, PH A/PH B). Bloque "Para CODER (assembly-context PH A / PH B)" actualizado. Coder informa al Contralor al finalizar. | Contralor |
+| 07 Feb 2026 | **📋 DATABASE informa al Contralor (para Coder):** Script 102_demo_ph_a_ph_b_assemblies.sql ejecutado. Tabla assemblies existe con organization_id y status (active/scheduled). PH A (Demo): asamblea activa. PH B (Torres): asamblea programada. **Coder:** Requisito BD cumplido. API assembly-context: si la tabla no existe, el catch devuelve "activa". En este entorno la tabla ya existe. Ver Database_DBA/INSTRUCCIONES_CODER_ASSEMBLY_CONTEXT_BD.md. | Database |
 | 26 Ene 2026 | **✅ CODER: §F, §G y §H implementados (Marketing)** – §F: Votación y Tema del día solo si asamblea activa; Asambleas, Calendario y Ceder poder siempre; si no hay asamblea activa, botones en gris con "No hay votación activa". §G: Formulario Ceder poder inline en chat con validación de correo y mensaje del bot. §H: API assembly-context (activa/programada/sin_asambleas); mensaje "No hay asambleas programadas para el año en curso. ¿Consultar con el administrador?" cuando sin_asambleas. Demo: ?profile=activa|programada|sin_asambleas. Ref: Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md, orden Contralor. | Coder |
 | 26 Ene 2026 | **✅ CODER: Respuesta dentro del chatbot (UX residente)** – Votación, Asambleas, Calendario, Tema del día y Ceder poder responden **dentro del chat** con cards/mensajes (sin navegar a landings). Cards en landing (modal) y en /chat: votación (Sí/No/Abstengo), asambleas (listado), calendario (próximas actividades), tema (texto + Ver anexos), poder (formulario email + Enviar). Ref: validación UX Marketing. | Coder |
 | 26 Ene 2026 | **✅ CODER: UX Chatbot navegación residente (Marketing)** – Rec 1: sesión residente en localStorage (assembly_resident_email, assembly_resident_validated) y restauración con ?chat=open. Rec 2: "Volver al chat" (href /chat) en páginas residentes. Rec 3: ACTIVA→votación, PROGRAMADA→Próximamente en asambleas. Rec 5: página /chat full-screen. Rec 6: pills debajo mensaje, encima input. Ref: Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md. | Coder |
@@ -848,6 +1049,15 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 | 05 Feb 2026 | **✅ BACKUP COMPLETADO** – Henry ejecutó `git push origin main`. a76fb32..5c94eb5 main -> main. Código y documentación respaldados en GitHub. | Henry |
 | 30 Ene 2026 | **✅ CONTRALOR: Backup ejecutado** – Commit 5c94eb5. Incluye: código fuente completo (src/), validaciones §E, plan pruebas, ESTATUS_AVANCE, API resident-abandon, sql_snippets (100_, 98_, seeds_leads_demo), Database_DBA, Marketing, docs. Push completado por Henry 05 Feb 2026. | Contralor |
 | 30 Ene 2026 | **✅ CONTRALOR: Validación QA, Coder y Base de datos §E** – Respuesta QA validada; respuesta Coder §E validada; **respuesta Base de datos incluida y validada** (tabla resident_abandon_events ejecutada en BD 06 Feb). Plan de pruebas: estatus actualizado. **Próxima tarea prioritaria: backup** (Henry autoriza → Contralor ejecuta). | Contralor |
+| 07 Feb 2026 | **📋 QA reporta al Contralor: Chatbot inteligente – revalidación fallida** – Prueba "como voto" sigue devolviendo mensaje genérico. La detección de intenciones (cómo votar, estado voto, tema) NO está implementada en /api/chat/resident. **Para Coder:** añadir isAskingHowToVote(), isAskingVoteStatus(), etc. con respuestas predefinidas. Ver QA_FEEDBACK.md § "QA Análisis · Chatbot inteligente". | QA |
+| 07 Feb 2026 | **🔴 QA: Residente entra como Admin PH – BLOQUEADOR** – Login con residente2@demo.assembly2.com (rol RESIDENTE) redirige a Dashboard Admin PH. Causa: no hay check de role RESIDENTE; is_demo de la org aplica y manda a admin-ph. **Para Coder:** añadir if (role===RESIDENTE) → redirect /residentes/chat. Ver QA_FEEDBACK.md § "QA Hallazgo crítico · Residente entra como Admin PH" y bloque "Para CODER (login residente)". | QA |
+| 07 Feb 2026 | **📋 QA: Chatbot inteligente – Análisis y recomendaciones** – Prueba con "como voto" y "puede validar si mi voto ya se registro" devuelve mensaje genérico. Causa: Gemini falla/vacío → fallback. Recomendación: añadir detección de intenciones (cómo votar, estado voto) con respuestas predefinidas. Ver QA_FEEDBACK.md § "QA Análisis · Chatbot inteligente". | QA |
+| 07 Feb 2026 | **✅ QA: PH A y PH B assembly-context – APROBADO** – API devuelve activa para PH A (Demo), programada para PH B (Torres). Overrides ?profile= OK. Ver QA_FEEDBACK.md § "PH A y PH B assembly-context". | QA |
+| 07 Feb 2026 | **✅ QA: Face ID revalidado – APROBADO** – Todas las APIs 200 OK (admin-ph/residents, resident-profile, GET/PUT settings). Toggle Propietarios operativo. | QA |
+| 07 Feb 2026 | **📋 QA informa al Contralor – Bug PIN chatbot residente** – APIs request-otp y verify-otp OK (prueba con residente2@). Bug frontend: `res.ok` fuera de scope en chat/page.tsx y page.tsx (verify-otp). Usuario recibe "Error al verificar" aunque el PIN sea correcto. **Para Coder:** ver instrucción "Para CODER (bug verify-otp chatbot)" más abajo. | QA |
+| 07 Feb 2026 | **🟡 QA: Face ID revalidado – PARCIAL** – GET admin-ph/residents y resident-profile 200 OK; columna BD operativa. GET/PUT settings 500: import path incorrecto en settings/route.ts. **Para Coder:** corregir `../../../../../lib/db` → `../../../../../../lib/db`. Ver QA_FEEDBACK.md § "QA Revalidación Face ID". | QA |
+| 07 Feb 2026 | **📋 QA informa al Contralor** – Coordinar próxima tarea. Prioridad: Database ejecutar script 101 (face_id_enabled) → QA revalida Face ID. Alternativa: Coder botón retorno Platform Admin. Ver bloque "COORDINACIÓN PRÓXIMA TAREA" más abajo. | QA |
+| 07 Feb 2026 | **🟡 QA: Face ID (TAREA 5) – PARCIAL** – Código Admin PH + APIs implementados; UI toggle en Propietarios OK. APIs 500: columna `face_id_enabled` no existe en BD. **Para Database:** ejecutar `sql_snippets/101_face_id_enabled_users.sql`. Ver QA_FEEDBACK.md § "QA Validación · Face ID opcional". | QA |
 | 07 Feb 2026 | **✅ QA: Plan completo + §J/rec 14** – Ejecutado plan navegación etapas 1–6 (todas 200 OK). Validación §J/rec 14: 4/4 puntos implementados (mensaje bienvenida, correo en cabecera, card Votación, badge Asamblea activa). Informe en QA_FEEDBACK.md. Contralor: registro y backup si Henry autoriza. | QA |
 | 07 Feb 2026 | **✅ QA: TAREA_2 completada (§E + Opción B)** – §E revalidado: API 200 OK, tabla BD operativa, botón Cerrar sesión + alerta. Opción B: botones chatbot 4.3–4.7 muestran cards inline; rutas /residentes/* todas 200. Ver QA_FEEDBACK.md § "QA TAREA 2 – Ejecución completa". | QA |
 | 06 Feb 2026 | **✅ QA: TAREA_2 Opción A – Revalidación §E completada** – Tabla BD OK, botón "Cerrar sesión" + alerta implementados, POST /api/resident-abandon 200 OK, registro verificado via GET. Sin fallos. Ver QA_FEEDBACK.md § "QA Revalidación §E – TAREA_2_QA Opción A". Pendiente: UI Admin PH para listar abandonos. | QA |
@@ -883,6 +1093,9 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 | Feb 2026 | **✅ DATABASE: Tabla resident_abandon_events (§E)** – Registro abandono de sala. Script sql_snippets/100_resident_abandon_events.sql. Instrucciones Coder: Database_DBA/INSTRUCCIONES_CODER_ABANDONO_SALA.md. Ref: QA_FEEDBACK.md "Registro de abandono de sala (§E)". | Database |
 | Feb 2026 | **✅ DATABASE: Residentes demo en BD** – Usuarios residente1@…residente5@demo.assembly2.com (org Demo, role RESIDENTE) en auth_otp_local.sql + seeds_residentes_demo.sql. Ref: QA_FEEDBACK.md "Recomendación: Asamblea demo con admin y residentes". QA puede usar para plan pruebas (login OTP como residente, carga). | Database |
 | Feb 2026 | **📋 BASE DE DATOS: Instrucciones para Coder** - Database_DBA/INSTRUCCIONES_CODER_PGBOUNCER_AUTH.md (corrección PgBouncer↔PostgreSQL, wrong password type) | Database |
+| Feb 2026 | **📋 Ceder poder en chatbot** - Formulario completo (datos del que acepta: residente mismo PH o titular mayor de edad), estado pendiente por aprobar, botón "en proceso de validación y aprobación". Incluye DOCUMENTO DE MEJORA: Análisis Ley 284 – cédula opcional (residente mismo PH: no requerida; titular mayor de edad: opcional). Ver Arquitecto/LOGICA_CEDER_PODER_CHATBOT.md. Instrucción Coder en ESTATUS_AVANCE. | Arquitecto |
+| Feb 2026 | **📋 Face ID opcional por residente** - Admin PH puede activar/desactivar Face ID por residente; OTP siempre disponible como fallback. Ver Arquitecto/FACE_ID_OPCIONAL_ADMIN_RESIDENTE.md. Instrucción Coder en ESTATUS_AVANCE. | Arquitecto |
+| Feb 2026 | **📋 Chatbot residente: PIN por correo** - Arquitecto especificó flujo correo → PIN al email → validar PIN → luego botones; Votación/Tema solo si asamblea activa. Ver Arquitecto/LOGICA_CHATBOT_RESIDENTE_PIN.md. Instrucción Coder en ESTATUS_AVANCE. | Arquitecto |
 | Feb 2026 | **🔄 FASE 09 ACTUALIZADA** - Stripe quitado (no retiros Panamá). Pasarelas: PayPal, Tilopay, Yappy, ACH. Ver Arquitecto/VALIDACION_PASARELAS_PAGO_PANAMA.md | Arquitecto |
 | Feb 2026 | **📋 CONTRALOR: Siguiente paso validar Docker** - Instrucciones a Base de Datos y QA vía Contralor/VALIDACION_DOCKER_Y_OTP.md | Contralor |
 | Feb 2026 | **✅ BACKUP FASES 9, 10, 11** - Commit dc1f9c7 (push manual: `git push origin main`) | Contralor |
@@ -1069,6 +1282,8 @@ Feb 2026 | ✅ Reporte formal al Contralor en ESTATUS_AVANCE.md (FASES A-E)
 
 ### 📢 MARKETING - Últimos Avances:
 ```
+07 Feb | 📋 Chatbot más inteligente (Henry): Residente validado escribe "¿Qué más hay?" o "ya estoy registrado" y el chatbot responde "No encuentro ese correo" (no razona). Sugerencia: ramificar lógica por estado; cuando residentEmailValidated + chatStep ≥ 8, NO tratar texto como email; llamar a Gemini con contexto. Crear POST /api/chat/resident, verificar GEMINI_API_KEY, actualizar base de conocimiento. Ver Marketing/MARKETING_SUGERENCIA_CHATBOT_INTELIGENTE_GEMINI.md. BASE_CONOCIMIENTO actualizada con TEMA 4B (residente validado – preguntas en contexto).
+07 Feb | 📋 §K (Henry): En /residentes/chat tras cerrar sesión: NO mensaje "Califica leads y ofrece demos"; usar "Soy Lex, chatbot para asambleas de PH (propiedades horizontales)". NO mostrar los 4 botones de perfil (Admin/Junta/Residente/Demo); solo flujo residente. Botones de perfil solo en landing. Ver Marketing §K y rec 14.
 26 Feb | ✅ UX chatbot: (6) Lógica botones: Votación/Tema del día solo si asamblea activa; Asambleas/Calendario/Ceder poder siempre. (7) Ceder poder: formulario inline en chat. (8) Validación demo: perfiles asamblea activa, programada, pre-registro, sin asambleas ("¿Consultar con admin?"). Ver §F, §G, §H.
 26 Feb | ✅ UX chatbot: (5) Cerrar sesión en lugar de "Volver a landing"; alerta abandono; registro hora para Admin PH. Ver Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md §E.
 26 Feb | ✅ UX chatbot: (3) Mostrar correo, nombre y número de unidad en el chat. (4) Votación/Asambleas/Calendario: responder DENTRO del chat (cards/mensajes inline), no redirigir a landing externa. Ver Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md §C y §D.
@@ -1130,6 +1345,87 @@ Feb 2026 | ✅ Reporte formal al Contralor en ESTATUS_AVANCE.md (FASES A-E)
 - **Backup** ya está hecho (commit 5c94eb5 en GitHub).
 
 **Estado actual:** Tareas 1, 2 y 3 dadas por **finalizadas** (05 Feb 2026). Siguiente: **autorizar backup** (Contralor ejecuta commit + push). Las **revisiones** se retoman más tarde.
+
+---
+
+### 📌 COORDINACIÓN PRÓXIMA TAREA (QA informa – 07 Feb 2026)
+
+**Resumen QA:** Plan completo + §J/rec 14 ✅. Face ID (TAREA 5) parcial: código OK, APIs 500 por columna `face_id_enabled` faltante en BD.
+
+**Orden sugerido de tareas:**
+
+| # | Agente | Tarea | Instrucción |
+|---|--------|-------|-------------|
+| 1 | **Coder** | **Login residente → Admin PH** | Residente (ej. residente2@) entra al dashboard Admin PH. Añadir check role===RESIDENTE antes de is_demo en login/page.tsx → redirect /residentes/chat. **Prioridad crítica** – fallo de seguridad/permisos. |
+| 2 | **Coder** | **Bug verify-otp chatbot** | Corregir `res.ok` fuera de scope en chat/page.tsx y page.tsx. Ver bloque "Para CODER (bug verify-otp chatbot residente)" más abajo. **Prioridad alta** – bloquea login residente. |
+| 3 | **Database** | Ejecutar script Face ID | `docker compose exec -T postgres psql -U postgres -d assembly < sql_snippets/101_face_id_enabled_users.sql` (si no ejecutado) |
+| 4 | **QA** | Revalidar Face ID | Tras script 101: probar GET/PUT admin-ph/residents, resident-profile; reportar en QA_FEEDBACK |
+| 5 | **Coder** | Botón retorno Platform Admin | Añadir "← Volver al Dashboard" en monitoring, clients, business, leads, chatbot-config, crm (ref. tickets/[id]/page.tsx) |
+| 5 | **Coder** | Chatbot más inteligente + Gemini **(orden Marketing 07 Feb 2026)** | Ramificar lógica: residente validado + texto libre → llamar API chat con Gemini (no validar email). Crear POST /api/chat/resident. Ver bloque "Para CODER – Chatbot más inteligente con Gemini (orden Marketing 07 Feb 2026)" y Marketing/MARKETING_SUGERENCIA_CHATBOT_INTELIGENTE_GEMINI.md. |
+| 6 | **Coder** | §K Mensaje y botones /residentes/chat **(orden Marketing 07 Feb 2026)** | En /residentes/chat: mensaje "chatbot para asambleas de PH" (no "Califica leads"); NO mostrar 4 botones perfil; solo flujo residente. Ver bloque "Para CODER – §K" y Marketing §K. |
+
+**Prioridad inmediata:** Bug verify-otp – el residente no puede completar login en chatbot aunque el PIN sea correcto.
+
+**Referencias:** QA/QA_FEEDBACK.md (§ Face ID, § Plan completo, § Error PIN). Contralor asigna según disponibilidad de agentes.
+
+---
+
+### Para CODER – Chatbot más inteligente con Gemini (orden Marketing 07 Feb 2026)
+
+```
+Eres el Coder. Orden del Contralor: Implementar chatbot más inteligente para residentes validados, con razonamiento vía Gemini.
+
+PROBLEMA: Cuando el residente ya está validado (residentEmailValidated, chatStep ≥ 8) y escribe texto libre ("¿Qué más hay?", "ya estoy registrado", etc.), el chatbot responde "No encuentro ese correo" porque trata todo texto como intento de validar email.
+
+TAREAS:
+1. Ramificar handleChatSubmit: Si residentEmailValidated && chatRole === "residente" && chatStep >= 8, NO tratar el mensaje como email. En su lugar, llamar a una API de chat (POST /api/chat/resident o similar) que use Gemini.
+
+2. Crear API POST /api/chat/resident:
+   - Entrada: { message: string, context: { email, organizationId, assemblyContext, temaActivo, residentProfile, ... } }
+   - Incluir en el prompt: base de conocimiento para residentes (Marketing/BASE_CONOCIMIENTO_CHATBOT_LEX.md – PERFIL 5, TEMA 4B)
+   - Llamar a Gemini (Google AI) con mensaje + historial reciente
+   - Devolver respuesta generada
+
+3. Verificar/configurar GEMINI_API_KEY en variables de entorno. Validar que la API responde.
+
+4. En el prompt a Gemini: indicar que el usuario está validado; NO pedir correo. Si pregunta "¿Qué más hay?", "ya estoy registrado", responder según TEMA 4B (opciones Votación, Asambleas, etc.).
+
+Referencia: Marketing/MARKETING_SUGERENCIA_CHATBOT_INTELIGENTE_GEMINI.md. Base de conocimiento actualizada: Marketing/BASE_CONOCIMIENTO_CHATBOT_LEX.md (TEMA 4B). Al finalizar, confirmar al Contralor.
+```
+
+**Validación Contralor – Respuesta Marketing (instrucción al Coder):** ✅ **Validada.** Marketing indicó la instrucción al Coder. Contralor la registra aquí. El Coder debe: (1) Ramificar handleChatSubmit: si el residente está validado y envía texto libre, no usar el flujo de validación de email. (2) Crear POST /api/chat/resident que llame a Gemini con contexto. (3) Comprobar y configurar GEMINI_API_KEY. (4) Incluir en el prompt la base de conocimiento para residentes (PERFIL 5, TEMA 4B). Dónde: Marketing/MARKETING_SUGERENCIA_CHATBOT_INTELIGENTE_GEMINI.md y Marketing/BASE_CONOCIMIENTO_CHATBOT_LEX.md. Al finalizar, Coder informa al Contralor.
+
+**Reporte Coder – Tarea completada:** ✅ **Implementado.** API POST /api/chat/resident (Gemini, PERFIL 5 + TEMA 4B); rama en handleChatSubmit en `chat/page.tsx` y `page.tsx` cuando residentEmailValidated && chatStep ≥ 8. Variable GEMINI_API_KEY requerida. **Sugerencia al Contralor:** Asignar a QA validación según plan (prueba sugerida en QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md § Chatbot Gemini).
+
+---
+
+### Para QA – Validación Chatbot más inteligente con Gemini (sugerida por Coder)
+```
+Responsable: QA.
+Objetivo: Validar que el residente validado puede escribir texto libre y recibe respuesta de Lex (Gemini), no "No encuentro ese correo".
+Plan: QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md – sección "Prueba sugerida: Chatbot Gemini (residente validado + texto libre)".
+Prerequisito: GEMINI_API_KEY configurada en el entorno (app o .env).
+Al finalizar, QA informa al Contralor (resultado en QA_FEEDBACK.md).
+```
+
+---
+
+### Para CODER – §K Mensaje y botones en página chatbot residentes (orden Marketing 07 Feb 2026)
+
+```
+Eres el Coder. Orden del Contralor: Corregir mensaje y botones en /residentes/chat según §K.
+
+PROBLEMA: Tras cerrar sesión, el residente en /residentes/chat ve:
+- Mensaje "Eres Lex, asistente de Assembly 2.0. Califica leads y ofrece demos." (incorrecto para residentes)
+- Los 4 botones de perfil (Administrador PH, Junta Directiva, Residente, Solo demo) visibles
+
+TAREAS:
+1. En /residentes/chat: Cambiar el mensaje inicial/bienvenida a "Soy Lex, chatbot para asambleas de PH (propiedades horizontales)." (o similar). NO usar "Califica leads y ofrece demos". Este mensaje al validar usuario o al cargar la página de residentes.
+2. En /residentes/chat: NO mostrar los 4 botones de perfil (Admin, Junta, Residente, Demo). Solo el flujo de residente: validar correo si no validado, o pills (Votación, Asambleas, etc.) si ya validado.
+3. Los 4 perfiles (Admin, Junta, Residente, Demo) solo en la landing (/).
+
+Referencia: Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md §K y recomendación 14. Al finalizar, confirmar al Contralor.
+```
 
 ---
 
@@ -1195,89 +1491,121 @@ Instrucciones detalladas para cada agente más abajo (copiar y pegar).
 | **Tarea 2** | QA | ✅ Realizada | Revalidar §E o validación manual chatbot. |
 | **Tarea 3** | Database | ✅ Realizada (si aplica) | Script §E en BD si faltaba tabla. |
 | **Tarea 4** | QA | ✅ Realizada | Plan de navegación (etapas 1–6) + validación §J/rec 14. |
-| **Backup** | Contralor | ⏳ **Falta** | Henry autoriza → Contralor ejecuta commit + push. |
+| **Backup** | Contralor / Henry | ✅ **Completado** (226bd72 en GitHub) | Commit desde Contralor; push ejecutado por Henry. |
 
-**Siguiente paso:** Henry autoriza backup. Contralor ejecuta commit + push (incluye avances de las 4 tareas y ESTATUS_AVANCE actualizado).
+**Siguiente paso:** Seguir con las siguientes tareas según el plan. Backup actual al día.
 
----
+**Validación Contralor – Reportes de agentes (esta fase listo):** ✅ **Validada.** Contralor confirma que los reportes de los agentes de esta fase están validados. Fase cerrada.
 
-### 📌 PARA HENRY – Asignar tareas (copiar y pegar en el chat del agente)
-
-Henry: copia el bloque que indica "Pegar en chat del [agente]" y pégalo en el chat de ese agente. Cuando ese agente finalice, copia el bloque "Cuando finalice → pegar en chat del [siguiente agente]" y pégalo en el chat del Contralor (o del siguiente agente). Todo desde este documento; fácil para asignar.
+**Validación funcionalidades – 2 PH de prueba:** Para probar funcionalidades hacen falta **2 PH (organizaciones) de prueba:** (1) **PH A:** con residentes y asamblea **activa** (agendada y en curso para votar). (2) **PH B:** con residentes y asamblea **agendada pero no activa** para votar (solo programada). **Responsable de crear los datos:** **Database.** Database entrega scripts o datos en BD para las 2 orgs (o amplía la org demo con 2 contextos de asamblea). **Responsable de ejecutar las pruebas:** **QA**, una vez existan los 2 PH. Database informa al Contralor al terminar; Contralor asigna a QA la prueba de funcionalidades.
 
 ---
 
-**TAREA 1 – Para el CODER**
+### 📌 PARA HENRY – Instrucciones directas
 
-► **Pegar esta instrucción en el chat del CODER:**
+Cada fila: **Tarea** · **Agente** · **Plan de pruebas o Avances** (documento donde buscar).
+
+| Tarea | Agente | Plan de pruebas / Avances |
+|-------|--------|---------------------------|
+| ~~Face ID opcional~~ (Coder ✅) | QA | Valida Face ID, informa al Contralor; Contralor valida y asigna próxima tarea. |
+| Plan de navegación completo (etapas 1–6) + validación §J/rec 14 | QA | Plan de pruebas: QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md |
+| §F, §G, §H, §I, §J (Marketing UX chatbot, botones, Ceder poder, /residentes/chat, §J) | Coder | Avances: Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md |
+| Revalidar §E o validación manual chatbot (botones 4.1–4.7) | QA | Plan de pruebas: QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md (sección 4); Avances: ESTATUS_AVANCE |
+| Script tabla resident_abandon_events en BD si no existe | Database | Avances: ESTATUS_AVANCE (instrucción más abajo) |
+| Lógica chatbot residente (botones solo si residentEmailValidated) | Coder | Avances: Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md |
+| Build dentro de Docker | QA | Plan de pruebas / Avances: QA_FEEDBACK.md |
+| **2 PH de prueba** (uno con asamblea activa para votar, otro con asamblea agendada no activa) | **Database** | Crear datos/scripts para 2 PH. Luego **QA** prueba funcionalidades. Ver "Validación funcionalidades – 2 PH de prueba" más arriba. |
+| **Ceder poder (formulario completo)** – Arquitecto + Marketing §G | Coder | Dónde empezar: Arquitecto/LOGICA_CEDER_PODER_CHATBOT.md y Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md §G. Bloque "Para CODER – Ceder poder en chatbot" más abajo. |
+| **Chatbot más inteligente – preguntas simples** (mejorar respuestas según QA) | Coder | QA_FEEDBACK.md § "QA Análisis · Chatbot inteligente – Preguntas simples en asamblea". Bloque "Para CODER (chatbot más inteligente – preguntas simples)" más abajo. Validar cuando Coder termine. |
+| ~~Login – residente no debe entrar como Admin PH~~ | ~~Coder~~ | ✅ Coder informó listo. Siguiente: Backup → QA validación redirección por rol. |
+| **Backup de todo** (primero) | Contralor / Henry | Henry autoriza → Contralor commit; Henry ejecuta `git push origin main`. |
+| **Validación redirección por rol** (tras backup) | QA | Residente → /residentes/chat; Admin PH → /dashboard/admin-ph; Henry → /dashboard/platform-admin. Plan: QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md § "Tarea QA: Validación redirección por rol (todos los perfiles)". Usuarios: docs/USUARIOS_DEMO_BD.md. |
+
+Detalle y texto para pegar al agente: más abajo en este documento.
+
+---
+
+**TAREA 1 – CODER**
+
+**Instrucción para copiar y pegar (agente Coder):**
 
 ```
 Eres el Coder. Orden del Contralor (ESTATUS_AVANCE.md): Implementar §F, §G, §H, §I y §J del informe Marketing según Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md. §F: Botones Votación y Tema del día solo si asamblea activa; Asambleas, Calendario y Ceder poder siempre; si no hay activa, Votación y Tema del día en gris con "No hay votación activa". §G: Ceder poder con formulario dentro del chat (campo Correo del apoderado + Enviar poder), todo inline. §H: Validación demo por perfil (activa/programada/pre-registro/sin asambleas con mensaje "¿Consultar con el administrador?"). §I: Página /residentes/chat; al cerrar sesión redirigir allí (no a landing); dos perfiles según documento. §J: (1) Mensaje bienvenida residente "Hola [Nombre]. Soy Lex, tu asistente para votaciones, asambleas y gestión de tu PH en Assembly 2.0." (2) Mostrar correo en chat (3) Clic Votación → card inline "Votación activa", "¿Participar?", botón "Ir a votar" (4) Badge "Asamblea activa" visible. Referencia: Contralor/TAREA_3_CODER.md. Al finalizar, confirmar en ESTATUS_AVANCE o al Contralor.
 ```
 
-► **Cuando el Coder finalice, pegar esta instrucción en el chat del QA (o del Contralor para reportar):**
+**Instrucción para copiar y pegar (agente QA):**
 
 ```
 El Coder finalizó la Tarea 1 (§F, §G, §H, §I, §J). Orden del Contralor: ejecutar Tarea 2. Eres QA. Ejecutar según Contralor/TAREA_2_QA.md: Opción A – Revalidar §E (abandono de sala) o Opción B – Validación manual chatbot (sección 4 del plan). Reportar resultado en QA/QA_FEEDBACK.md. Referencia: Contralor/ESTATUS_AVANCE.md.
 ```
 
+Puedes asignar la instrucción anterior al agente QA cuando el Coder haya terminado la Tarea 1.
+
 ---
 
 **TAREA 2 – Para el QA**
 
-► **Pegar esta instrucción en el chat del QA:**
+**Instrucción para copiar y pegar (agente QA):**
 
 ```
 Eres QA. Orden del Contralor (ESTATUS_AVANCE.md): Ejecutar Tarea 2. Opción A – Revalidar §E (abandono de sala): comprobar flujo "Cerrar sesión" en chatbot (residente validado), alerta, registro en BD. Opción B – Validación manual chatbot: QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md sección 4; abrir http://localhost:3000, chatbot, probar botones Votación, Asambleas, Calendario, Tema del día, Ceder poder. Reportar en QA/QA_FEEDBACK.md. Referencia: Contralor/TAREA_2_QA.md.
 ```
 
-► **Cuando QA finalice, pegar esta instrucción en el chat del CONTRALOR:**
+**Instrucción para copiar y pegar (agente Contralor):**
 
 ```
 QA finalizó la Tarea 2. Reporte en QA/QA_FEEDBACK.md. Contralor: registrar en ESTATUS_AVANCE y, si Henry autoriza, ejecutar backup (commit + push). Siguiente: test de navegación o tarea que Henry indique.
 ```
 
+Puedes asignar la instrucción anterior al agente Contralor cuando QA haya terminado la Tarea 2.
+
 ---
 
 **TAREA 3 – Para DATABASE (si aplica)**
 
-► **Pegar esta instrucción en el chat del DATABASE:**
+**Instrucción para copiar y pegar (agente Database):**
 
 ```
 Eres Database. Orden del Contralor (ESTATUS_AVANCE.md): Si en el entorno la tabla resident_abandon_events no existe, ejecutar el script desde la raíz del proyecto: docker compose exec -T postgres psql -U postgres -d assembly < sql_snippets/100_resident_abandon_events.sql. Sin la tabla, POST /api/resident-abandon devuelve 500. Al ejecutar, indicar en ESTATUS_AVANCE o QA_FEEDBACK que la tabla está creada. Referencia: Contralor/ESTATUS_AVANCE.md.
 ```
 
-► **Cuando Database finalice, pegar en chat del CONTRALOR:**
+**Instrucción para copiar y pegar (agente Contralor):**
 
 ```
 Database ejecutó el script 100_resident_abandon_events.sql; tabla resident_abandon_events creada. Contralor: registrar en ESTATUS_AVANCE. QA puede revalidar §E.
 ```
 
+Puedes asignar la instrucción anterior al agente Contralor cuando Database haya ejecutado el script.
+
 ---
 
 **TAREA 4 – Plan de navegación (QA)**
 
-► **Pegar esta instrucción en el chat del QA:**
+**Instrucción para copiar y pegar (agente QA):**
 
 ```
 Eres QA. Orden del Contralor: Ejecutar el plan de pruebas de navegación según QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md (etapas 1 a 6). Incluir validación §J/rec 14 cuando pruebes residente con asamblea activa. Reportar resultado en QA/QA_FEEDBACK.md. Referencia: Contralor/ESTATUS_AVANCE.md.
 ```
 
-► **Cuando QA finalice, pegar en chat del CONTRALOR:**
+**Instrucción para copiar y pegar (agente Contralor):**
 
 ```
 QA ejecutó el plan de navegación. Reporte en QA/QA_FEEDBACK.md. Contralor: actualizar ESTATUS_AVANCE. Si Henry autoriza backup, ejecutar commit + push.
 ```
 
+Puedes asignar la instrucción anterior al agente Contralor cuando QA haya terminado el plan de navegación.
+
 ---
 
-**BACKUP – Falta ejecutar (tras las 4 tareas)**
+**TAREA 5 – Face ID opcional (Coder):** ✅ Completado por Coder.
 
-► **Cuando Henry autorice, pegar esta instrucción en el chat del CONTRALOR:**
+**Face ID – dónde quedamos:** ✅ **Database** ejecutó script 101 (columna `face_id_enabled`). ✅ **QA** revalidó Face ID e informó al Contralor. Contralor confirma: Face ID (TAREA 5) cerrado. Próxima tarea la indica el Contralor en una frase.
 
-```
-Henry autorizó el backup. Las 4 tareas (Tarea 1 Coder, Tarea 2 QA, Tarea 3 Database, Tarea 4 Plan navegación) están realizadas. Contralor: ejecutar commit + push según protocolo (ESTATUS_AVANCE). Incluir en el commit: avances de las 4 tareas, ESTATUS_AVANCE actualizado, cambios en código/docs. Formato commit: "Backup: 4 tareas realizadas (Coder §F-§J, QA T2 y plan navegación, Database §E) - Pendiente push". Tras push, confirmar "Backup completado".
-```
+---
+
+**BACKUP – Completado (30 Ene 2026)**
+
+► Commit **226bd72** subido a GitHub (main). Incluye: 4 tareas realizadas (Coder §F-§J, QA T2 y plan navegación, Database §E), ESTATUS_AVANCE, Marketing, QA, chat residentes, api resident-profile. Para el próximo backup: Contralor hace commit; Henry ejecuta `git push origin main` (credenciales solo en tu máquina).
 
 ---
 
@@ -1293,24 +1621,24 @@ Henry autorizó el backup. Las 4 tareas (Tarea 1 Coder, Tarea 2 QA, Tarea 3 Data
 
 **Registro §J y recomendación #14:** Fuente **Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md** – Sección **§J** (Mejoras UX – Residente con asamblea activa, validación 26 Ene 2026) y **Recomendación #14** (Mejoras UX residente con asamblea activa, ver §J). Contralor registra aquí; tarea asignada al Coder; QA valida según QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md cuando ejecute pruebas de chatbot residente con asamblea activa.
 
-**Resumen:** §J y la recomendación #14 quedan **registrados en ESTATUS_AVANCE**, con **(1) instrucción explícita para el Coder** (bloques *"Para el CODER (Tarea 3 – §F…§J)"* y *"Para el CODER (§J + recomendación #14)"* más abajo) y **(2) checklist de validación en el plan de QA** (QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md – sección *Validación §J + Recomendación #14*).
+**Resumen:** §J y la recomendación #14 quedan **registrados en ESTATUS_AVANCE**, con **(1) instrucción explícita para el Coder** (secciones *"Para el CODER (Tarea 3 – §F…§J)"* y *"Para el CODER (§J + recomendación #14)"* más abajo) y **(2) checklist de validación en el plan de QA** (QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md – sección *Validación §J + Recomendación #14*).
 
 **Responsable:** Coder (una sola instrucción para §F, §G, §H, §I, §J). Instrucción para copiar y pegar más abajo.
 
-**Próximas opciones (orden):**
-- ~~**Contralor (primera tarea):** Backup~~ ✅ Completado 05 Feb 2026.
-- **Coder (prioridad):** Corregir lógica chatbot residente en page.tsx (residentEmailValidated; botones solo cuando correo validado). Ver instrucción más abajo y Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md. Arquitecto ya actualizó FLUJO_IDENTIFICACION_USUARIO.md.
-- **Coder:** Ejecutar instrucciones del informe Marketing dashboard Henry (layout platform-admin, Chatbot Config en sidebar, enlaces, persistencia Clients, datos reales, precios VPS, tildes). Ver Marketing/MARKETING_VALIDACION_DASHBOARD_HENRY.md.
-- **Coder:** Implementar informe Marketing UX chatbot (página /chat rec 5, botones pills en chat rec 6, persistencia sesión, Volver al chat, ACTIVA/PROGRAMADA). Ver instrucción más abajo y Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md.
-- **Coder:** Añadir botón de retorno al dashboard en las páginas platform-admin que no lo tengan (monitoring, clients, business, leads, chatbot-config, crm). Referencia: tickets/[id]/page.tsx líneas 109-110.
-- **Contralor:** Backup cuando Henry autorice (ya ejecutado a76fb32; push OK).
-- **QA:** Ejecutar plan de navegación test completo (etapas 1–6). Ver instrucción más abajo y QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md.
-- **QA:** Probar el build dentro de una imagen Docker (docker compose up -d --build; reportar si falla en QA_FEEDBACK.md para que Coder corrija). Ver instrucción más abajo.
-- **Database (§E):** Ejecutar en la BD el script `sql_snippets/100_resident_abandon_events.sql` si la tabla `resident_abandon_events` aún no existe (sin ella el POST /api/resident-abandon devuelve 500). Coder ya implementó el flujo. Ver instrucción más abajo.
-- **Coder (2º, tras Database):** Implementar botón "Cerrar sesión", alerta, llamada a API de abandono y vista Admin PH. Ver instrucción más abajo.
-- **Coder (próxima tarea):** Implementar §F, §G, §H, §I, §J del informe Marketing (lógica botones, formulario Ceder poder, validación demo, página chatbot residentes + flujos, 4 puntos UX asamblea activa). Ver instrucción más abajo.
-- **QA:** Validar registro de abandono de sala (§E): ✅ Ya reportado – NO IMPLEMENTADO. Revalidar cuando Coder/Database entreguen.
-- **QA:** Validación manual chatbot (4.1–4.7) o Docker/OTP si aplica.
+**Próximas opciones (mismo formato: Tarea · Agente · Plan de pruebas / Avances):**
+| Tarea | Agente | Plan / Avances |
+|-------|--------|----------------|
+| ~~Backup~~ | ~~Contralor~~ | ✅ Completado 05 Feb 2026. |
+| Lógica chatbot residente (residentEmailValidated; botones solo si validado) | Coder | Avances: Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md |
+| Dashboard Henry (layout, Chatbot Config, enlaces, Clients, precios VPS, tildes) | Coder | Avances: Marketing/MARKETING_VALIDACION_DASHBOARD_HENRY.md |
+| UX chatbot (§F–§J, /residentes/chat, pills, sesión, §J) | Coder | Avances: Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md |
+| Botón retorno dashboard (platform-admin: monitoring, clients, business, leads, chatbot-config, crm) | Coder | Avances: ESTATUS_AVANCE (ref. tickets/[id]/page.tsx) |
+| Plan de navegación (etapas 1–6) | QA | Plan de pruebas: QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md |
+| Build en Docker | QA | Plan de pruebas / Avances: QA_FEEDBACK.md |
+| Script resident_abandon_events en BD si falta tabla | Database | Avances: ESTATUS_AVANCE |
+| §E Cerrar sesión, alerta, API abandono, vista Admin PH | Coder | Avances: ESTATUS_AVANCE / Database_DBA |
+| ~~Face ID opcional~~ | ~~Coder~~ | ✅ Completado. QA valida, informa al Contralor; Contralor valida respuesta y asigna próxima tarea. |
+| Validar §E (abandono de sala) | QA | Plan de pruebas: QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md; Avances: QA_FEEDBACK.md |
 
 ---
 
@@ -1329,7 +1657,7 @@ Henry autorizó el backup. Las 4 tareas (Tarea 1 Coder, Tarea 2 QA, Tarea 3 Data
 
 ### Instrucciones por agente (solo copiar y pegar; no generar código aquí)
 
-Cada bloque es la instrucción que Henry da al agente. Copiar el contenido del bloque y pegarlo en el chat del agente correspondiente. Este documento no genera código; solo contiene la instrucción.
+Copia solo el texto que está dentro de cada recuadro (el que va entre las líneas con ```) y pégalo en el chat del agente indicado. La línea "Puedes asignar..." es para ti: indica cuándo usar la siguiente instrucción. Este documento no genera código; solo contiene el texto a copiar.
 
 **Para QA (revalidación chatbot Opción B):** ✅ Completada (ver QA_FEEDBACK.md).
 
