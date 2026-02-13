@@ -43,7 +43,7 @@ export default function UpgradeBanner({ limits }: { limits: LimitsPayload }) {
 
   return (
     <div
-      className="card"
+      className="card upgrade-banner"
       style={{
         borderLeft: "4px solid rgba(234,179,8,0.9)",
         background: "rgba(250,204,21,0.12)",

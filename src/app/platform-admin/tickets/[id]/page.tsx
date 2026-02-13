@@ -4,51 +4,78 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 
+const SEED_TICKETS: Record<string, any> = {
+  "TKT-2026-021": {
+    id: "TKT-2026-021",
+    ticket_number: "TKT-2026-021",
+    subject: "Error de quórum en PH Costa",
+    description: "El sistema reporta error de quórum en asamblea del PH Costa. Revisar configuración y asistencia.",
+    status: "open",
+    priority: "urgent",
+    source: "Chatbot",
+    messages: [],
+  },
+  "TKT-2026-019": {
+    id: "TKT-2026-019",
+    ticket_number: "TKT-2026-019",
+    subject: "Facturación Pro Multi-PH",
+    description: "Consulta sobre facturación del plan Pro Multi-PH. Cliente solicita desglose.",
+    status: "open",
+    priority: "high",
+    source: "Email",
+    messages: [],
+  },
+  "TKT-2026-017": {
+    id: "TKT-2026-017",
+    ticket_number: "TKT-2026-017",
+    subject: "Acceso demo expira hoy",
+    description: "El acceso demo del cliente expira hoy. ¿Renovar o contactar para conversión?",
+    status: "open",
+    priority: "high",
+    source: "Landing",
+    messages: [],
+  },
+};
+
 export default function TicketDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const ticketId = params.id as string;
-  const seedTickets = useMemo(
-    () => ({
-      "tkt-001": {
-        id: "tkt-001",
-        ticket_number: "A2-1001",
-        subject: "Asamblea no inicia en modo demo",
-        description: "El administrador no puede iniciar la asamblea demo desde el dashboard.",
-        status: "open",
-        priority: "high",
-        source: "web",
-        messages: [],
-      },
-      "tkt-002": {
-        id: "tkt-002",
-        ticket_number: "A2-1002",
-        subject: "Consulta sobre votación manual",
-        description: "Se requiere guía rápida para registrar votos manuales.",
-        status: "open",
-        priority: "medium",
-        source: "telegram",
-        messages: [],
-      },
-    }),
-    [],
-  );
+  const ticketId = (params.id as string) || "";
 
   const [ticket, setTicket] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [response, setResponse] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [fromApi, setFromApi] = useState(false);
 
   useEffect(() => {
-    loadTicket();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticketId, seedTickets]);
-
-  async function loadTicket() {
+    let cancelled = false;
     setLoading(true);
-    setTicket(seedTickets[ticketId] || null);
-    setLoading(false);
-  }
+    fetch(`/api/platform-admin/tickets/${encodeURIComponent(ticketId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        if (data) {
+          setTicket(data);
+          setFromApi(true);
+        } else {
+          setTicket(SEED_TICKETS[ticketId] || null);
+          setFromApi(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTicket(SEED_TICKETS[ticketId] || null);
+          setFromApi(false);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ticketId]);
 
   async function handleResolve() {
     if (!response.trim()) {
@@ -57,17 +84,29 @@ export default function TicketDetailPage() {
     }
     if (!ticket) return;
     setSubmitting(true);
-    const updatedMessages = [
-      ...(ticket.messages || []),
-      { role: "admin", content: response, timestamp: new Date().toISOString() },
-    ];
+    if (fromApi) {
+      const res = await fetch(`/api/platform-admin/tickets/${encodeURIComponent(ticketId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "resolve", resolution_notes: response }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setSubmitting(false);
+      if (res.ok && data?.ok) {
+        toast.success("Ticket resuelto.");
+        router.push("/dashboard/platform-admin");
+      } else {
+        toast.error(data?.error || "No se pudo resolver.");
+      }
+      return;
+    }
     setTicket({
       ...ticket,
       status: "resolved",
       resolved_by: "admin_henry",
       resolution_notes: response,
       resolved_at: new Date().toISOString(),
-      messages: updatedMessages,
+      messages: [...(ticket.messages || []), { role: "admin", content: response, timestamp: new Date().toISOString() }],
     });
     toast.success("Ticket resuelto.");
     setSubmitting(false);
@@ -77,6 +116,22 @@ export default function TicketDetailPage() {
   async function handleEscalate() {
     if (!ticket) return;
     setSubmitting(true);
+    if (fromApi) {
+      const res = await fetch(`/api/platform-admin/tickets/${encodeURIComponent(ticketId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "escalate" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setSubmitting(false);
+      if (res.ok && data?.ok) {
+        toast.success("Ticket escalado.");
+        setTicket({ ...ticket, status: "escalated", priority: "urgent" });
+      } else {
+        toast.error(data?.error || "No se pudo escalar.");
+      }
+      return;
+    }
     setTicket({
       ...ticket,
       status: "escalated",

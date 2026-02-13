@@ -51,10 +51,19 @@ FORMATO DE COMMIT:
 | FASE 9, 10, 11 | ✅ Aprobado QA | ✅ dc1f9c7 | ⏳ Push (Henry si falla) |
 | Plan navegación + Chatbot residente (Opción B) + Usuarios demo | ✅ Aprobado QA | ✅ a76fb32 | ✅ Push OK |
 
-**Último backup:** Commit **639557d** creado (Backup: Coder listo login residente + tarea QA redirección por rol + ESTATUS_AVANCE). **Falta:** Henry ejecuta `git push origin main` para subir a GitHub.
+**Último backup:** **Completado.** Commit **b3afdd2** subido a GitHub (226bd72..b3afdd2 main → main). 30 Ene 2026. Incluye: Coder listo login residente + tarea QA redirección por rol + ESTATUS_AVANCE.
 **Repositorio:** https://github.com/hbatista2720/assembly-2-0
 
-**¿Backup requerido ahora?** Commit hecho. **Completar backup:** ejecutar en tu terminal: `git push origin main`. Luego QA ejecuta tarea "Validación redirección por rol" (QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md § "Tarea QA: Validación redirección por rol (todos los perfiles)").
+**¿Backup requerido ahora?** No. Backup completo (b3afdd2). **Validación redirección por rol:** ✅ QA aprobó. Ver QA_FEEDBACK.md § "QA Validación · Redirección por rol". **Usuarios demo por plan:** ✅ Ejecutado. Ver REPORTE_USUARIOS_DEMO_POR_PLAN.md. **Siguiente:** Más pruebas (plan § "Próximas pruebas"), QA validar Dashboard Admin PH con los 5 usuarios por plan.
+
+**Reporte Coder al Contralor (últimos cambios – tema, perfil, demo, contadores):**
+- Botón **"Subir a plan real"** validado: redirige a `/pricing?from=demo` (trazabilidad).
+- **Usuario demo:** demo@assembly2.com — contadores sincronizados a **50 residentes** en Dashboard y en Monitor (antes 311).
+- **Monitor:** Para assemblyId demo se generan 50 unidades (Torre A, 50); para el resto se mantienen 200+111.
+- **Dashboard Admin PH:** En modo demo (subscription demo u organización demo) se muestran 50 propietarios en lista de PH y KPIs.
+- Cambios previos ya aplicados: tema claro/oscuro, perfil (avatar, tema, foto, organización), sidebar, "Dashboard principal" limpia PH seleccionado, listas y gráfica en tema claro, script antiparpadeo.
+
+**Instrucción para QA:** Probar con usuario **demo@assembly2.com**: login, dashboard (contadores 50 en lista y KPIs), Monitor (50 residentes/unidades), editar perfil, tema claro/oscuro y botón "Subir a plan real" → debe llevar a /pricing?from=demo.
 
 **¿Por qué el Contralor no puede hacer el backup directo (push)?**  
 El **commit** sí se hace desde aquí (Contralor/Cursor). El **push** a GitHub no: GitHub pide usuario y contraseña o token. Esas credenciales solo están en tu sesión (tu máquina, tu IDE, tu cuenta). Por eso el flujo es: (1) Contralor hace commit cuando autorizas; (2) tú ejecutas `git push origin main` en tu terminal para subir a GitHub. Así el backup queda completo.
@@ -617,6 +626,7 @@ Opcional: FASES 9, 10 y 11 como bloque. Producción (12-13) cuando todo OK.
 
 ### Para DATABASE (Base de Datos):
 ```
+📋 REGLA: Reportar siempre al Contralor tras ejecutar scripts en BD o completar tareas (entrada en historial ESTATUS_AVANCE.md).
 🎯 ORDEN DEL CONTRALOR: Validar Docker y persistencia OTP (referencia única)
 
 📖 LEER Y SEGUIR: Contralor/VALIDACION_DOCKER_Y_OTP.md
@@ -765,7 +775,7 @@ Al finalizar, confirmar al Contralor.
 
 ### Para CODER (login – residente no debe entrar como Admin PH) – 🔴 Prioridad crítica
 
-**Estado:** ✅ **Coder informó listo.** Contralor registra. Siguiente: **1) Backup** (Henry autoriza → Contralor commit + push). **2) QA** ejecuta tarea "Validación redirección por rol" (plan en QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md § "Tarea QA: Validación redirección por rol (todos los perfiles)").
+**Estado:** ✅ **Coder listo.** ✅ **Backup completado.** ✅ **QA aprobó validación redirección por rol** (QA_FEEDBACK.md § "QA Validación · Redirección por rol"). **Siguiente:** Más pruebas según QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md § "Próximas pruebas".
 
 **Nota Contralor:** Lista de usuarios demo y roles: **docs/USUARIOS_DEMO_BD.md**.
 
@@ -820,7 +830,7 @@ Al finalizar, informar al Contralor.
 
 **✅ CODER informó al Contralor (chatbot más inteligente – preguntas simples):** Implementado en `src/app/api/chat/resident/route.ts`: (1) Detección de identidad: preguntas "¿cómo te llamas?", "tu nombre", etc. → respuesta fija "Me llamo Lex...". (2) Base de conocimiento desde archivo: `docs/chatbot-knowledge-resident.md` cargado en el prompt (resumen residente: cómo votar, quórum, Ley 284). (3) Validación API en entorno: GET `/api/chat/resident?validate=1` hace llamada real a Gemini y devuelve ok/error. (4) Fallback cuando Gemini falla o vacío: mensaje incluye "Soy Lex...". (5) generationConfig y extracción robusta de texto (candidates como respaldo). Documentación: `docs/REVISAR_ENTORNO_CHATBOT_GEMINI.md`. Detalle y recomendaciones aplicadas/registradas en QA/QA_FEEDBACK.md § "QA Análisis · Chatbot inteligente – Preguntas simples en asamblea". **Próxima actividad:** Contralor asigna (p. ej. QA revalidar preguntas "como voto" / "mi voto registrado" o backup).
 
-**Validación Contralor – Respuesta QA (bug PIN chatbot residente):** ✅ **Validada.** El reporte de QA es coherente: APIs request-otp y verify-otp OK; el fallo es en frontend: `res.ok` usado en el segundo `.then()` sin estar en scope → ReferenceError → "Error al verificar" con PIN correcto. Archivos: `src/app/chat/page.tsx` y `src/app/page.tsx`. Instrucción para Coder en el bloque anterior. **Próxima actividad:** Coder corrige el bug; al finalizar informa al Contralor.
+**Validación Contralor – Respuesta QA (bug PIN chatbot residente):** ✅ **Validada.** El reporte de QA es coherente. **Corrección aplicada en código:** en `chat/page.tsx` y `page.tsx` ya se usa `.then((res) => res.json().then((data) => ({ res, data })))` y `.then(({ res, data }) => { if (res.ok && ...`. **Falta una re-validación de QA:** confirmar en navegador que con PIN correcto ya no aparece "Error al verificar" y que el residente pasa al chat validado.
 
 **Validación Contralor – Respuesta QA (listo):** ✅ **Validada.** QA informó tarea completada (listo). Contralor confirma la respuesta. Próxima actividad: Contralor asigna en una frase.
 
@@ -888,11 +898,56 @@ Referencia: QA/QA_FEEDBACK.md – sección "QA Re-validación · Login + Plan de
 📖 LEER Y SEGUIR: Contralor/VALIDACION_DOCKER_Y_OTP.md (Docker + OTP).
 ```
 
+### Validación Contralor – Avances Coder Dashboard Henry
+
+**Estado:** Coder informó completado (historial 26 Ene 2026). Contralor validó en código:
+
+| Item (QA_REPORTE_DASHBOARD_HENRY §5 y §7) | Verificación en código |
+|-------------------------------------------|------------------------|
+| Resumen ejecutivo desde BD | Resumen consume GET /api/leads y GET /api/platform-admin/clients; fallback si API falla. |
+| Tickets desde BD | Tabla platform_tickets; APIs GET /api/platform-admin/tickets, GET/PATCH /api/platform-admin/tickets/[id]. sql_snippets/104_platform_tickets.sql. |
+| Monitor VPS | GET /api/platform-admin/monitoring (placeholder documentado). |
+| CRM campañas | platform_campaigns; APIs campaigns, campaigns/[id], campaigns/execute. |
+| Métricas negocio | GET /api/platform-admin/business (agregados BD + placeholder). |
+| Exportar reporte | GET /api/platform-admin/leads/export (CSV). |
+| Ejecutar campañas | POST execute con last_executed_at (placeholder). |
+
+**Conclusión:** Avances del Coder coherentes con lo reportado. **QA debe revisar** según checklist abajo.
+
+### Para QA – Revisar avances Dashboard Henry
+
+```
+Responsable: QA.
+Objetivo: Revisar que los avances del Coder (Dashboard Henry §5 y §7) funcionan en entorno local/Docker.
+Referencia: QA/QA_REPORTE_DASHBOARD_HENRY.md (tabla §5 Resumen para Contralor, §7 Instrucción Coder, §6 Verificación APIs).
+Checklist: QA/QA_FEEDBACK.md § "QA Checklist · Navegación Dashboard Henry (Platform Admin)" (rutas, botones, retorno, bloqueador @/lib/db si aplica).
+
+Qué validar:
+- Resumen ejecutivo: KPI, Funnel, Clientes desde APIs (o fallback).
+- Tickets: lista y detalle desde API; Resolver/Escalar persisten si tabla existe.
+- Monitor VPS: /platform-admin/monitoring muestra datos (placeholder OK).
+- CRM: campañas desde API; Activar/Desactivar y Ejecutar (placeholder OK).
+- Métricas negocio: /platform-admin/business con datos BD o placeholder.
+- Exportar reporte: botón en leads y descarga CSV.
+- Navegación: sidebar, botones, retorno al dashboard según checklist.
+
+Reportar resultado en QA/QA_FEEDBACK.md (sección Dashboard Henry o nueva "Revisión avances Coder Dashboard Henry"). Informar al Contralor al finalizar.
+
+📋 **Falta una re-validación (bug verify-otp):** La corrección ya está en código (res + data en scope). QA debe **re-validar** que en el chatbot, con PIN correcto, ya no aparece "Error al verificar" y el residente entra al chat validado. Ref: bloque "Para CODER (bug verify-otp chatbot residente)" – Validación Contralor.
+
+📖 **Lista de pruebas y revisión respuesta chatbot:** QA/LISTA_PRUEBAS_QA_Y_RESPUESTA_CHATBOT.md (lista actual de pruebas por QA + revisión de cómo responde el chatbot y qué validar).
+
+📋 **Test Dashboard Admin PH con usuarios demo:** Los usuarios demo están listos para validar funcionalidad y límites del Dashboard Admin PH. **QA** ejecuta según **QA/PLAN_PRUEBAS_DASHBOARD_ADMIN_PH_USUARIOS_DEMO.md**. Referencia: Contralor/REPORTE_USUARIOS_DEMO_POR_PLAN.md.
+```
+
 ### Para ARQUITECTO:
 ```
-NINGUNA ACCIÓN REQUERIDA
-Arquitectura actual es suficiente para MVP.
-Plugins Legales pospuestos para Fase 2.
+VALIDAR PROCESO DASHBOARD ADMIN PH
+Documento de referencia: docs/RESUMEN_DASHBOARD_ADMIN_PH.md (resumen del dashboard, rutas, flujos, últimos cambios).
+Tarea: Validar el proceso del dashboard Admin PH (flujos, rutas, coherencia con Arquitecto/ARQUITECTURA_DASHBOARD_ADMIN_PH.md).
+⏳ Se espera respuesta de Marketing primero para validar el flujo correcto (navegación, botones asamblea/monitor, suscripción).
+Cuando Marketing confirme el flujo, el Arquitecto valida y reporta al Contralor.
+Referencias: Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md, ESTATUS_AVANCE (este bloque).
 ```
 
 ### Para MARKETING:
@@ -1013,20 +1068,34 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 
 | Fecha | Cambio | Responsable |
 |-------|--------|-------------|
+| Feb 2026 | **✅ CODER informa al Contralor: Últimos cambios Dashboard Admin PH y mejoras** – Botón "Subir a plan real" → Modificar suscripción. Tema claro: tabla de planes (Suscripción), Actas, Vista Monitor (contenedor, tarjetas, indicadores). Bitácoras: Abandonos de sala y Modificaciones de voto con listado y enlace Dashboard principal. Monitor: una torre "Urban Tower PH" (50 residentes) en selector; botones Exportar Excel/PDF (resumen y unidades); voto manual por administrador (clic en casilla → modal, comentario obligatorio al modificar). Corrección /pricing (Suspense desde react). Detalle en bloque "Reporte Coder al Contralor – Últimos cambios Dashboard Admin PH y mejoras (Feb 2026)". | Coder |
 | 07 Feb 2026 | **📋 ORDEN MARKETING: Chatbot más inteligente con Gemini** – Orden registrada en ESTATUS_AVANCE: bloque "Para CODER – Chatbot más inteligente con Gemini (orden Marketing 07 Feb 2026)". Coder: ramificar handleChatSubmit; POST /api/chat/resident con Gemini; GEMINI_API_KEY; base conocimiento PERFIL 5, TEMA 4B. Referencia: Marketing/MARKETING_SUGERENCIA_CHATBOT_INTELIGENTE_GEMINI.md. | Marketing / Contralor |
 | Feb 2026 | **✅ CODER: Chatbot más inteligente con Gemini – Completado** – Implementado POST /api/chat/resident (Gemini), rama en chat/page.tsx y page.tsx para residente validado + texto libre. Reporte y sugerencia QA en ESTATUS_AVANCE. Prueba sugerida en QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md § Chatbot Gemini. | Coder |
 | Feb 2026 | **✅ CONTRALOR: Reportes agentes validados – Fase listo. Requisito 2 PH para pruebas** – Contralor valida reportes de esta fase; fase cerrada. Para probar funcionalidades: 2 PH necesarios (uno con asamblea activa para votar, otro agendada no activa). **Responsable datos:** Database. **Responsable pruebas:** QA. | Contralor |
 | Feb 2026 | **✅ CONTRALOR: Validación respuesta Marketing – Instrucción al Coder (chatbot Gemini)** – Marketing indicó: ramificar handleChatSubmit (residente validado + texto libre → no validar email); crear POST /api/chat/resident con Gemini; GEMINI_API_KEY; base conocimiento PERFIL 5, TEMA 4B. Contralor valida. Instrucción en bloque "Para CODER – Chatbot más inteligente con Gemini". Coder informa al Contralor al finalizar. | Contralor |
+| Feb 2026 | **✅ CONTRALOR: Validación respuesta Marketing – Mejoras creación asambleas Ley 284 (T6)** – Se actualizaron **Marketing/MARKETING_MEJORAS_CREACION_ASAMBLEAS_LEY284.md** y el bloque **"Para CODER"** en ESTATUS_AVANCE.md. T6 (Acta inmediata al finalizar votaciones + mensaje acta legal en plazo Ley 284) incluida en la instrucción al Coder. Contralor valida. Coder ejecuta según bloque "Para CODER – Mejoras creación asambleas (Ley 284, orden Marketing Feb 2026)". | Contralor |
+| Feb 2026 | **📋 CONTRALOR: Reporte Coder + Arquitecto – Dashboard Admin PH** – Actualizado docs/RESUMEN_DASHBOARD_ADMIN_PH.md con estado del reporte Coder (R1–R4/R8 aplicados; pendiente bug botones, planes pago único) e instrucción al **Arquitecto** para validar el proceso del dashboard. **Espera respuesta de Marketing primero** para validar el flujo correcto; luego Arquitecto valida y reporta. Bloque "Para ARQUITECTO" actualizado en ESTATUS_AVANCE. | Contralor |
+| Feb 2026 | **📋 CONTRALOR: Bug botones Dashboard Admin PH (Marketing)** – En la sección monitor/asamblea del dashboard Admin PH los botones Ver detalle, Iniciar asamblea y Monitor llevan al resumen en lugar del destino correcto. Añadido en Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md § "BUG: Botones sección Monitor de asamblea" y en ESTATUS_AVANCE bloque "Para CODER – Dashboard Admin PH" instrucción al Coder para corregir (usar id asamblea real, destinos correctos). | Contralor |
+| Feb 2026 | **✅ CONTRALOR: Validación respuesta Coder y QA** – Revisión estado actual: Coder y QA **OK** en login residente, redirección por rol, assembly-context, Face ID, chatbot Gemini, Ceder poder (implementado), Dashboard Henry (implementado). Pendiente: QA re-validar verify-otp en navegador; QA revisar Dashboard Henry y test Admin PH con 5 usuarios; QA prueba §G en navegador; Coder §K y mejoras Admin PH R1–R8. Bloque "Validación Contralor – Respuesta Coder y QA (estado actual)" añadido en ESTATUS_AVANCE. | Contralor |
+| Feb 2026 | **📋 CONTRALOR: Test Dashboard Admin PH con usuarios demo** – Usuarios demo listos para validar funcionalidad y límites del Dashboard Admin PH. Creado **QA/PLAN_PRUEBAS_DASHBOARD_ADMIN_PH_USUARIOS_DEMO.md** (Fase 1: navegación 2.1–2.9 por cada uno de los 5 usuarios; Fase 2: límites por plan; Fase 3: botones principales). Actualizado Contralor/REPORTE_USUARIOS_DEMO_POR_PLAN.md con indicaciones QA. QA ejecuta según el plan y reporta en QA_FEEDBACK.md. | Contralor |
+| 13 Feb 2026 | **✅ DATABASE informa al Contralor: Migración listado residentes §3 aplicada** – Creados: 107_residents_listado_columns.sql (columnas nombre, numero_finca, cedula_identidad, unit, cuota_pct, payment_status, habilitado_para_asamblea, titular_orden en users); seeds_residentes_listado_demo.sql (datos ricos 5 residentes); INSTRUCCIONES_CODER_RESIDENTES_LISTADO.md (GET ampliado + PATCH). Ejecutar scripts en BD cuando Docker disponible. Coder: implementar según instrucciones. Ref: Database_DBA/INSTRUCCIONES_LISTADO_RESIDENTES_BD.md §3. | Database |
+| 26 Ene 2026 | **✅ QA informa al Contralor: Validación listado residentes vs INSTRUCCIONES_LISTADO_RESIDENTES_BD – CONFORME** – QA validó que el listado de residentes está alineado con Database_DBA/INSTRUCCIONES_LISTADO_RESIDENTES_BD.md. Demo usa localStorage (assembly_demo_residents); producción usa API (id, email, face_id_enabled). UI adapta columnas según origen. Ref: QA/QA_FEEDBACK.md § "QA Validación · Listado de residentes vs INSTRUCCIONES_LISTADO_RESIDENTES_BD". | QA |
+| Feb 2026 | **✅ CONTRALOR: Validación avances Coder – Dashboard Henry** – Avances verificados en código: APIs platform-admin (tickets, clients, leads, campaigns, monitoring, business, leads/export), resumen ejecutivo desde BD con fallback, tickets desde platform_tickets. **QA debe revisar** según QA/QA_REPORTE_DASHBOARD_HENRY y QA_FEEDBACK § "QA Checklist · Navegación Dashboard Henry". Bloque "Para QA – Revisar avances Dashboard Henry" añadido en ESTATUS_AVANCE. | Contralor |
 | Feb 2026 | **✅ CONTRALOR: Validación respuesta QA (listo)** – QA informó tarea completada. Contralor valida. Próxima actividad la asigna el Contralor en una frase. | Contralor |
 | Feb 2026 | **✅ CONTRALOR: Validación respuesta QA – Bug PIN chatbot residente** – QA informó: "Error al verificar" con PIN correcto; causa `res.ok` fuera de scope en chat/page.tsx y page.tsx. Contralor valida el reporte. Coder: corregir según bloque "Para CODER (bug verify-otp chatbot residente)". Al finalizar informa al Contralor. | Contralor |
 | Feb 2026 | **✅ CONTRALOR: Database + QA Face ID** – Database ejecutó script 101 (face_id_enabled). QA revalidó Face ID e informó. Contralor confirma. Plan de navegación: etapas 1–6 aprobadas; Face ID cerrado. Próxima tarea: Contralor asigna en una frase. | Contralor |
 | Feb 2026 | **✅ CONTRALOR: Coder completó TAREA 5 Face ID** – QA valida Face ID, informa al Contralor; Contralor valida respuesta y asigna próxima tarea. | Contralor |
+| 26 Ene 2026 | **✅ CODER: Dashboard Henry §5 y §7 – 100% COMPLETADO** – Media: Monitor VPS (GET /api/platform-admin/monitoring, placeholder); CRM campañas (tabla platform_campaigns, GET/PATCH/POST execute, UI conectada); Métricas negocio (GET /api/platform-admin/business, agregados BD o placeholder). Baja: Exportar reporte → CSV (botón en leads + GET /api/platform-admin/leads/export, dashboard "Exportar reporte (CSV)"); Ejecutar campañas → POST execute con last_executed_at y mensaje placeholder. Ver QA_REPORTE_DASHBOARD_HENRY.md §8. | Coder |
+| 26 Ene 2026 | **✅ CODER: Dashboard Henry – Tickets desde BD (QA §5 y §7)** – Tabla platform_tickets (sql_snippets/104_platform_tickets.sql) con seeds TKT-2026-021, 019, 017. API GET /api/platform-admin/tickets (lista), GET/PATCH /api/platform-admin/tickets/[id] (detalle, resolver, escalar). Lista y detalle de tickets consumen API con fallback a seeds. Resolver/Escalar persisten en BD cuando la tabla existe. Ref: QA/QA_REPORTE_DASHBOARD_HENRY.md §5 y §7. | Coder |
+| 26 Ene 2026 | **✅ CODER: Dashboard Henry – Resumen ejecutivo desde BD (QA §5 y §7)** – Resumen ejecutivo consume GET /api/leads y GET /api/platform-admin/clients. KPI (Funnel conversión, Clientes activos), Funnel de leads (Pipeline por etapa) y lista Clientes se derivan de las APIs; fallback a datos actuales si la API falla (ej. tabla platform_leads no existe). Tickets y Campañas siguen con datos actuales. Ref: QA/QA_REPORTE_DASHBOARD_HENRY.md §5 y §7. Informe al Contralor. | Coder |
 | 07 Feb 2026 | **✅ CONTRALOR: Validación avances** – Las 4 tareas realizadas (Tarea 1 Coder, Tarea 2 QA, Tarea 3 Database, Tarea 4 Plan navegación). Falta el backup. Cuando Henry autorice, Contralor ejecuta commit + push. Tabla de validación y bloque "BACKUP – Falta ejecutar" añadidos en ESTATUS_AVANCE. | Contralor |
 | 07 Feb 2026 | **✅ DATABASE: Verificación §E** – Tabla resident_abandon_events existe en BD. Script 100_resident_abandon_events.sql no fue necesario ejecutar. QA puede revalidar §E. Informe al Contralor. | Database |
 | Feb 2026 | **📋 CONTRALOR: Prueba Ceder poder (§G) – Pendiente** – Coder completó implementación; BD lista (script 103). Pendiente: ejecutar prueba QA (formulario inline, enviar solicitud, mensaje pendiente por aprobar, botón "Poder en proceso..." deshabilitado). Plan: QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md 4.7. Contralor anota hasta que QA/Henry reporte. | Contralor |
 | Feb 2026 | **✅ CODER informa al Contralor: Ceder poder en chatbot (§G) – Completado** – Revisados Arquitecto/LOGICA_CEDER_PODER_CHATBOT.md y Marketing §G. Tabla power_requests (103), API POST/GET power-requests, formulario completo (tipo, correo, nombre, cédula/tel/vigencia opcionales), mensaje "Solicitud enviada. Pendiente por aprobar", botón "Poder en proceso de validación y aprobación" cuando hay pendiente. Chat y landing. Pendiente opcional: email confirmación al residente. | Coder |
 | Feb 2026 | **✅ CODER informa al Contralor: Chatbot más inteligente – preguntas simples – Completado** – Detección identidad (Lex), base de conocimiento desde docs/chatbot-knowledge-resident.md, GET /api/chat/resident?validate=1 para validar API Gemini, fallback "Soy Lex", generationConfig y extracción robusta. Detalle y recomendaciones en QA/QA_FEEDBACK.md § "QA Análisis · Chatbot inteligente – Preguntas simples en asamblea". Contralor asigna próxima actividad. | Coder |
 | Feb 2026 | **✅ CODER informa al Contralor: assembly-context desde BD – Completado** – Aplicado Database_DBA/INSTRUCCIONES_CODER_ASSEMBLY_CONTEXT_BD.md. API GET /api/assembly-context: con organization_id consulta BD (active→activa, scheduled→programada, sin filas→sin_asambleas). Chat y landing envían organization_id cuando no hay profile. Bloque actualizado en ESTATUS_AVANCE. | Coder |
+| 30 Ene 2026 | **✅ CONTRALOR: Informes actualizados – QA validación redirección por rol listo** – QA aprobó la prueba (todos los perfiles a su zona). Contralor actualiza ESTATUS_AVANCE y tabla PARA HENRY. Siguiente: más pruebas (plan § "Próximas pruebas"). | Contralor |
+| 30 Ene 2026 | **✅ HENRY: Backup completado** – Push ejecutado: `git push origin main` (226bd72..b3afdd2 main → main). Repo: https://github.com/hbatista2720/assembly-2-0. Siguiente: QA ejecuta tarea "Validación redirección por rol". | Henry |
 | Feb 2026 | **✅ CONTRALOR: Coder listo (login residente) + Tarea QA redirección por rol + Backup primero** – Coder finalizó corrección login (residente no entra como Admin PH). Contralor actualiza: (1) Backup de todo **primero** (Henry autoriza → Contralor commit, Henry push). (2) QA ejecuta tarea "Validación redirección por rol" (todos los perfiles: residente→chatbot, Admin PH→su zona, Henry→platform-admin). Plan: QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md § "Tarea QA: Validación redirección por rol (todos los perfiles)". Usuarios: docs/USUARIOS_DEMO_BD.md. | Contralor |
 | Feb 2026 | **✅ CONTRALOR: Doc usuarios demo + login residente prioridad crítica** – Creado docs/USUARIOS_DEMO_BD.md (lista usuarios demo en BD con rol y org para pruebas). QA Hallazgo crítico § "Residente entra como Admin PH" coordinado: bloque "Para CODER (login – residente no debe entrar como Admin PH)" con prioridad crítica. Orden: primero validar chatbot cuando Coder termine recomendaciones; corrección login residente = prioridad crítica. | Contralor |
 | Feb 2026 | **✅ CONTRALOR: QA Análisis chatbot inteligente – Asignación al Coder** – QA reportó (QA_FEEDBACK.md § "QA Análisis · Chatbot inteligente – Preguntas simples en asamblea"): preguntas "¿cómo voto?" y "¿mi voto está registrado?" reciben respuesta genérica. Contralor valida. Fase: pulido chatbot residente. Instrucción en bloque "Para CODER (chatbot más inteligente – preguntas simples)": detección intenciones en /api/chat/resident, fallbacks, revisar Gemini. Coder informa al Contralor al finalizar. | Contralor |
@@ -1034,6 +1103,7 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 | Feb 2026 | **✅ CONTRALOR: QA listo** – QA informó tarea completada. Contralor valida. Próxima actividad: Contralor asigna en una frase. | Contralor |
 | Feb 2026 | **✅ CONTRALOR: Coder listo (assembly-context BD)** – Coder informó tarea completada. Contralor valida. Próxima actividad: Contralor asigna en una frase. | Contralor |
 | Feb 2026 | **✅ CONTRALOR: Reenvío al Coder – Respuesta Database (assembly-context)** – Database respondió con referencia a Database_DBA/INSTRUCCIONES_CODER_ASSEMBLY_CONTEXT_BD.md. Contralor reenvía al Coder: aplicar ese documento (API assembly-context desde BD, PH A/PH B). Bloque "Para CODER (assembly-context PH A / PH B)" actualizado. Coder informa al Contralor al finalizar. | Contralor |
+| 09 Feb 2026 | **✅ DATABASE informa al Contralor:** Script 97_platform_leads.sql ejecutado en BD. Tabla platform_leads creada. GET /api/leads habilitado (evita 500). | Database |
 | 07 Feb 2026 | **📋 DATABASE informa al Contralor (para Coder):** Script 102_demo_ph_a_ph_b_assemblies.sql ejecutado. Tabla assemblies existe con organization_id y status (active/scheduled). PH A (Demo): asamblea activa. PH B (Torres): asamblea programada. **Coder:** Requisito BD cumplido. API assembly-context: si la tabla no existe, el catch devuelve "activa". En este entorno la tabla ya existe. Ver Database_DBA/INSTRUCCIONES_CODER_ASSEMBLY_CONTEXT_BD.md. | Database |
 | 26 Ene 2026 | **✅ CODER: §F, §G y §H implementados (Marketing)** – §F: Votación y Tema del día solo si asamblea activa; Asambleas, Calendario y Ceder poder siempre; si no hay asamblea activa, botones en gris con "No hay votación activa". §G: Formulario Ceder poder inline en chat con validación de correo y mensaje del bot. §H: API assembly-context (activa/programada/sin_asambleas); mensaje "No hay asambleas programadas para el año en curso. ¿Consultar con el administrador?" cuando sin_asambleas. Demo: ?profile=activa|programada|sin_asambleas. Ref: Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md, orden Contralor. | Coder |
 | 26 Ene 2026 | **✅ CODER: Respuesta dentro del chatbot (UX residente)** – Votación, Asambleas, Calendario, Tema del día y Ceder poder responden **dentro del chat** con cards/mensajes (sin navegar a landings). Cards en landing (modal) y en /chat: votación (Sí/No/Abstengo), asambleas (listado), calendario (próximas actividades), tema (texto + Ver anexos), poder (formulario email + Enviar). Ref: validación UX Marketing. | Coder |
@@ -1049,6 +1119,14 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 | 05 Feb 2026 | **✅ BACKUP COMPLETADO** – Henry ejecutó `git push origin main`. a76fb32..5c94eb5 main -> main. Código y documentación respaldados en GitHub. | Henry |
 | 30 Ene 2026 | **✅ CONTRALOR: Backup ejecutado** – Commit 5c94eb5. Incluye: código fuente completo (src/), validaciones §E, plan pruebas, ESTATUS_AVANCE, API resident-abandon, sql_snippets (100_, 98_, seeds_leads_demo), Database_DBA, Marketing, docs. Push completado por Henry 05 Feb 2026. | Contralor |
 | 30 Ene 2026 | **✅ CONTRALOR: Validación QA, Coder y Base de datos §E** – Respuesta QA validada; respuesta Coder §E validada; **respuesta Base de datos incluida y validada** (tabla resident_abandon_events ejecutada en BD 06 Feb). Plan de pruebas: estatus actualizado. **Próxima tarea prioritaria: backup** (Henry autoriza → Contralor ejecuta). | Contralor |
+| 30 Ene 2026 | **✅ CONTRALOR: Reporte Docker validado** – GUIA_DOCKER_PARA_HENRY.md § "Recomendación: Quitar assembly-web" y QA_FEEDBACK.md observación verificadas. Recomendación: eliminar assembly-web en Docker Desktop para evitar confusiones; no afecta la app actual (assembly-app). | Contralor |
+| 07 Feb 2026 | **📋 CONTRALOR: Informe Dashboard Henry registrado** – Auditoría QA en **QA/QA_REPORTE_DASHBOARD_HENRY.md**: sincronización con BD, Monitor VPS vs real, botones sin acción. Tabla de acciones sugeridas para el Coder (sección 5 y 7). Instrucción para Coder: priorizar según tabla (Alta: resumen ejecutivo + BD, tickets + BD; Media: Monitor VPS, CRM, métricas negocio; Baja: exportar reporte, ejecutar campañas). Referencia auditoría en QA_FEEDBACK.md. Contralor asigna al Coder cuando corresponda. | Contralor |
+| 07 Feb 2026 | **📋 QA: Re-test post-Database + validación prompts chatbot** – Leads API 200 (tabla existe). Chatbot: prompts en BD (telegram, web, whatsapp) pero **/api/chat/resident NO usa prompts.residente** – usa buildSystemPrompt hardcoded. Respuesta "¿Cómo voto?" = fallback (Gemini 404 modelo). **Para Coder:** (1) sincronizar prompts config con /api/chat/resident; (2) revisar GEMINI_MODEL. Ver QA_FEEDBACK § "Re-test post-Database + Validación Chatbot Prompts". | QA |
+| 07 Feb 2026 | **✅ QA Master Usuario: Dashboard Henry ejecutado** – Checklist QA_REPORTE_DASHBOARD_HENRY + QA_FEEDBACK. Rutas 200 OK. APIs: leads 500 (platform_leads falta), clients/chatbot/export/tickets/business/monitoring/campaigns 200. Navegación sidebar, botones, retorno OK. Bloqueador: ejecutar 97_platform_leads.sql. Ver QA_FEEDBACK § "QA Master Usuario · Ejecución Dashboard Henry". | QA |
+| 07 Feb 2026 | **📋 QA: Dashboard Henry – auditoría sincronización BD y botones** – Reporte completo: Resumen ejecutivo, Tickets, CRM, Métricas negocio y Monitor VPS usan datos hardcoded (no BD). Leads: API existe, tabla platform_leads puede faltar. Clientes: API con fallback. Chatbot config: OK. Monitor VPS no refleja Docker/VPS real. Botones sin lógica: Exportar reporte, Activar demo, Revisar ticket (bug IDs), Configurar campaña, Ejecutar campañas. Bug: tickets lista TKT-2026-* pero detalle espera tkt-001 → "Ticket no encontrado". Ver QA/QA_REPORTE_DASHBOARD_HENRY.md. **Para Coder:** tabla de acciones sugeridas por prioridad. | QA |
+| 07 Feb 2026 | **✅ QA: Chatbot reconoce correo Admin PH – APROBADO** – Implementado POST /api/admin-ph/residents + UI "Agregar residente" en Propietarios. Prueba: crear nuevo.pha@demo.assembly2.com (PH A) y nuevo.phb@torresdelpacifico.com (PH B); chatbot reconoce ambos; assembly-context: PH A=activa, PH B=programada. En producción: Admin PH agrega → chatbot reconoce automáticamente y valida tipo residente según asambleas. Ver QA_FEEDBACK.md § "Chatbot reconoce correo registrado por Admin PH". | QA |
+| 07 Feb 2026 | **📋 INFORME DOCKER – Revisión contenedores para Henry** – Lista enumerada de 7 contenedores según docker-compose: assembly-db, assembly-pgbouncer, assembly-redis, assembly-app, assembly-telegram-bot, assembly-whatsapp-bot, assembly-web-chatbot. Creada **Contralor/GUIA_DOCKER_PARA_HENRY.md** con función de cada uno, puertos y URLs. Observación: `assembly-web` (visible en Docker Desktop) es contenedor huérfano/legacy; el correcto es `assembly-app`. Todos los del compose están correctos. | QA |
+| 07 Feb 2026 | **✅ QA: Validación redirección por rol – APROBADO** – Ejecutada tarea según PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md. 5 usuarios: residente1@, residente2@ → /residentes/chat; demo@, admin@torresdelpacifico.com → /dashboard/admin-ph; henry.batista27@gmail.com → /dashboard/platform-admin. Ningún residente termina en admin-ph. Ver QA_FEEDBACK.md § "Validación redirección por rol". | QA |
 | 07 Feb 2026 | **📋 QA reporta al Contralor: Chatbot inteligente – revalidación fallida** – Prueba "como voto" sigue devolviendo mensaje genérico. La detección de intenciones (cómo votar, estado voto, tema) NO está implementada en /api/chat/resident. **Para Coder:** añadir isAskingHowToVote(), isAskingVoteStatus(), etc. con respuestas predefinidas. Ver QA_FEEDBACK.md § "QA Análisis · Chatbot inteligente". | QA |
 | 07 Feb 2026 | **🔴 QA: Residente entra como Admin PH – BLOQUEADOR** – Login con residente2@demo.assembly2.com (rol RESIDENTE) redirige a Dashboard Admin PH. Causa: no hay check de role RESIDENTE; is_demo de la org aplica y manda a admin-ph. **Para Coder:** añadir if (role===RESIDENTE) → redirect /residentes/chat. Ver QA_FEEDBACK.md § "QA Hallazgo crítico · Residente entra como Admin PH" y bloque "Para CODER (login residente)". | QA |
 | 07 Feb 2026 | **📋 QA: Chatbot inteligente – Análisis y recomendaciones** – Prueba con "como voto" y "puede validar si mi voto ya se registro" devuelve mensaje genérico. Causa: Gemini falla/vacío → fallback. Recomendación: añadir detección de intenciones (cómo votar, estado voto) con respuestas predefinidas. Ver QA_FEEDBACK.md § "QA Análisis · Chatbot inteligente". | QA |
@@ -1162,6 +1240,7 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 
 ### 🏗️ ARQUITECTO - Últimos Avances:
 ```
+Feb 2026 | 📋 CONSULTA MARKETING (Henry): ¿Admin puede tener varios planes? (un solo uso + suscripción, ej. Standard + Evento Único extra). Definir regla de negocio. Ver Marketing/MARKETING_CONSULTA_PLANES_MULTIPLES_ADMIN.md. Responder y documentar.
 30 Ene | ✅ SISTEMA CRÉDITOS ACUMULABLES validado (FIFO, expiración 6m, alertas 30d)
 30 Ene | ✅ FASE 8 VALIDADA - Precios v4.0 + Créditos + Prompts actualizados
 30 Ene | ✅ Arquitectura VPS All-in-One aprobada (PostgreSQL + Redis + Auth self-hosted)
@@ -1282,6 +1361,19 @@ Feb 2026 | ✅ Reporte formal al Contralor en ESTATUS_AVANCE.md (FASES A-E)
 
 ### 📢 MARKETING - Últimos Avances:
 ```
+Feb 2026 | ✅ T12 Implementado – Integración abandono–quórum: Presentes excluyen abandonos; tablero muestra en gris a quien abandonó; estado "Quórum perdido" si tras abandonos no se alcanza; export Excel/PDF con mismo criterio. Indicador "Chatbot · Asistencia activa" en Monitor de Quórum. Ver Marketing/MARKETING_MEJORAS_CREACION_ASAMBLEAS_LEY284.md § Abandono de sala.
+Feb 2026 | 📋 Acta referencia + Número finca y Cédula (Henry): Revisada acta PH Quintas del Lago. Número de finca y cédula de titulares son importantes para actas completas. Lista de presentes: unidad, finca, propietario, representado por, %. Ver Marketing/MARKETING_MEJORAS_CREACION_ASAMBLEAS_LEY284.md §4. Listado residentes debe incluir estos campos. T13 agregada.
+Feb 2026 | 📋 INSTRUCCIÓN CODER – Listado Propietarios/Residentes: Objetivo: Admin PH tenga información correcta para asambleas, quórum, convocatorias, actas. Mejoras: Estado Al Día/En Mora visible, Nombre, filtros/búsqueda, botón + con límite, acciones consistentes, HAB. ASAMBLEA. Ver Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md § "Listado Propietarios/Residentes – Instrucciones para el Coder".
+Feb 2026 | 📋 Abandono de sala – integrar con quórum (Henry): Quien abandona debe dejar de contar como presente; recalcular quórum; alertar si se pierde. Ver Marketing/MARKETING_MEJORAS_CREACION_ASAMBLEAS_LEY284.md § Abandono de sala. T12.
+Feb 2026 | 📋 Monitor Quórum – Botones, asistencia y apertura (Henry): (1) Botones NO "aprobada" → "Registrar primera/segunda convocatoria". (2) Al abrir Monitor Quórum: activar asistencia en chatbot; residente entra (QR o link) → registrar asistencia → reflejar en tablero. (3) Apertura sala: 30 min o 1h antes de primera convocatoria. Ver Marketing/MARKETING_MEJORAS_CREACION_ASAMBLEAS_LEY284.md § Monitor Quórum. T9–T11 agregadas.
+Feb 2026 | 📋 Monitor Quórum – nombre asamblea no visible (Henry): Al abrir Monitor de Quórum (ej. Demo), no se muestra el nombre de la asamblea. Recomendación: mostrar "Monitor de Quórum · Demo" (o título de asamblea) en el encabezado. Ver Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md. **Para Coder:** implementar.
+Feb 2026 | 📋 Monitor Back Office + cronograma (Henry): (1) Botón Quórum primero, Votación segundo. (2) Cronograma: Quórum → (opc.) Aprobar orden día → Explicación + votación temas. "Aprobar orden día" opcional (votación / pregunta general / aprobación tácita). Ver Marketing/MARKETING_MEJORAS_CREACION_ASAMBLEAS_LEY284.md § Monitor Back Office. T7–T8 agregadas.
+Feb 2026 | 📋 Mejoras creación asambleas (Ley 284): Objetivo: herramienta completa para administradores. Validación plazos (Extraordinaria 3-5 días, Ordinaria 10-20 días), campo Orden del día obligatorio, advertencia segundo llamado, formato dd/mm/aaaa. Ver Marketing/MARKETING_MEJORAS_CREACION_ASAMBLEAS_LEY284.md. **Para Contralor:** asignar al Coder según prioridades del documento.
+Feb 2026 | 📋 Vista gráfica Casilla Unidades (Monitor): Henry/Marketing – Leyenda incompleta (icono candado no explicado), iconos combinados confusos (voto manual + SI/NO + abstención), Abstención vs leyenda (verde+punto vs gris), redundancia candado+En mora. Sugerencias: R9 Leyenda completa, R10 Reglas iconos combinados, R11 Clic casilla→modal. Ver Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md § "Vista gráfica – Casilla Unidades". **Para Contralor:** asignar al Coder según prioridad (R9 alta, R10 media, R11 opcional).
+Feb 2026 | 📋 Dashboard Admin PH – instrucciones refinadas (Henry): (1) Dashboard más simple al entrar: solo icono Dashboard, icono Suscripción y lista de PHs. (2) Iconos de la barra lateral mal – corregir. (3) Barra lateral debe ocultarse para tener más espacio. Reglas R4b, R6, R6b agregadas. Ver Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md. Bloque Para CODER actualizado.
+Feb 2026 | 📋 Observaciones Dashboard Admin PH (Henry): Suscripción confusa, sin botón Volver al Dashboard, plan actual poco visible, falta lista de PHs, sidebar siempre visible, flujo de entrada no simple. Reglas R1–R8 definidas. Ver Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md. **Para Contralor:** revisar reglas y asignar tareas al Coder según prioridad.
+Feb 2026 | 📋 Consulta planes múltiples (Henry): ¿Un admin puede tener varios planes de un solo uso O planes de suscripción a la vez? (ej. Standard + Evento Único extra, o 2× Evento Único). Documento Marketing/MARKETING_CONSULTA_PLANES_MULTIPLES_ADMIN.md. **Para Arquitecto y Contralor:** definir regla de negocio y documentar.
+Feb 2026 | ✅ ARQUITECTO revisó consulta planes múltiples: Respuesta en Arquitecto/RESPUESTA_ARQUITECTO_PLANES_MULTIPLES_ADMIN.md. Recomienda Opción A (un plan/org) para MVP o Opción B (suscripción base + créditos pago único). Carrito unificado apoyado. Contralor/Henry deciden A o B.
 07 Feb | 📋 Chatbot más inteligente (Henry): Residente validado escribe "¿Qué más hay?" o "ya estoy registrado" y el chatbot responde "No encuentro ese correo" (no razona). Sugerencia: ramificar lógica por estado; cuando residentEmailValidated + chatStep ≥ 8, NO tratar texto como email; llamar a Gemini con contexto. Crear POST /api/chat/resident, verificar GEMINI_API_KEY, actualizar base de conocimiento. Ver Marketing/MARKETING_SUGERENCIA_CHATBOT_INTELIGENTE_GEMINI.md. BASE_CONOCIMIENTO actualizada con TEMA 4B (residente validado – preguntas en contexto).
 07 Feb | 📋 §K (Henry): En /residentes/chat tras cerrar sesión: NO mensaje "Califica leads y ofrece demos"; usar "Soy Lex, chatbot para asambleas de PH (propiedades horizontales)". NO mostrar los 4 botones de perfil (Admin/Junta/Residente/Demo); solo flujo residente. Botones de perfil solo en landing. Ver Marketing §K y rec 14.
 26 Feb | ✅ UX chatbot: (6) Lógica botones: Votación/Tema del día solo si asamblea activa; Asambleas/Calendario/Ceder poder siempre. (7) Ceder poder: formulario inline en chat. (8) Validación demo: perfiles asamblea activa, programada, pre-registro, sin asambleas ("¿Consultar con admin?"). Ver §F, §G, §H.
@@ -1300,6 +1392,10 @@ Feb 2026 | ✅ Reporte formal al Contralor en ESTATUS_AVANCE.md (FASES A-E)
 
 ### 👔 CONTRALOR - Últimas Auditorías:
 ```
+Feb 2026 | 📋 REPORTE MARKETING – Monitor Quórum (botones, asistencia, apertura): Botones sin "aprobada"; activar asistencia en chatbot al abrir Quórum; QR/link para registrar; apertura sala 30 min o 1h antes. Ver Marketing/MARKETING_MEJORAS_CREACION_ASAMBLEAS_LEY284.md § Monitor Quórum. T9–T11.
+Feb 2026 | 📋 REPORTE MARKETING – Mejoras creación asambleas (Ley 284): Validación plazos (Extraordinaria ≥3 días, Ordinaria ≥10 días), Orden del día obligatorio, advertencia segundo llamado, formato fecha, modo Presencial/Virtual/Mixta. Ver Marketing/MARKETING_MEJORAS_CREACION_ASAMBLEAS_LEY284.md. **Contralor:** asignar al Coder. Prioridad: T1-T3 alta, T4-T5 media.
+Feb 2026 | 📋 REPORTE MARKETING – Vista Casilla Unidades (Monitor): Leyenda incompleta (candado no explicado), iconos combinados confusos, Abstención vs leyenda, redundancia candado+En mora. Reglas R9–R11 sugeridas. Ver Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md § "Vista gráfica – Casilla Unidades". **Contralor:** asignar al Coder según prioridad (R9 alta, R10 media, R11 opcional).
+Feb 2026 | 📋 REPORTE MARKETING – Observaciones Dashboard Admin PH: 7 observaciones (suscripción confusa, sin Volver al Dashboard, plan poco visible, falta lista PHs, sidebar fija, flujo entrada). Reglas R1–R8 definidas en Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md. **Contralor:** revisar reglas y asignar al Coder según prioridad (R1–R3 alta, R4 alta, R8 media).
 30 Ene | ✅ Fases de monetización agregadas (7-11)
 30 Ene | ✅ Métodos de pago actualizados (Stripe/PayPal/Yappy/ACH/Tilopay)
 30 Ene | ✅ Actualización de perfiles de agentes (VPS All-in-One)
@@ -1429,6 +1525,179 @@ Referencia: Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md §K y recomen
 
 ---
 
+### Para CODER – Dashboard Admin PH: mejoras visuales y reglas (orden Marketing Feb 2026)
+
+**Referencia obligatoria:**  
+- **Contralor:** Este bloque en `Contralor/ESTATUS_AVANCE.md` (instrucción y estado Coder).  
+- **Especificación detallada:** `Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md` (observaciones, reglas R1–R8, prioridades, planes de pago único).
+
+```
+Eres el Coder. Orden del Contralor: Aplicar mejoras UX del Dashboard Admin PH según observaciones de Henry.
+
+📖 ESPECIFICACIÓN COMPLETA: Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md
+
+REGLAS PRIORITARIAS (según Marketing):
+R1 – Plan actual visible: Bloque/card fijo "Plan actual: [nombre] · X/Y asambleas · Z edificios" en perfil o cabecera.
+R2 – Modificar suscripción: Botón/enlace "Modificar suscripción" visible en perfil o bloque de plan.
+R3 – Botón Volver al Dashboard: En cada subpágina (Suscripción, Configuración, Asambleas, etc.) botón "← Volver al Dashboard" arriba.
+R4 – Lista de PHs al entrar: Primera vista Admin PH = lista de PHs que administra. Clic en PH → dashboard de ese PH.
+R4b – Dashboard simple: Al entrar mostrar SOLO icono Dashboard, icono Suscripción y lista de PHs. Sin elementos extra.
+R6 – Sidebar ocultable: La barra lateral debe ocultarse para tener más espacio. Por defecto colapsada o solo iconos; botón para expandir/ocultar.
+R6b – Iconos de la barra lateral correctos: Cada ítem con icono coherente (Dashboard, Suscripción, PHs, etc.). Mostrar nombre al pasar el mouse (tooltip).
+R8 – Página Suscripción clara: Bloque "Tu plan actual" arriba; debajo, planes disponibles. Incluir planes de pago único (Evento Único, Dúo Pack).
+
+Vista Casilla Unidades (Monitor): Ver Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md § "Vista gráfica – Casilla Unidades".
+R9 – Leyenda completa: Incluir candado en leyenda y definir su significado.
+Monitor Quórum – Nombre asamblea: Mostrar nombre de asamblea en encabezado (ej. "Monitor de Quórum · Demo" o "Monitor de Quórum · Asamblea Ordinaria 2026"). Ver Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md § "Monitor de Quórum – Nombre de asamblea".
+R10 – Reglas iconos combinados: Documentar o simplificar combinaciones (voto manual + SI/NO + abstención).
+R11 (opcional) – Clic en casilla → modal con detalle y acciones.
+
+OPCIONAL: R5 Selector PH, R7 Menú agrupado.
+
+PLANES DE PAGO ÚNICO: En Suscripción mostrar Evento Único, Dúo Pack y planes mensuales (ref. MARKETING_PRECIOS_COMPLETO.md). Opción "Agregar más residentes" (paquetes de unidades) en Suscripción y checkout para pago único.
+
+🔴 BUG – BOTONES SECCIÓN ASAMBLEA (validar y corregir):
+En el dashboard Admin PH (página resumen), los botones **Ver detalle**, **Iniciar asamblea** y **Monitor** no funcionan bien: llevan al dashboard PH resumen en lugar del destino correcto.
+- **Ver detalle:** debe llevar a detalle de la asamblea (`/dashboard/admin-ph/assemblies/[id]` con id real).
+- **Iniciar asamblea:** debe llevar a vista live de la asamblea (`/dashboard/admin-ph/assembly/[id]/live` con id real; no usar id hardcodeado 123).
+- **Monitor:** debe llevar al Monitor de asamblea (`/dashboard/admin-ph/monitor/[assemblyId]`) para la asamblea en curso o seleccionada, no al resumen.
+Usar id de asamblea real (desde "Próxima Asamblea" o lista de asambleas). Ver Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md § "BUG: Botones sección Monitor de asamblea".
+
+**Coder – Botones corregidos (Feb 2026):** ✅ **Completado.** En el dashboard Admin PH (resumen): se obtiene la próxima asamblea desde `getAssemblies()` (primera no completada o primera de la lista); **Ver detalles** → `/dashboard/admin-ph/assemblies/[id]` (o lista si no hay asamblea); **Iniciar Asamblea** → `/dashboard/admin-ph/assembly/[id]/live`; **Monitor** → `/dashboard/admin-ph/monitor/[assemblyId]`. Se añadió el botón **Monitor** en la tarjeta "Próxima Asamblea". El título y fecha de la tarjeta muestran los datos de la próxima asamblea cuando existe. En la lista de asambleas (`/dashboard/admin-ph/assemblies`): **Ver detalles**, **Iniciar asamblea** (vista live) y **Monitor** usan el `id` real de cada ítem. Sin id hardcodeado (123).
+
+Al finalizar, informar al Contralor en ESTATUS_AVANCE (este bloque).
+```
+
+**Coder – R1, R2, R3, R4, R8 aplicados (26 Ene 2026):** ✅ **Completado.** R1: bloque "Plan actual" visible en cabecera (AdminPhShell). R2: enlace "Modificar suscripción" en perfil → `/dashboard/admin-ph/subscription`. R3: botón "← Volver al Dashboard" en subpáginas (cuando pathname !== /dashboard/admin-ph). R4: primera vista = lista "Tus propiedades horizontales" (ej. Urban Tower PH); al elegir PH se muestra dashboard; "Cambiar PH" para volver a la lista. R8: página Suscripción con bloque "Tu plan actual" arriba y "Planes disponibles" debajo; enlace en sidebar "Modificar suscripciones". Informado al Contralor.
+
+**Coder – R4b, R6, R6b y UX adicional (Feb 2026):** ✅ **Completado.** R4b: al entrar sin PH seleccionado solo se muestran en sidebar "Dashboard principal", "Modificar suscripciones" y "Tus propiedades"; al elegir un PH se habilitan Propietarios, Asambleas, etc. R6: sidebar colapsable con botón "◀ Ocultar" / "▶"; estado guardado en localStorage; por defecto colapsada (solo iconos). R6b: iconos SVG modernos por ítem (dashboard, document, building, users, calendar, vote, monitor, file, chart, team, settings, support); tooltip con el nombre del ítem al pasar el mouse cuando la barra está colapsada; contenedor 40×40 px para que los iconos no se estiren. Además: widgets del dashboard centrados (max-width 1000px/92vw); navegación "Dashboard principal" con Link (Next.js) a `/dashboard/admin-ph`; eliminado botón "Volver a landing"; opción "Agregar más residentes" (paquetes de unidades) en Suscripción y en checkout para Evento Único/Dúo Pack. Ref. Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md.
+
+**Coder – Planes de pago único y alineación precios (validación Contralor):** ✅ **Completado.** (1) **Dashboard Admin PH · Suscripción:** Planes de pago único (Evento Único, Dúo Pack) visibles en `/dashboard/admin-ph/subscription`; debajo, planes por suscripción mensual (Standard, Multi-PH Lite, Multi-PH Pro, Enterprise). Fuente única: `src/lib/types/pricing.ts` (PLANS). (2) **Modificar suscripción:** Bloque "Tu plan actual" con "Ver planes pago único" y "Ver planes mensuales"; cada plan → `/checkout?plan=ID`. (3) **Landing y planes unificados:** Mismos planes en landing, /pricing y Suscripción Admin PH; CTA a checkout. (4) **Agregar más residentes:** Sección en Suscripción y página `/dashboard/admin-ph/subscription/units-addon`; en checkout (Evento Único/Dúo Pack) opción "Agregar límite de residentes" (+100, +200, +300) y total antes de Comprar.
+
+**Coder – Validación botón "Subir a plan real", contadores demo y reporte (Feb 2026):** ✅ **Completado.** (1) **Botón "Subir a plan real":** Lógica validada: enlace a `/pricing?from=demo` desde DemoBanner cuando el usuario está en modo demo (query `mode=demo` o `assembly_organization_id` = org demo). (2) **Contadores sincronizados para usuario demo:** Para **demo@assembly2.com** (plan DEMO, 50 unidades): Dashboard Admin PH muestra **50 propietarios** en lista de PH, KPIs y tarjeta de perfil ("50 propietarios · 1 asamblea disponible"); Monitor (ruta `/dashboard/admin-ph/monitor/demo`) muestra **50 unidades** desde el mock (`lib/monitoringMock.ts`: cuando `assemblyId === "demo"` se usan 50 unidades en lugar de 311). Así dashboard y monitor quedan alineados a 50 para el usuario demo. (3) **Reporte al Contralor:** Este bloque. (4) **Para QA:** Ver bloque "Para QA – Probar con usuario demo@assembly2.com" más abajo.
+
+---
+
+### Para CODER – Mejoras creación asambleas (Ley 284, orden Marketing Feb 2026)
+
+```
+Eres el Coder. Orden del Contralor: Implementar mejoras en el formulario de creación de asambleas para cumplir Ley 284 (Panamá) y ofrecer una herramienta completa a los administradores.
+
+✅ Respuesta Marketing validada por Contralor. Especificación actualizada: Marketing/MARKETING_MEJORAS_CREACION_ASAMBLEAS_LEY284.md (incluye T6 – Acta inmediata y acta legal).
+
+📖 ESPECIFICACIÓN: Marketing/MARKETING_MEJORAS_CREACION_ASAMBLEAS_LEY284.md
+
+TAREAS PRIORITARIAS (alta):
+T1 – Validación plazos: Si Extraordinaria → fecha asamblea ≥ 3 días después de creación. Si Ordinaria → ≥ 10 días después. Mensaje claro si no cumple; sugerir fecha mínima válida.
+T2 – Campo obligatorio Orden del día (agenda): textarea o lista de temas. Ayuda: "Solo pueden votarse temas incluidos en el orden del día (Ley 284)."
+T3 – Advertencia segundo llamado: checkbox pre-marcado o texto fijo: "Si no se alcanza el quórum, segundo llamado 1h después válido con presentes al día."
+T6 – Acta inmediata: al finalizar votaciones, emitir acta resumen con resultados por tema + unidades y su voto (SI/NO/ABST). Indicar: "Acta legal se enviará en plazo Ley 284 (máx. 10 días)." Acta legal formal tras revisión legal y firma.
+T7 – Monitor Back Office: botón Quórum primero, Votación segundo (flujo: validar quórum antes de votar).
+T8 – Cronograma asamblea: Quórum → (opc.) Aprobar orden día → Explicación + votación temas. "Aprobar orden día" opcional (votación / pregunta general / aprobación tácita).
+T9 – Botones convocatoria: NO "aprobada". Usar "Registrar primera convocatoria" / "Registrar segunda convocatoria".
+T10 – Al abrir Monitor Quórum: activar asistencia en chatbot. Residente entra (QR o link) → registrar asistencia → reflejar en tablero.
+T11 – Apertura sala: configurable 30 min o 1h antes de primera convocatoria. Campo en asamblea; habilitar registro a la hora de apertura.
+T12 – Abandono de sala: integrar con quórum. Quien abandona deja de contar como presente; recalcular quórum; alertar si se pierde. ✅ Implementado. Indicador "Chatbot · Asistencia activa" en Monitor Quórum.
+
+TAREAS (media):
+T4 – Formato dd/mm/aaaa, hora 24h; validar fecha futura.
+T5 – Campo Modo: Presencial / Virtual / Mixta. Si Virtual/Mixta: campo enlace (Zoom, Meet, etc.).
+
+Referencia: Marketing/MARKETING_MEJORAS_CREACION_ASAMBLEAS_LEY284.md. Al finalizar, informar al Contralor.
+```
+
+---
+
+### Para CODER – Listado Propietarios/Residentes (orden Marketing Feb 2026)
+
+```
+Eres el Coder. Orden del Contralor: Mejorar el listado de Propietarios/Residentes para que el cliente Admin PH tenga información correcta y completa para gestionar asambleas, quórum, convocatorias y actas.
+
+📖 ESPECIFICACIÓN: Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md § "Listado Propietarios/Residentes – Instrucciones para el Coder"
+
+OBJETIVO: Que el Admin PH disponga de datos precisos para:
+- Convocatorias y quórum (residentes Al Día pueden votar; En Mora solo voz).
+- Actas (nombres, unidades, estado).
+- Límites del plan (residentes máximos).
+
+TAREAS (prioridad alta):
+- Estado Al Día / En Mora visible en columna ESTATUS (no guiones).
+- Columna NOMBRE del residente.
+- **Número de finca** (folio real) y **Cédula de identidad** – requeridos para actas completas (ref. acta PH Quintas del Lago).
+- Filtros y búsqueda por correo, unidad, nombre; filtrar por Al Día/En Mora, Face ID, Hab. asamblea.
+
+TAREAS (prioridad media):
+- Botón + con límite alcanzado: deshabilitar o mensaje "Límite alcanzado. Actualice su plan."
+- Acciones consistentes por fila (Ed. rápida, Plantilla, Eliminar, Soporte).
+- Aclarar HAB. ASAMBLEA con ayuda contextual.
+
+Referencia: Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md. Al finalizar, informar al Contralor.
+```
+
+---
+
+### Para QA – Probar con usuario demo@assembly2.com (Feb 2026)
+
+```
+Responsable: QA.
+Objetivo: Validar Dashboard Admin PH y Monitor con el usuario demo, verificando que los contadores estén sincronizados (50 residentes/propietarios en dashboard y 50 unidades en Monitor).
+
+Usuario a usar: demo@assembly2.com (plan DEMO, 50 unidades).
+Referencia: QA/PLAN_PRUEBAS_DASHBOARD_ADMIN_PH_USUARIOS_DEMO.md (Fase 1–3). Este usuario es el #1 de la tabla (DEMO, 50).
+
+Validaciones solicitadas:
+1. Login con demo@assembly2.com + OTP → redirección a /dashboard/admin-ph.
+2. En "Tus propiedades horizontales": el PH debe mostrar "1 edificio · 50 propietarios (demo)".
+3. En la tarjeta de perfil (Plan actual): debe decir "50 propietarios · 1 asamblea disponible".
+4. KPIs del dashboard (modo demo): Propietarios activos = 50; Face ID activo coherente con 50.
+5. Ir a Monitor (sidebar → Monitor o /dashboard/admin-ph/monitor/demo): debe mostrar 50 unidades en la vista, no 311.
+6. Botón "Subir a plan real" (banner Modo demo): debe llevar a /pricing?from=demo.
+
+Reportar resultado en QA_FEEDBACK.md. Contralor revisa tras el reporte.
+```
+
+---
+
+### Reporte Coder al Contralor – Últimos cambios Dashboard Admin PH y mejoras (Feb 2026)
+
+**Informe consolidado (últimos cambios Ley 284, live, crear PH, etc.):** Ver **`Contralor/INFORME_ULTIMOS_CAMBIOS_FEB2026.md`** — resumen ejecutivo para control y trazabilidad (Monitor 50 unidades, filtro por tema, zona cuenta, Ley 284 T1–T6, unificación botones, vista Ver asamblea, pantalla Iniciar asamblea sin voto manual, crear propiedad horizontal). **Sección 11 del mismo informe:** sugerencia de plan al crear PH (pago único / mensual), chat de soporte como zona estratégica (widget flotante), página Soporte con chat de ayuda y tickets. **Arquitecto:** ver también `Arquitecto/REPORTE_CODER_SOPORTE_Y_SUGERENCIA_PLAN_FEB2026.md`.
+
+**Resumen para Contralor (bloque histórico):** Se aplicaron mejoras de UX, tema claro, flujos de bitácora en Monitor y voto manual. Detalle:
+
+**(1) Botón "Subir a plan real" y Modificar suscripción**
+- El botón del banner demo **"Subir a plan real"** redirige a **Modificar suscripción** (`/dashboard/admin-ph/subscription`), no a la landing de precios, para que el admin pueda cambiar de plan desde el mismo panel.
+
+**(2) Tema claro en todo el Dashboard Admin PH**
+- **Tabla de planes (Suscripción):** Tarjetas de pago único y mensuales con fondo claro (gradiente #f8fafc / #f1f5f9), texto oscuro legible, bordes #e2e8f0. Misma línea visual que el resto del tema claro.
+- **Actas:** Encabezado de tabla y filas con fondo claro; tarjeta "Vista previa de acta" (`.surface`) y botones con tonos claros.
+- **Vista Monitor:** Contenedor del monitor, tarjetas de resumen (Total, Presentes, Votaron, En mora, Face ID), indicadores inferiores en Vista Unidades (`.grid-stats`), botones de vista y filtro de torre con tema claro aplicado en `layout.tsx` (selectores `html[data-theme="light"] .admin-ph-shell .admin-ph-content`).
+
+**(3) Bitácoras desde el Monitor**
+- **Abandonos de sala:** Botón en el Monitor que lleva a `/dashboard/admin-ph/monitor/[assemblyId]/abandonos`. Listado en tabla con Residente, Unidad, Email y **hora de abandono** (bitácora). Enlace "Dashboard principal" en la página limpia PH y lleva al dashboard principal.
+- **Modificaciones de voto:** Botón que lleva a `/dashboard/admin-ph/monitor/[assemblyId]/modificaciones-voto`. Bitácora de cambios de voto (estructura lista; datos desde localStorage/API según disponibilidad). Mismo enlace "Dashboard principal".
+- Navegación con `Link` (Next.js) y `encodeURIComponent(assemblyId)` para rutas correctas.
+
+**(4) Vista Monitor – Una torre "Urban Tower PH" (50 residentes)**
+- Cuando hay una sola torre con 50 unidades (modo demo), el selector muestra **"Urban Tower PH"** (50 unidades) en lugar de "Torre A / Torre B". Constante `BUILDING_NAME_SINGLE = "Urban Tower PH"`; opciones de torre derivadas de los datos cargados.
+
+**(5) Exportar Excel y PDF**
+- En la cabecera del Monitor: botones **"Exportar Excel"** y **"Exportar PDF"**.
+- **Excel:** En Vista Resumen exporta indicadores y resultados de votación (CSV); en Vista Unidades exporta la lista de unidades (código, torre, propietario, presente, voto, método, mora) en CSV.
+- **PDF:** `window.print()` para imprimir o guardar como PDF la vista actual.
+
+**(6) Voto manual por el administrador**
+- **Clic en la casilla de la unidad** en Vista Unidades abre un **modal** (ventana emergente).
+- Modal: título **"Voto manual"** (si no había voto) o **"Modificar voto"** (si ya había voto). Opciones SI / NO / Abstención y campo **Comentario**.
+- **Comentario obligatorio al modificar:** Si el residente ya tenía voto (o override previo), el comentario es obligatorio; si se guarda sin texto se muestra alerta y no se guarda.
+- Los overrides se guardan en estado local (`manualOverrides`) y se reflejan en la grilla y en los totales (Votaron, etc.).
+
+**(7) Corrección página de precios**
+- En `/pricing`, el componente `Suspense` se importa desde `react` (no desde `next/navigation`) para evitar error de render en la ruta `/pricing?from=demo`.
+
+**Pendiente sugerido para QA:** Probar con tema claro en Suscripción, Actas y Monitor; flujo Abandonos de sala → listado con hora; Modificaciones de voto → bitácora; clic en unidad → voto manual / modificar voto con comentario obligatorio; exportar Excel/PDF en ambas vistas. Usuario demo: demo@assembly2.com.
+
+---
+
 **Primera tarea (prioridad):** ~~**Backup.**~~ ✅ **Completado** (commit 5c94eb5, push 05 Feb 2026).
 
 **Validación Contralor – Respuesta del Coder (Tarea 1):** ✅ **Confirmada.** En `src/app/page.tsx`: (1) `residentEmailValidated` controla la visibilidad de los botones; (2) si el correo no se reconoce se muestra "No encuentro ese correo. Contacta al administrador de tu PH para validar. Puedes escribir otro correo para reintentar." y no se avanza a step 8 ni se muestran botones; (3) los botones (Votación, Asambleas, etc.) solo se renderizan cuando `chatStep >= 8 && chatRole === "residente" && residentEmailValidated`. Tarea 1 cerrada.
@@ -1491,11 +1760,33 @@ Instrucciones detalladas para cada agente más abajo (copiar y pegar).
 | **Tarea 2** | QA | ✅ Realizada | Revalidar §E o validación manual chatbot. |
 | **Tarea 3** | Database | ✅ Realizada (si aplica) | Script §E en BD si faltaba tabla. |
 | **Tarea 4** | QA | ✅ Realizada | Plan de navegación (etapas 1–6) + validación §J/rec 14. |
-| **Backup** | Contralor / Henry | ✅ **Completado** (226bd72 en GitHub) | Commit desde Contralor; push ejecutado por Henry. |
+| **Backup** | Contralor / Henry | ✅ **Completado** (b3afdd2 en GitHub, 30 Ene 2026) | Commit desde Contralor; push ejecutado por Henry. |
 
 **Siguiente paso:** Seguir con las siguientes tareas según el plan. Backup actual al día.
 
 **Validación Contralor – Reportes de agentes (esta fase listo):** ✅ **Validada.** Contralor confirma que los reportes de los agentes de esta fase están validados. Fase cerrada.
+
+---
+
+### Validación Contralor – Respuesta Coder y QA (estado actual)
+
+**Resumen:** La mayoría de entregas Coder y aprobaciones QA están **OK**. Quedan **re-validaciones QA** y **tareas Coder/QA pendientes** (no bloqueantes para lo ya cerrado).
+
+| Área | Coder | QA | Estado |
+|------|--------|-----|--------|
+| Login residente (role RESIDENTE → /residentes/chat) | ✅ Implementado | ✅ Aprobado (redirección por rol) | **OK** |
+| Bug verify-otp (res.ok en scope) | ✅ Corregido en código | 📋 Falta re-validar en navegador (PIN correcto → sin "Error al verificar") | Coder OK; QA pendiente 1 re-validación |
+| Chatbot más inteligente (Gemini, base conocimiento) | ✅ Completado | Sugerida revalidar "como voto" / "mi voto registrado" | **OK** |
+| Ceder poder §G | ✅ Completado (API, formulario, mensaje) | 📋 Pendiente prueba en navegador (plan 4.7) | Coder OK; QA pendiente 1 prueba |
+| Assembly-context PH A/PH B | ✅ Completado | ✅ Aprobado | **OK** |
+| Dashboard Henry (§5 y §7) | ✅ Completado (APIs, tickets, CRM, export, etc.) | 📋 Revisar avances según plan (bloque "Para QA") | Coder OK; QA pendiente revisión |
+| Redirección por rol (5 usuarios) | — | ✅ Aprobado | **OK** |
+| Face ID | ✅ + Database script 101 | ✅ Revalidado | **OK** |
+| §K mensaje/botones /residentes/chat | 📋 Pendiente | — | Tarea Coder pendiente |
+| Dashboard Admin PH mejoras R1–R8 (Marketing) | 📋 Pendiente | — | Tarea Coder pendiente |
+| Test Dashboard Admin PH (5 usuarios demo) | — | 📋 Pendiente (plan creado) | QA pendiente |
+
+**Conclusión:** Respuestas del Coder y de QA sobre lo ya cerrado están **validadas y OK**. Pendiente: (1) QA re-validar verify-otp en navegador; (2) QA ejecutar revisión Dashboard Henry y test Admin PH con usuarios demo; (3) QA prueba Ceder poder §G; (4) Coder §K y mejoras Admin PH R1–R8 cuando se asignen.
 
 **Validación funcionalidades – 2 PH de prueba:** Para probar funcionalidades hacen falta **2 PH (organizaciones) de prueba:** (1) **PH A:** con residentes y asamblea **activa** (agendada y en curso para votar). (2) **PH B:** con residentes y asamblea **agendada pero no activa** para votar (solo programada). **Responsable de crear los datos:** **Database.** Database entrega scripts o datos en BD para las 2 orgs (o amplía la org demo con 2 contextos de asamblea). **Responsable de ejecutar las pruebas:** **QA**, una vez existan los 2 PH. Database informa al Contralor al terminar; Contralor asigna a QA la prueba de funcionalidades.
 
@@ -1518,8 +1809,10 @@ Cada fila: **Tarea** · **Agente** · **Plan de pruebas o Avances** (documento d
 | **Ceder poder (formulario completo)** – Arquitecto + Marketing §G | Coder | Dónde empezar: Arquitecto/LOGICA_CEDER_PODER_CHATBOT.md y Marketing/MARKETING_UX_CHATBOT_NAVEGACION_RESIDENTE.md §G. Bloque "Para CODER – Ceder poder en chatbot" más abajo. |
 | **Chatbot más inteligente – preguntas simples** (mejorar respuestas según QA) | Coder | QA_FEEDBACK.md § "QA Análisis · Chatbot inteligente – Preguntas simples en asamblea". Bloque "Para CODER (chatbot más inteligente – preguntas simples)" más abajo. Validar cuando Coder termine. |
 | ~~Login – residente no debe entrar como Admin PH~~ | ~~Coder~~ | ✅ Coder informó listo. Siguiente: Backup → QA validación redirección por rol. |
-| **Backup de todo** (primero) | Contralor / Henry | Henry autoriza → Contralor commit; Henry ejecuta `git push origin main`. |
-| **Validación redirección por rol** (tras backup) | QA | Residente → /residentes/chat; Admin PH → /dashboard/admin-ph; Henry → /dashboard/platform-admin. Plan: QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md § "Tarea QA: Validación redirección por rol (todos los perfiles)". Usuarios: docs/USUARIOS_DEMO_BD.md. |
+| ~~Backup de todo~~ | ~~Contralor / Henry~~ | ✅ Completado (b3afdd2, 30 Ene 2026). |
+| ~~Validación redirección por rol~~ | ~~QA~~ | ✅ **Completado.** QA aprobó (ver QA_FEEDBACK.md § "QA Validación · Redirección por rol"). Todos los perfiles redirigen correctamente. |
+| **Más pruebas** (siguiente) | QA | Ver lista en QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md § "Próximas pruebas". Opciones: §J/rec 14 en navegador, Chatbot Gemini (texto libre), §E revalidación, assembly-context PH A/B, validación demo por perfil, §K /residentes/chat. |
+| **Revisar avances Coder – Dashboard Henry** | QA | Contralor validó avances en código. QA debe revisar según QA/QA_REPORTE_DASHBOARD_HENRY y QA_FEEDBACK § "QA Checklist · Navegación Dashboard Henry". Ver bloque "Para QA – Revisar avances Dashboard Henry" en ESTATUS_AVANCE. |
 
 Detalle y texto para pegar al agente: más abajo en este documento.
 
@@ -1773,6 +2066,21 @@ Referencia: QA/QA_FEEDBACK.md, sql_snippets/README.md.
 **Para Database (tarea: usuarios residentes demo) – ejecutar primero:**
 ```
 Crear usuarios residentes en BD para la org demo: INSERT en tabla users con organization_id = '11111111-1111-1111-1111-111111111111' (Demo - P.H. Urban Tower), emails residente1@demo.assembly2.com, residente2@demo.assembly2.com, residente3@demo.assembly2.com (y los que se necesiten), role = RESIDENTE o PROPIETARIO. Entregar script en sql_snippets/ o integrar en auth_otp_local.sql. Referencia: QA/QA_FEEDBACK.md sección "Recomendación: Asamblea demo con admin y residentes".
+```
+
+**✅ Usuarios demo por plan (Dashboard Admin PH) – 26 Ene 2026:**
+```
+Ejecutados: schema_subscriptions_base.sql + 106_usuarios_demo_por_plan.sql
+Resultado: 5 Admin PH (uno por plan) listos para probar límites:
+  demo@assembly2.com          → DEMO (50 uds)
+  admin@torresdelpacifico.com → STANDARD (250 uds)
+  multilite@demo.assembly2.com → MULTI_PH_LITE (1.500 uds)
+  multipro@demo.assembly2.com  → MULTI_PH_PRO (5.000 uds)
+  enterprise@demo.assembly2.com → ENTERPRISE (ilimitado)
+Reporte: Contralor/REPORTE_USUARIOS_DEMO_POR_PLAN.md
+Usuarios: docs/USUARIOS_DEMO_BD.md
+QA: validar login con cada correo y probar límites de plan.
+QA Fase 4 (R1-R4, R8): ✅ Ejecutada 26 Ene 2026. Reglas aprobadas. Ver QA_FEEDBACK.md § "QA Fase 4 – Reglas R1, R2, R3, R4, R8".
 ```
 
 **Para Coder (usuarios residentes demo) – después de Database:** ✅ Completado

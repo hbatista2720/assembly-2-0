@@ -144,7 +144,7 @@ function LoginContent() {
   };
 
   return (
-    <main className="container login-ios">
+    <main className="container login-ios auth-root">
       <style>{`
         .login-ios .login-card { max-width: 860px; margin: 0 auto; border-radius: 20px; overflow: hidden; }
         .login-ios .login-feature-item {

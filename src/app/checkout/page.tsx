@@ -16,14 +16,27 @@ const PAYMENT_METHODS = [
   { id: "MANUAL_TRANSFER", label: "Transferencia", desc: "Transferencia manual" },
 ] as const;
 
+const UNITS_ADDON_OPTIONS = [
+  { units: 0, label: "250 residentes (incluido)", price: 0 },
+  { units: 100, label: "+100 residentes (350 total)", price: 50 },
+  { units: 200, label: "+200 residentes (450 total)", price: 100 },
+  { units: 300, label: "+300 residentes (500 máx)", price: 150 },
+];
+
 function CheckoutContent() {
   const params = useSearchParams();
   const planId = (params.get("plan") || "STANDARD") as PlanTier;
+  const fromDashboardPh = params.get("from") === "dashboard-admin-ph";
   const plan = useMemo(() => PLANS.find((p) => p.id === planId) ?? PLANS[2], [planId]);
   const [paymentMethod, setPaymentMethod] = useState<string>("MANUAL_YAPPY");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
+  const [addonUnits, setAddonUnits] = useState(0);
+
+  const showUnitsAddon = plan.billing === "one-time" && (planId === "EVENTO_UNICO" || planId === "DUO_PACK");
+  const addonPrice = showUnitsAddon ? (UNITS_ADDON_OPTIONS.find((o) => o.units === addonUnits)?.price ?? 0) : 0;
+  const totalPrice = plan.price + addonPrice;
 
   async function handleCheckout() {
     setLoading(true);
@@ -38,6 +51,7 @@ function CheckoutContent() {
           subscription_id: typeof window !== "undefined" ? localStorage.getItem("assembly_subscription_id") : null,
           organization_id: typeof window !== "undefined" ? localStorage.getItem("assembly_organization_id") : null,
           customer_email: email || undefined,
+          units_addon: showUnitsAddon ? addonUnits : undefined,
           success_url: `${window.location.origin}/pricing?success=1`,
           cancel_url: `${window.location.origin}/checkout?plan=${plan.id}`,
         }),
@@ -68,12 +82,55 @@ function CheckoutContent() {
 
   return (
     <main className="container">
+      {fromDashboardPh && (
+        <div style={{ marginBottom: "16px", maxWidth: "560px", marginLeft: "auto", marginRight: "auto" }}>
+          <a className="btn btn-ghost" href="/dashboard/admin-ph">
+            ← Volver al Dashboard PH
+          </a>
+        </div>
+      )}
       <div className="card" style={{ maxWidth: "560px", margin: "24px auto", padding: "28px" }}>
         <h1 style={{ marginTop: 0 }}>Completar pago</h1>
         <p className="muted" style={{ marginBottom: "20px" }}>
           Plan: <strong>{plan.displayName}</strong> — ${plan.price}
           {plan.billing === "monthly" ? "/mes" : " pago único"}
         </p>
+
+        {showUnitsAddon && (
+          <div style={{ marginBottom: "20px", padding: "16px", background: "rgba(99,102,241,0.1)", borderRadius: "12px", border: "1px solid rgba(99,102,241,0.3)" }}>
+            <label style={{ display: "block", marginBottom: "10px", color: "#cbd5f5" }}>Agregar límite de residentes</label>
+            <p className="muted" style={{ margin: "0 0 12px", fontSize: "14px" }}>Base 250 incluidos. Puedes sumar más hasta 500 (pago único).</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {UNITS_ADDON_OPTIONS.map((opt) => (
+                <label
+                  key={opt.units}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "12px",
+                    padding: "12px",
+                    border: addonUnits === opt.units ? "1px solid #6366f1" : "1px solid rgba(148,163,184,0.3)",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="addon"
+                    checked={addonUnits === opt.units}
+                    onChange={() => setAddonUnits(opt.units)}
+                  />
+                  <span>{opt.label}</span>
+                  <span>{opt.price === 0 ? "Incluido" : `+$${opt.price}`}</span>
+                </label>
+              ))}
+            </div>
+            <p style={{ marginTop: "12px", marginBottom: 0, fontWeight: 700 }}>
+              Total: ${totalPrice} pago único
+            </p>
+          </div>
+        )}
 
         <div style={{ marginBottom: "20px" }}>
           <label style={{ display: "block", marginBottom: "8px", color: "#94a3b8" }}>Email (facturación)</label>
@@ -131,12 +188,17 @@ function CheckoutContent() {
           </p>
         ) : null}
 
-        <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
-          <a className="btn btn-ghost" href="/pricing">
+        <div style={{ display: "flex", gap: "12px", marginTop: "24px", flexWrap: "wrap" }}>
+          {fromDashboardPh && (
+            <a className="btn btn-ghost" href="/dashboard/admin-ph">
+              Volver al Dashboard PH
+            </a>
+          )}
+          <a className="btn btn-ghost" href={fromDashboardPh ? "/pricing?from=dashboard-admin-ph" : "/pricing"}>
             Volver a precios
           </a>
           <button className="btn btn-primary" onClick={handleCheckout} disabled={loading}>
-            {loading ? "Procesando…" : "Pagar con método elegido"}
+            {loading ? "Procesando…" : showUnitsAddon ? `Comprar $${totalPrice}` : "Pagar con método elegido"}
           </button>
         </div>
       </div>

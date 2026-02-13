@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
-const KPI = [
+const KPI_FALLBACK = [
   { label: "Funnel Conversión", value: "18.4%", note: "↑ +2.1% esta semana" },
   { label: "Tickets Urgentes", value: "3", note: "2 requieren escalación" },
   { label: "Clientes Activos", value: "45", note: "8 demos en curso" },
 ];
 
-const FUNNEL_STAGES = [
+const FUNNEL_STAGES_FALLBACK = [
   { stage: "New Lead", count: 64, color: "#38bdf8" },
   { stage: "Qualified", count: 28, color: "#22c55e" },
   { stage: "Demo Active", count: 12, color: "#f59e0b" },
@@ -21,7 +21,7 @@ const TICKETS = [
   { id: "TKT-2026-017", subject: "Acceso demo expira hoy", priority: "Alta", sla: "6h", owner: "Landing" },
 ];
 
-const CLIENTS = [
+const CLIENTS_FALLBACK = [
   { name: "Administradora Panamá", plan: "Pro Multi-PH", buildings: "25", health: "Excelente" },
   { name: "Urban Tower PH", plan: "Standard", buildings: "1", health: "Bueno" },
   { name: "Pacific Developments", plan: "Enterprise + CRM", buildings: "12", health: "Atención" },
@@ -33,12 +33,30 @@ const CAMPAIGNS = [
   { name: "Upgrade Pay-Per-Event", status: "Activa", next: "Oferta 50% primer mes" },
 ];
 
+const STAGE_COLORS: Record<string, string> = {
+  new_lead: "#38bdf8",
+  qualified: "#22c55e",
+  demo_active: "#f59e0b",
+  converted: "#8b5cf6",
+};
+const STAGE_LABELS: Record<string, string> = {
+  new_lead: "New Lead",
+  qualified: "Qualified",
+  demo_active: "Demo Active",
+  converted: "Converted",
+};
+
+type LeadRow = { id?: string; email?: string; company_name?: string; funnel_stage?: string; lead_qualified?: boolean };
+type ClientRow = { id?: string; name?: string; plan?: string; status?: string; buildings?: number };
+
 export default function AdminInteligenteDashboard() {
   const [userEmail, setUserEmail] = useState("");
   const [userRole, setUserRole] = useState("Admin Plataforma");
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [savedDisplayName, setSavedDisplayName] = useState("");
+  const [leadsData, setLeadsData] = useState<LeadRow[] | null>(null);
+  const [clientsData, setClientsData] = useState<ClientRow[] | null>(null);
 
   useEffect(() => {
     const storedEmail = localStorage.getItem("assembly_email") || "";
@@ -48,6 +66,73 @@ export default function AdminInteligenteDashboard() {
     setUserRole(storedRole === "admin-ph" ? "Admin PH" : "Admin Plataforma");
     setSavedDisplayName(storedDisplay);
   }, []);
+
+  useEffect(() => {
+    fetch("/api/leads")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => (Array.isArray(data) ? setLeadsData(data) : setLeadsData(null)))
+      .catch(() => setLeadsData(null));
+  }, []);
+  useEffect(() => {
+    fetch("/api/platform-admin/clients")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => (Array.isArray(data) ? setClientsData(data) : setClientsData(null)))
+      .catch(() => setClientsData(null));
+  }, []);
+
+  const kpi = useMemo(() => {
+    if (leadsData && leadsData.length > 0) {
+      const total = leadsData.length;
+      const qualified = leadsData.filter((l) => (l.funnel_stage || "").toLowerCase() !== "new_lead").length;
+      const pct = total ? Math.round((qualified / total) * 1000) / 10 : 0;
+      const clientsCount = Array.isArray(clientsData) ? clientsData.length : 45;
+      const demos = leadsData.filter((l) => (l.funnel_stage || "").toLowerCase() === "demo_active").length;
+      return [
+        { label: "Funnel Conversión", value: `${pct}%`, note: "Desde BD" },
+        { label: "Tickets Urgentes", value: "3", note: "2 requieren escalación" },
+        { label: "Clientes Activos", value: String(clientsCount), note: demos ? `${demos} demos en curso` : "8 demos en curso" },
+      ];
+    }
+    if (Array.isArray(clientsData) && clientsData.length > 0) {
+      return [
+        KPI_FALLBACK[0],
+        KPI_FALLBACK[1],
+        { label: "Clientes Activos", value: String(clientsData.length), note: "Desde BD" },
+      ];
+    }
+    return KPI_FALLBACK;
+  }, [leadsData, clientsData]);
+
+  const funnelStages = useMemo(() => {
+    if (!leadsData || leadsData.length === 0) return FUNNEL_STAGES_FALLBACK;
+    const counts: Record<string, number> = {};
+    for (const l of leadsData) {
+      const s = (l.funnel_stage || "new_lead").toLowerCase().replace(/\s+/g, "_");
+      counts[s] = (counts[s] || 0) + 1;
+    }
+    const order = ["new_lead", "qualified", "demo_active", "converted"];
+    return order.map((key) => ({
+      stage: STAGE_LABELS[key] || key,
+      count: counts[key] ?? 0,
+      color: STAGE_COLORS[key] || "#64748b",
+    })).filter((r) => r.count > 0).length > 0
+      ? order.map((key) => ({
+          stage: STAGE_LABELS[key] || key,
+          count: counts[key] ?? 0,
+          color: STAGE_COLORS[key] || "#64748b",
+        }))
+      : FUNNEL_STAGES_FALLBACK;
+  }, [leadsData]);
+
+  const clients = useMemo(() => {
+    if (!Array.isArray(clientsData) || clientsData.length === 0) return CLIENTS_FALLBACK;
+    return clientsData.slice(0, 6).map((c) => ({
+      name: c.name || "Sin nombre",
+      plan: c.plan || "Standard",
+      buildings: String(c.buildings ?? 1),
+      health: c.status === "Activo" ? "Excelente" : c.status === "Suspendido" ? "Atención" : "Bueno",
+    }));
+  }, [clientsData]);
 
   const headerLabel = savedDisplayName.trim() ? `${savedDisplayName.trim()} (${userEmail || "admin@assembly2.com"})` : (userEmail || "admin@assembly2.com");
 
@@ -177,8 +262,8 @@ export default function AdminInteligenteDashboard() {
                 </p>
               </div>
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                <a className="btn" href="/platform-admin/leads">
-                  Exportar reporte
+                <a className="btn" href="/api/platform-admin/leads/export?format=csv" download target="_blank" rel="noopener noreferrer">
+                  Exportar reporte (CSV)
                 </a>
                 <a className="btn btn-ghost" href="/platform-admin/monitoring">
                   Ver monitor VPS
@@ -194,7 +279,7 @@ export default function AdminInteligenteDashboard() {
           </div>
 
           <div className="chart-grid">
-            {KPI.map((item) => (
+            {kpi.map((item) => (
               <div key={item.label} className="card">
                 <p style={{ margin: 0, color: "#94a3b8" }}>{item.label}</p>
                 <h3 style={{ margin: "10px 0" }}>{item.value}</h3>
@@ -258,7 +343,7 @@ export default function AdminInteligenteDashboard() {
               <div className="card" style={{ gridColumn: "span 2" }}>
                 <h3 style={{ marginTop: 0 }}>Pipeline</h3>
                 <div className="card-list">
-                  {FUNNEL_STAGES.map((stage) => (
+                  {funnelStages.map((stage) => (
                     <div key={stage.stage} className="list-item">
                       <span style={{ width: "10px", height: "10px", borderRadius: "999px", background: stage.color }} />
                       <span style={{ flex: 1 }}>{stage.stage}</span>
@@ -268,12 +353,15 @@ export default function AdminInteligenteDashboard() {
                 </div>
               </div>
               <div className="card">
-                <h3 style={{ marginTop: 0 }}>Ultimos leads</h3>
+                <h3 style={{ marginTop: 0 }}>Últimos leads</h3>
                 <div className="card-list">
-                  {["Laura Gomez · Administradora", "Carlos Ruiz · Junta", "PH Vista Azul · Promotora"].map((lead) => (
-                    <div key={lead} className="list-item">
+                  {(leadsData && leadsData.length > 0
+                    ? leadsData.slice(0, 5).map((l) => ({ id: l.id || "", label: l.company_name || l.email || "Sin nombre" }))
+                    : [{ id: "1", label: "Laura Gomez · Administradora" }, { id: "2", label: "Carlos Ruiz · Junta" }, { id: "3", label: "PH Vista Azul · Promotora" }]
+                  ).map((lead) => (
+                    <div key={lead.id || lead.label} className="list-item">
                       <span>👤</span>
-                      <span>{lead}</span>
+                      <span>{lead.label}</span>
                     </div>
                   ))}
                 </div>
@@ -307,7 +395,7 @@ export default function AdminInteligenteDashboard() {
             <h2 className="section-title">Clientes y Leads</h2>
             <p className="section-subtitle">Salud de cuentas, upgrades y demos activas.</p>
             <div className="grid grid-3">
-              {CLIENTS.map((client) => (
+              {clients.map((client) => (
                 <div key={client.name} className="card">
                   <h3 style={{ marginTop: 0 }}>{client.name}</h3>
                   <p style={{ color: "#cbd5f5", margin: 0 }}>{client.plan}</p>

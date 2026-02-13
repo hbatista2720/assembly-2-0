@@ -10,10 +10,12 @@ type Unit = {
   voteMethod: "FACE_ID" | "MANUAL" | null;
 };
 
-const TOWERS = [
+const TOWERS_FULL = [
   { id: "A", label: "Torre A", count: 200 },
   { id: "B", label: "Torre B", count: 111 },
 ];
+
+const TOWERS_DEMO = [{ id: "A", label: "Torre A", count: 50 }];
 
 const hashString = (value: string) => {
   let hash = 0;
@@ -34,12 +36,18 @@ const mulberry32 = (seed: number) => {
   };
 };
 
-export const generateUnits = (assemblyId: string) => {
+/**
+ * Si forceDemoUnits es true (usuario demo), siempre se usan 50 unidades (Urban Tower PH).
+ * Así el Monitor muestra la asamblea asociada con 50 residentes y no 311.
+ */
+export const generateUnits = (assemblyId: string, forceDemoUnits?: boolean) => {
+  const isDemo = forceDemoUnits || !assemblyId || assemblyId === "demo";
+  const towers = isDemo ? TOWERS_DEMO : TOWERS_FULL;
   const seed = hashString(assemblyId || "demo");
   const random = mulberry32(seed);
   const units: Unit[] = [];
 
-  for (const tower of TOWERS) {
+  for (const tower of towers) {
     for (let i = 1; i <= tower.count; i += 1) {
       const roll = random();
       const paymentStatus = roll > 0.85 ? "MORA" : "AL_DIA";
@@ -71,14 +79,23 @@ export const generateUnits = (assemblyId: string) => {
   return units;
 };
 
-export const buildSummary = (units: Unit[]) => {
+export type BuildSummaryOptions = {
+  topicTitle?: string;
+  topicId?: string;
+};
+
+/**
+ * Construye el resumen. Si se pasa topicTitle/topicId, el tema mostrado y los
+ * resultados porcentuales se derivan de ese tema (reproducibles por tema).
+ */
+export const buildSummary = (units: Unit[], options?: BuildSummaryOptions) => {
   const total = units.length;
   const present = units.filter((unit) => unit.isPresent).length;
   const voted = units.filter((unit) => unit.voteValue).length;
   const mora = units.filter((unit) => unit.paymentStatus === "MORA").length;
   const faceId = units.filter((unit) => unit.hasFaceId).length;
 
-  const results = units.reduce(
+  const rawResults = units.reduce(
     (acc, unit) => {
       if (unit.voteValue === "SI") acc.si += 1;
       if (unit.voteValue === "NO") acc.no += 1;
@@ -88,8 +105,32 @@ export const buildSummary = (units: Unit[]) => {
     { si: 0, no: 0, abst: 0 },
   );
 
-  const totalVotes = Math.max(results.si + results.no + results.abst, 1);
+  const totalVotes = Math.max(rawResults.si + rawResults.no + rawResults.abst, 1);
   const quorumPct = total === 0 ? 0 : Math.round((present / total) * 1000) / 10;
+
+  let resultsPct: { si: number; no: number; abst: number };
+  if (options?.topicId != null || (options?.topicTitle != null && options.topicTitle !== "")) {
+    const seed = hashString((options.topicId ?? "") + (options.topicTitle ?? ""));
+    const rnd = mulberry32(seed);
+    const si = Math.floor(rnd() * 40) + 45;
+    const no = Math.floor(rnd() * 25) + 5;
+    const abst = 100 - si - no;
+    resultsPct = {
+      si: Math.max(0, Math.round(si * 10) / 10),
+      no: Math.max(0, Math.round(no * 10) / 10),
+      abst: Math.max(0, Math.round(abst * 10) / 10),
+    };
+  } else {
+    resultsPct = {
+      si: Math.round((rawResults.si / totalVotes) * 1000) / 10,
+      no: Math.round((rawResults.no / totalVotes) * 1000) / 10,
+      abst: Math.round((rawResults.abst / totalVotes) * 1000) / 10,
+    };
+  }
+
+  const topicTitle = options?.topicTitle && options.topicTitle.trim() !== ""
+    ? options.topicTitle.trim()
+    : "Votación en curso";
 
   return {
     stats: { total, present, voted, mora, faceId },
@@ -100,14 +141,10 @@ export const buildSummary = (units: Unit[]) => {
       total,
     },
     votation: {
-      topic: "Aprobación de presupuesto 2026",
+      topic: topicTitle,
       votesCount: voted,
       attendeesCount: present,
-      results: {
-        si: Math.round((results.si / totalVotes) * 1000) / 10,
-        no: Math.round((results.no / totalVotes) * 1000) / 10,
-        abst: Math.round((results.abst / totalVotes) * 1000) / 10,
-      },
+      results: resultsPct,
     },
     history: [
       "✅ Tema 1: Acta anterior (98% SI)",

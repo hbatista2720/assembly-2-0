@@ -17,7 +17,10 @@ function HomeContent() {
   const [residentEmailValidated, setResidentEmailValidated] = useState(false);
   type ChatCard = "votacion" | "asambleas" | "calendario" | "tema" | "poder";
   const [chatMessages, setChatMessages] = useState<Array<{ from: "bot" | "user"; text: string; card?: ChatCard }>>([]);
+  const MAX_VOTE_MODIFICATIONS = 2;
   const [residentVoteSent, setResidentVoteSent] = useState(false);
+  const [residentLastVote, setResidentLastVote] = useState<"Sí" | "No" | "Abstengo" | null>(null);
+  const [residentVoteModifyCount, setResidentVoteModifyCount] = useState(0);
   const [poderSubmitted, setPoderSubmitted] = useState(false);
   const [hasPendingPowerRequest, setHasPendingPowerRequest] = useState(false);
   const [poderEmail, setPoderEmail] = useState("");
@@ -25,6 +28,9 @@ function HomeContent() {
   type AssemblyContext = "activa" | "programada" | "sin_asambleas";
   const [assemblyContext, setAssemblyContext] = useState<AssemblyContext>("activa");
   const [webPrompt, setWebPrompt] = useState("Hola, soy Lex. Antes de continuar, ¿que perfil tienes?");
+  /** Saludo visible al abrir el chatbot en landing. El prompt real (config) se usa en backend; no se muestra al usuario. */
+  const LANDING_CHAT_GREETING =
+    "Hola, soy Lex, asistente de Assembly 2.0. ¿Qué perfil te describe mejor: Administrador PH, Junta Directiva o solo demo? Escribe o elige una opción abajo.";
   const [leadData, setLeadData] = useState({
     email: "",
     role: "",
@@ -34,13 +40,16 @@ function HomeContent() {
   const [abandonConfirmPhrase, setAbandonConfirmPhrase] = useState("");
   const [residentEmailPending, setResidentEmailPending] = useState<string | null>(null);
   const ABANDON_CONFIRM_PHRASE = "Si abandonar";
-  // Emails residentes org demo (lista fija; ref QA_FEEDBACK.md, ESTATUS_AVANCE)
+  // Emails residentes org demo + PH B Torres (lista fija; ref INSTRUCCIONES_CODER_ASSEMBLY_CONTEXT_BD.md)
   const DEMO_RESIDENT_EMAILS = [
     "residente1@demo.assembly2.com",
     "residente2@demo.assembly2.com",
     "residente3@demo.assembly2.com",
     "residente4@demo.assembly2.com",
     "residente5@demo.assembly2.com",
+    "residente1@torresdelpacifico.com",
+    "residente2@torresdelpacifico.com",
+    "residente3@torresdelpacifico.com",
   ];
   const [assembliesPerYear, setAssembliesPerYear] = useState(2);
   const [unitsCount, setUnitsCount] = useState(311);
@@ -167,10 +176,10 @@ function HomeContent() {
         const webConfig = Array.isArray(data) ? data.find((item) => item.bot_name === "web") : null;
         const prompt = webConfig?.prompts?.landing || webPrompt;
         setWebPrompt(prompt);
-        setChatMessages([{ from: "bot", text: prompt }]);
+        setChatMessages([{ from: "bot", text: LANDING_CHAT_GREETING }]);
       })
       .catch(() => {
-        setChatMessages([{ from: "bot", text: webPrompt }]);
+        setChatMessages([{ from: "bot", text: LANDING_CHAT_GREETING }]);
       });
   }, [chatbotOpen, chatMessages.length]);
 
@@ -270,6 +279,28 @@ function HomeContent() {
     }
 
     if (chatRole === "residente" && residentEmailValidated && chatStep >= 8) {
+      const isModificar = /^\s*modificar(\s+voto)?\s*$/i.test(trimmed.trim());
+      if (isModificar && residentVoteSent && residentLastVote) {
+        setChatInput("");
+        pushUserMessage(trimmed.trim());
+        if (residentVoteModifyCount >= MAX_VOTE_MODIFICATIONS) {
+          pushBotMessage("Ya alcanzaste el límite de 2 correcciones de voto. No puedes modificar nuevamente.");
+          return;
+        }
+        setResidentVoteSent(false);
+        setResidentLastVote(null);
+        setResidentVoteModifyCount((c) => c + 1);
+        const remaining = MAX_VOTE_MODIFICATIONS - residentVoteModifyCount - 1;
+        if (remaining === 1) {
+          pushBotMessage("Tu voto fue anulado. Puedes votar de nuevo. Te queda 1 oportunidad para modificar tu voto.");
+        } else if (remaining === 0) {
+          pushBotMessage("Tu voto fue anulado. Puedes votar de nuevo. Esta fue tu última corrección permitida.");
+        } else {
+          pushBotMessage("Tu voto fue anulado. Puedes votar de nuevo con los botones de arriba.");
+        }
+        return;
+      }
+
       setChatInput("");
       const email = typeof window !== "undefined" ? localStorage.getItem("assembly_resident_email") || "" : "";
       const history = chatMessages.slice(-12).map((m) => ({ role: m.from === "user" ? "user" : "model", text: m.text }));
@@ -357,6 +388,33 @@ function HomeContent() {
       setLeadData((prev) => ({ ...prev, email: emailLower, role: chatRole }));
 
       if (chatRole === "residente") {
+        const proceedToOtp = () => {
+          setResidentEmailPending(emailLower);
+          setChatStep(4);
+          setChatInput("");
+          fetch("/api/auth/request-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: emailLower }),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data?.success) {
+                pushBotMessage(`Te enviamos un PIN a ${emailLower}. Revisa tu bandeja (y spam) e ingrésalo aquí.`);
+                if (data?.otp) pushBotMessage(`Código de prueba (modo local): ${data.otp}`);
+              } else {
+                pushBotMessage(data?.error || "No se pudo enviar el PIN. Intenta más tarde.");
+                setResidentEmailPending(null);
+                setChatStep(3);
+              }
+            })
+            .catch(() => {
+              pushBotMessage("No se pudo enviar el PIN. Intenta más tarde.");
+              setResidentEmailPending(null);
+              setChatStep(3);
+            });
+        };
+
         let recognized = false;
         try {
           const existingUsers = JSON.parse(localStorage.getItem("assembly_users") || "[]") as Array<{
@@ -368,37 +426,26 @@ function HomeContent() {
         } catch {
           // ignore storage issues
         }
-        if (!recognized && DEMO_RESIDENT_EMAILS.includes(emailLower)) {
-          recognized = true;
-        }
-        if (!recognized) {
-          pushBotMessage("No encuentro ese correo. Contacta al administrador de tu PH para validar. Puedes escribir otro correo para reintentar.");
-          setChatInput("");
+        if (recognized) {
+          proceedToOtp();
           return;
         }
-        setResidentEmailPending(emailLower);
-        setChatStep(4);
-        setChatInput("");
-        fetch("/api/auth/request-otp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: emailLower }),
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data?.success) {
-              pushBotMessage(`Te enviamos un PIN a ${emailLower}. Revisa tu bandeja (y spam) e ingrésalo aquí.`);
-              if (data?.otp) pushBotMessage(`Código de prueba (modo local): ${data.otp}`);
-            } else {
-              pushBotMessage(data?.error || "No se pudo enviar el PIN. Intenta más tarde.");
-              setResidentEmailPending(null);
-              setChatStep(3);
+        if (DEMO_RESIDENT_EMAILS.includes(emailLower)) {
+          proceedToOtp();
+          return;
+        }
+        fetch(`/api/resident-profile?email=${encodeURIComponent(emailLower)}`)
+          .then((res) => {
+            if (res.ok) {
+              proceedToOtp();
+              return;
             }
+            pushBotMessage("No encuentro ese correo. Contacta al administrador de tu PH para validar. Puedes escribir otro correo para reintentar.");
+            setChatInput("");
           })
           .catch(() => {
-            pushBotMessage("No se pudo enviar el PIN. Intenta más tarde.");
-            setResidentEmailPending(null);
-            setChatStep(3);
+            pushBotMessage("No encuentro ese correo. Contacta al administrador de tu PH para validar. Puedes escribir otro correo para reintentar.");
+            setChatInput("");
           });
         return;
       }
@@ -425,7 +472,7 @@ function HomeContent() {
   };
 
   return (
-    <main className="container">
+    <main className="container landing-root">
       <header className="navbar glass">
         <div className="nav-primary">
           <div className="logo">
@@ -447,10 +494,9 @@ function HomeContent() {
           </nav>
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <a
-              className="btn btn-ghost btn-access"
+              className="btn btn-ghost btn-access nav-icon-link"
               href="/login"
-              title="Administrador"
-              aria-label="Administrador"
+              aria-label="Administrador (acceso seguro)"
               style={{
                 padding: 0,
                 border: "none",
@@ -460,6 +506,7 @@ function HomeContent() {
                 alignItems: "center",
                 gap: "4px",
                 textDecoration: "none",
+                position: "relative",
               }}
               onMouseEnter={() => setHoverAdminAccess(true)}
               onMouseLeave={() => setHoverAdminAccess(false)}
@@ -470,29 +517,30 @@ function HomeContent() {
                   width: "56px",
                   height: "56px",
                   borderRadius: "18px",
-                  background:
-                    "radial-gradient(circle at 30% 30%, rgba(236, 72, 153, 0.8), transparent 55%), linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.95))",
-                  border: "1px solid rgba(236, 72, 153, 0.7)",
-                  boxShadow: hoverAdminAccess ? "0 14px 32px rgba(236, 72, 153, 0.5)" : "0 14px 32px rgba(236, 72, 153, 0.35)",
+                  background: hoverAdminAccess
+                    ? "radial-gradient(circle at 30% 30%, rgba(236, 72, 153, 0.45), transparent 55%), linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.95))"
+                    : "radial-gradient(circle at 30% 30%, rgba(236, 72, 153, 0.35), transparent 55%), linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.95))",
+                  border: `1px solid ${hoverAdminAccess ? "rgba(236, 72, 153, 0.55)" : "rgba(236, 72, 153, 0.5)"}`,
+                  boxShadow: hoverAdminAccess ? "0 8px 20px rgba(236, 72, 153, 0.28), 0 0 0 1px rgba(236, 72, 153, 0.15)" : "0 8px 18px rgba(236, 72, 153, 0.2)",
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
                   overflow: "hidden",
-                  transition: "box-shadow 0.2s ease",
+                  transition: "box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease",
                 }}
               >
                 <img src="/icons/acceso-seguro.png" alt="Administrador" style={{ width: "70%", height: "70%" }} />
               </span>
               {hoverAdminAccess && (
-                <span style={{ fontSize: "11px", fontWeight: 600, color: "#f9a8d4", whiteSpace: "nowrap", letterSpacing: "0.02em" }}>
+                <span className="nav-icon-label" style={{ fontSize: "11px", fontWeight: 600, color: "#f0abdc", whiteSpace: "nowrap", letterSpacing: "0.02em", position: "relative", zIndex: 2 }}>
                   Administrador
                 </span>
               )}
             </a>
             <Link
               href="/residentes/chat"
-              title="Acceso de residentes"
-              aria-label="Acceso de residentes"
+              aria-label="Acceso de residentes (chatbot)"
+              className="nav-icon-link"
               style={{
                 padding: 0,
                 border: "none",
@@ -527,7 +575,7 @@ function HomeContent() {
                 <img src="/avatars/chatbot.png" alt="Acceso de residentes" style={{ width: "70%", height: "70%" }} />
               </span>
               {hoverResidentChat && (
-                <span style={{ fontSize: "11px", fontWeight: 600, color: "#a5b4fc", whiteSpace: "nowrap", letterSpacing: "0.02em" }}>
+                <span className="nav-icon-label" style={{ fontSize: "11px", fontWeight: 600, color: "#a5b4fc", whiteSpace: "nowrap", letterSpacing: "0.02em", position: "relative", zIndex: 2 }}>
                   Acceso de residentes
                 </span>
               )}
@@ -1132,7 +1180,10 @@ function HomeContent() {
                   ))}
                 </div>
               ) : null}
-              <a className={`btn ${plan.ctaVariant === "primary" ? "btn-primary btn-demo" : "btn-ghost"}`} href="/login">
+              <a
+                className={`btn ${plan.ctaVariant === "primary" || plan.ctaVariant === "accent" ? "btn-primary btn-demo" : "btn-ghost"}`}
+                href={plan.id === "ENTERPRISE" ? "/login" : `/checkout?plan=${plan.id}`}
+              >
                 {plan.cta}
               </a>
             </div>
@@ -1312,8 +1363,10 @@ function HomeContent() {
                                   style={{ borderRadius: "999px", padding: "8px 14px" }}
                                   onClick={() => {
                                     setResidentVoteSent(true);
+                                    setResidentLastVote(op);
                                     pushUserMessage(`Voto: ${op}`);
-                                    pushBotMessage("Tu voto quedó registrado con trazabilidad legal.");
+                                    pushBotMessage(`Tu voto ya fue aplicado. Voto aplicado: ${op}.`);
+                                    pushBotMessage('Para revertir tu voto escribe «modificar». Solo puedes modificar mientras la votación esté abierta. Máximo 2 correcciones permitidas.');
                                   }}
                                 >
                                   {op}
@@ -1321,7 +1374,21 @@ function HomeContent() {
                               ))}
                             </div>
                           ) : (
-                            <span className="muted" style={{ fontSize: "12px" }}>Tu voto fue registrado.</span>
+                            <>
+                              <p style={{ margin: "0 0 4px", fontSize: "13px" }}>Tu voto ya fue aplicado.</p>
+                              <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: 600 }}>Voto aplicado: {residentLastVote ?? "—"}.</p>
+                              <p className="muted" style={{ fontSize: "12px", margin: 0 }}>
+                                Escribe «modificar» para revertir tu voto (solo mientras la votación esté abierta). Máximo 2 correcciones.
+                              </p>
+                              <p style={{ fontSize: "12px", margin: "8px 0 0", color: "#f59e0b" }}>
+                                Correcciones usadas: {residentVoteModifyCount} de {MAX_VOTE_MODIFICATIONS}.
+                              </p>
+                              {residentVoteModifyCount >= MAX_VOTE_MODIFICATIONS && (
+                                <p style={{ fontSize: "12px", margin: "4px 0 0", color: "#ef4444", fontWeight: 600 }}>
+                                  Ya no puedes modificar tu voto.
+                                </p>
+                              )}
+                            </>
                           )}
                         </>
                       )}

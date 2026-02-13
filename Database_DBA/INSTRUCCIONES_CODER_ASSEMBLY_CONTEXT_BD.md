@@ -50,6 +50,26 @@ LIMIT 1;
 
 ---
 
+## Validación: usuarios existen y están asociados
+
+| Usuario | Script donde se crea | Organización (PH) | Rol |
+|--------|----------------------|-------------------|-----|
+| residente1@demo.assembly2.com | `auth_otp_local.sql`, `seeds_residentes_demo.sql` | 11111111-1111-1111-1111-111111111111 (PH A – Demo) | RESIDENTE |
+| residente2@demo.assembly2.com | idem | PH A | RESIDENTE |
+| residente3@demo.assembly2.com | idem | PH A | RESIDENTE |
+| residente4@demo.assembly2.com | idem | PH A | RESIDENTE |
+| residente5@demo.assembly2.com | idem | PH A | RESIDENTE |
+| residente1@torresdelpacifico.com | `102_demo_ph_a_ph_b_assemblies.sql` | 22222222-2222-2222-2222-222222222222 (PH B – Torres) | RESIDENTE |
+| residente2@torresdelpacifico.com | idem | PH B | RESIDENTE |
+| residente3@torresdelpacifico.com | idem | PH B | RESIDENTE |
+
+- **PH A (residente1-5@demo.assembly2.com):** creados en `auth_otp_local.sql` (init Docker) y/o `seeds_residentes_demo.sql`. Asociados a org Demo - P.H. Urban Tower.
+- **PH B (residente1-3@torresdelpacifico.com):** creados en `102_demo_ph_a_ph_b_assemblies.sql`. Ejecutar ese script para que existan en BD; asociados a org P.H. Torres del Pacífico.
+
+Lista completa de usuarios demo (admins + residentes): **docs/USUARIOS_DEMO_BD.md**.
+
+---
+
 ## Ejecutar script
 
 ```bash

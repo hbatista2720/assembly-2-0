@@ -91,6 +91,8 @@ localStorage.setItem("assembly_email", "qa@assembly2.com")
 **Fecha:** 30 Enero 2026  
 **Estado:** ✅ APROBADA
 
+**Auditoría detallada (Dashboard Henry):** Ver **QA/QA_REPORTE_DASHBOARD_HENRY.md** (§5 y §7) – Informe con sincronización BD, Monitor VPS, botones sin acción y **tabla de acciones sugeridas para el Coder** (Coder tiene la instrucción en §5 y §7 de ese reporte). El Contralor tiene el informe registrado en el historial de **Contralor/ESTATUS_AVANCE.md**. QA_FEEDBACK apunta a la auditoría en ese reporte.
+
 ## Validación completada
 - `/dashboard/platform-admin` ✓
 - `/platform-admin/monitoring` ✓ 
@@ -443,6 +445,8 @@ Hay que ejecutar el ALTER una vez. Opciones:
 **Fecha:** 26 Febrero 2026  
 **Objetivo:** Revisar que todas las funciones, botones y enlaces del dashboard Henry estén operativos y lleven al sitio correcto.
 
+**Indicación Contralor:** Validación avances Coder completada. **QA debe revisar** los avances del Coder (Dashboard Henry §5 y §7): resumen ejecutivo desde BD, tickets desde API, Monitor VPS, CRM, métricas negocio, exportar CSV, ejecutar campañas. Ver Contralor/ESTATUS_AVANCE.md § "Para QA – Revisar avances Dashboard Henry" y QA/QA_REPORTE_DASHBOARD_HENRY.md.
+
 ## Bloqueador previo (Build Error)
 
 Si aparece `Module not found: Can't resolve '@/lib/db'` en `src/app/api/leads/route.ts`, la app no compila y las páginas que dependen de `/api/leads` (ej. `/platform-admin/leads`) fallarán. **Coder debe corregir** el path o la exportación del módulo `@/lib/db` (el archivo existe en `src/lib/db.ts`).
@@ -470,16 +474,16 @@ Si aparece `Module not found: Can't resolve '@/lib/db'` en `src/app/api/leads/ro
 
 | Enlace | Destino esperado | Validar |
 |--------|------------------|---------|
-| Resumen ejecutivo | `/dashboard/admin` | ☐ |
-| Monitor VPS | `/platform-admin/monitoring` | ☐ |
-| Gestión de clientes | `/platform-admin/clients` | ☐ |
-| Métricas de negocio | `/platform-admin/business` | ☐ |
-| Funnel de leads | `/dashboard/admin#leads` (anchor) | ☐ |
-| Tickets inteligentes | `/dashboard/admin#tickets` (anchor) | ☐ |
-| Clientes y demos | `/dashboard/admin#clientes` (anchor) | ☐ |
-| CRM y campañas | `/dashboard/admin#crm` (anchor) | ☐ |
-| Volver a landing | `/` | ☐ |
-| Crear demo | Sin `href` – botón sin destino asignado | ☐ Revisar |
+| Resumen ejecutivo | `/dashboard/admin` | ✅ 07 Feb |
+| Monitor VPS | `/platform-admin/monitoring` | ✅ 07 Feb |
+| Gestión de clientes | `/platform-admin/clients` | ✅ 07 Feb |
+| Métricas de negocio | `/platform-admin/business` | ✅ 07 Feb |
+| Funnel de leads | `/platform-admin/leads` | ✅ 07 Feb |
+| Tickets inteligentes | `/platform-admin/tickets` | ✅ 07 Feb |
+| Clientes y demos | `/platform-admin/clients` | ✅ 07 Feb |
+| CRM y campañas | `/platform-admin/crm` | ✅ 07 Feb |
+| Volver a landing | `/` | ✅ 07 Feb |
+| Crear demo | `/demo` | ✅ 07 Feb (href corregido) |
 
 ---
 
@@ -487,14 +491,14 @@ Si aparece `Module not found: Can't resolve '@/lib/db'` en `src/app/api/leads/ro
 
 | Botón | Destino esperado | Validar |
 |-------|------------------|---------|
-| Exportar reporte | `/platform-admin/leads` | ☐ |
-| Ver monitor VPS | `/platform-admin/monitoring` | ☐ |
-| Abrir clientes | `/platform-admin/clients` | ☐ |
-| Activar demo | `/platform-admin/leads?stage=demo_active` | ☐ |
-| Ver lista completa (leads) | `/platform-admin/leads` | ☐ |
-| Revisar ticket | `/platform-admin/tickets/[id]` | ☐ |
-| Gestionar clientes | `/platform-admin/clients` | ☐ |
-| Configurar (CRM) | `/platform-admin/crm` | ☐ |
+| Exportar reporte (CSV) | `/api/platform-admin/leads/export?format=csv` | ✅ 07 Feb |
+| Ver monitor VPS | `/platform-admin/monitoring` | ✅ 07 Feb |
+| Abrir clientes | `/platform-admin/clients` | ✅ 07 Feb |
+| Activar demo | `/platform-admin/leads?stage=demo_active` | ✅ 07 Feb |
+| Ver lista completa (leads) | `/platform-admin/leads` | ✅ 07 Feb |
+| Revisar ticket | `/platform-admin/tickets/[id]` | ✅ 07 Feb |
+| Gestionar clientes | `/platform-admin/clients` | ✅ 07 Feb |
+| Configurar (CRM) | `/platform-admin/crm` | ✅ 07 Feb |
 
 ---
 
@@ -504,13 +508,13 @@ Validar que las páginas `/platform-admin/*` tengan forma de volver al dashboard
 
 | Página | ¿Tiene link/botón de retorno? | Validar |
 |--------|-------------------------------|---------|
-| /platform-admin/monitoring | ☐ | ☐ |
-| /platform-admin/clients | ☐ | ☐ |
-| /platform-admin/business | ☐ | ☐ |
-| /platform-admin/leads | ☐ | ☐ |
-| /platform-admin/chatbot-config | ☐ | ☐ |
-| /platform-admin/crm | ☐ | ☐ |
-| /platform-admin/tickets/[id] | Redirige a `/dashboard/platform-admin` si no hay ticket | ☐ |
+| /platform-admin/monitoring | Sí ("← Volver al Dashboard") | ✅ 07 Feb |
+| /platform-admin/clients | Sí | ✅ 07 Feb |
+| /platform-admin/business | Sí | ✅ 07 Feb |
+| /platform-admin/leads | Sí | ✅ 07 Feb |
+| /platform-admin/chatbot-config | Sí | ✅ 07 Feb |
+| /platform-admin/crm | Sí | ✅ 07 Feb |
+| /platform-admin/tickets/[id] | Sí (router.back) | ✅ 07 Feb |
 
 ---
 
@@ -1602,3 +1606,303 @@ En `login/page.tsx`, comprobar `role === "RESIDENTE"` **antes** de `is_demo` y r
 ### Informe al Contralor
 
 Coder informó al Contralor: tarea "chatbot más inteligente – preguntas simples" completada. Registro en Contralor/ESTATUS_AVANCE.md (bloque "Para CODER (chatbot más inteligente – preguntas simples)" y historial). **Próxima actividad:** Contralor asigna (p. ej. QA revalidar o backup).
+
+---
+
+# QA Validación · Redirección por rol (todos los perfiles)
+
+**Fecha:** 07 Febrero 2026  
+**Referencia:** QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md § "Tarea QA: Validación redirección por rol (todos los perfiles)", docs/USUARIOS_DEMO_BD.md
+
+## Objetivo
+
+Verificar que cada rol se redirige a la zona correcta tras login OTP. Ningún residente (role RESIDENTE) debe terminar en `/dashboard/admin-ph`.
+
+## Pruebas ejecutadas
+
+**Metodología:** API request-otp + verify-otp con OTP_DEBUG=true; verificación de rol devuelto. Lógica de redirección en frontend (`src/app/login/page.tsx`) confirmada por revisión de código.
+
+| # | Rol | Usuario de prueba | Zona esperada | API role devuelto | Lógica frontend | Resultado |
+|---|-----|-------------------|---------------|-------------------|-----------------|-----------|
+| 1 | Residente | residente1@demo.assembly2.com | /residentes/chat | RESIDENTE | if (role===RESIDENTE) → /residentes/chat | ✅ OK |
+| 2 | Residente | residente2@demo.assembly2.com | /residentes/chat | RESIDENTE | Idem | ✅ OK |
+| 3 | Admin PH | demo@assembly2.com | /dashboard/admin-ph | ADMIN_PH | is_platform_owner/ADMIN_PLATAFORMA → platform-admin; else → admin-ph | ✅ OK |
+| 4 | Admin PH | admin@torresdelpacifico.com | /dashboard/admin-ph | ADMIN_PH | Idem | ✅ OK |
+| 5 | Platform Admin | henry.batista27@gmail.com | /dashboard/platform-admin | ADMIN_PLATAFORMA | is_platform_owner \|\| role===ADMIN_PLATAFORMA → /dashboard/platform-admin | ✅ OK |
+
+## Evidencia en código
+
+**src/app/login/page.tsx (líneas 98-130):**
+- RESIDENTE se evalúa **primero** (líneas 98-107): `if (user.role === "RESIDENTE")` → `router.push("/residentes/chat")`. Sale antes de evaluar `is_demo`.
+- Platform Admin (líneas 122-124): `is_platform_owner || role === "ADMIN_PLATAFORMA"` → `/dashboard/platform-admin`.
+- Admin PH (líneas 126-130): resto → `/dashboard/admin-ph` (con o sin `?mode=demo`).
+
+**Criterio crítico cumplido:** Ningún residente llega a la rama `is_demo` porque la rama RESIDENTE hace `return` antes.
+
+## Veredicto
+
+✅ **APROBADO** – Los 4 perfiles (5 usuarios de prueba) redirigen correctamente. El hallazgo crítico "Residente entra como Admin PH" está corregido y validado.
+
+## Informe al Contralor
+
+QA ejecutó validación redirección por rol. Resultado: OK. Contralor actualizó informes (ESTATUS_AVANCE, tabla PARA HENRY). **Siguiente:** Más pruebas según QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md § "Próximas pruebas" (§J/rec 14 en navegador, Chatbot Gemini, §K, validación demo por perfil, assembly-context, §E).
+
+---
+
+# QA Revisión · Contenedores Docker (informe Contralor + Guía Henry)
+
+**Fecha:** 07 Febrero 2026  
+**Origen:** Solicitud Henry – revisar Docker, enumerar lista, guía de funciones.
+
+## Lista enumerada de contenedores (según docker-compose.yml)
+
+| # | Contenedor | Puerto | Función | Estado |
+|---|------------|--------|---------|--------|
+| 1 | assembly-db | 5433 | PostgreSQL 15 – Base de datos principal | ✅ Correcto |
+| 2 | assembly-pgbouncer | 6432 | Pool de conexiones a la BD | ✅ Correcto |
+| 3 | assembly-redis | 6379 | Cache y sesiones (Redis 7) | ✅ Correcto |
+| 4 | assembly-app | **3000** | **Next.js – App principal** (landing, login, dashboards, APIs) | ✅ Correcto |
+| 5 | assembly-telegram-bot | 3001 | Chatbot Lex por Telegram | ✅ Correcto |
+| 6 | assembly-whatsapp-bot | 3002 | Chatbot Lex por WhatsApp | ✅ Correcto |
+| 7 | assembly-web-chatbot | 3003 | Chatbot Lex embebido (web/widget) | ✅ Correcto |
+
+## Observación para Contralor (validada)
+
+Eliminar **assembly-web** en Docker Desktop para evitar confusiones. Es un contenedor **local** (no está en docker-compose del repo/GitHub; no tiene que ver con GitHub). No afecta la app actual (assembly-app). Validado con el docker-compose.yml del proyecto — no hace falta preguntar al Coder. Ver Contralor/GUIA_DOCKER_PARA_HENRY.md § "Recomendación: Quitar assembly-web".
+
+## Entregables
+
+- **Contralor/GUIA_DOCKER_PARA_HENRY.md** – Guía con función de cada contenedor, puertos, URLs y comandos útiles.
+- **Contralor/ESTATUS_AVANCE.md** – Entrada en historial con informe al Contralor.
+
+---
+
+# QA Validación · Chatbot reconoce correo registrado por Admin PH
+
+**Fecha:** 07 Febrero 2026  
+**Objetivo:** Validar que el chatbot reconozca automáticamente correos creados por Admin PH y detecte contexto de asamblea (activa / programada).
+
+## Implementado
+
+- **POST /api/admin-ph/residents** – Admin PH puede crear residentes (`{ organization_id, email }`).
+- **UI Propietarios** – Formulario "Agregar residente" en `/dashboard/admin-ph/owners`.
+
+## Pruebas ejecutadas
+
+| # | Acción | Resultado |
+|---|--------|-----------|
+| 1 | Crear residente PH A: nuevo.pha@demo.assembly2.com | ✅ POST 200 – Residente creado |
+| 2 | Crear residente PH B: nuevo.phb@torresdelpacifico.com | ✅ POST 200 – Residente creado |
+| 3 | request-otp (chatbot) PH A | ✅ success – Chatbot reconoce correo |
+| 4 | request-otp (chatbot) PH B | ✅ success – Chatbot reconoce correo |
+| 5 | verify-otp PH A | ✅ role RESIDENTE, org PH A |
+| 6 | verify-otp PH B | ✅ role RESIDENTE, org PH B |
+| 7 | resident-profile PH A | ✅ Perfil con Demo - P.H. Urban Tower |
+| 8 | resident-profile PH B | ✅ Perfil con P.H. Torres del Pacífico |
+| 9 | assembly-context PH A | ✅ `{"context":"activa"}` – Votación/Tema habilitados |
+| 10 | assembly-context PH B | ✅ `{"context":"programada"}` – Votación/Tema deshabilitados |
+
+## Comportamiento en producción
+
+1. **Admin PH** agrega residente en Propietarios (correo + organización).
+2. El correo queda en tabla `users` con `role = 'RESIDENTE'`.
+3. **Chatbot** reconoce el correo en el primer uso (request-otp consulta `users`).
+4. **assembly-context** se resuelve por `organization_id` → BD `assemblies`:
+   - `active` → `activa` (Votación y Tema del día habilitados)
+   - `scheduled` → `programada` (solo Asambleas/Calendario)
+   - Sin filas → `sin_asambleas` (mensaje "No hay asambleas programadas")
+
+## Veredicto
+
+✅ **APROBADO** – El flujo Admin PH → crear residente → chatbot reconoce → tipo de residente según asamblea activa o no está implementado y validado.
+
+---
+
+# QA Auditoría · Dashboard Henry (Platform Admin)
+
+**Fecha:** 07 Febrero 2026  
+**Documento:** QA/QA_REPORTE_DASHBOARD_HENRY.md (§5 y §7 para Coder; Contralor: historial en ESTATUS_AVANCE)
+
+Validación: sincronización con BD, Monitor VPS vs Docker real, botones sin acción lógica. Resumen: Resumen ejecutivo, Tickets, CRM, Métricas y Monitor VPS usan datos hardcoded. Leads/Chatbot config con API. Bug tickets (IDs lista/detalle) corregido temporalmente. Informe al Contralor con tabla de acciones sugeridas para Coder. **Coder:** instrucción en §5 y §7 del reporte; **Contralor:** informe registrado en ESTATUS_AVANCE; **QA_FEEDBACK** apunta a esta auditoría.
+
+---
+
+# QA Master Usuario · Ejecución Dashboard Henry (07 Feb 2026)
+
+**Referencias:** QA_REPORTE_DASHBOARD_HENRY.md, QA_FEEDBACK § "QA Checklist · Navegación Dashboard Henry"
+
+## Checklist ejecutado
+
+### Rutas HTTP (todas 200 OK)
+
+| Ruta | HTTP |
+|------|------|
+| /dashboard/platform-admin | 200 |
+| /dashboard/admin | 200 |
+| /platform-admin/monitoring | 200 |
+| /platform-admin/clients | 200 |
+| /platform-admin/business | 200 |
+| /platform-admin/leads | 200 |
+| /platform-admin/tickets | 200 |
+| /platform-admin/chatbot-config | 200 |
+| /platform-admin/crm | 200 |
+| /platform-admin/tickets/TKT-2026-021 | 200 |
+
+### APIs
+
+| API | Estado | Nota |
+|-----|--------|------|
+| GET /api/leads | 500 | platform_leads no existe |
+| GET /api/platform-admin/clients | 200 | OK |
+| GET /api/chatbot/config | 200 | OK |
+| GET /api/platform-admin/leads/export?format=csv | 200 | Export CSV |
+| GET /api/platform-admin/tickets | 200 | [] |
+| GET /api/platform-admin/business | 200 | OK |
+| GET /api/platform-admin/monitoring | 200 | Placeholder |
+| GET /api/platform-admin/campaigns | 200 | [] |
+
+### Navegación y botones
+
+| Elemento | Estado |
+|----------|--------|
+| Sidebar enlaces | ✅ |
+| Crear demo → /demo | ✅ |
+| Exportar reporte (CSV) | ✅ |
+| Revisar ticket TKT-2026-021 | ✅ Detalle carga |
+| Botón retorno páginas hijas | ✅ |
+
+### Bloqueador
+
+- **GET /api/leads 500** – Ejecutar `97_platform_leads.sql` en BD.
+
+### Veredicto
+
+✅ Navegación OK. ⚠️ Leads bloqueado por tabla platform_leads.
+
+---
+
+# QA Re-test post-Database + Validación Chatbot Prompts (07 Feb 2026)
+
+**Origen:** Database ejecutó scripts; QA re-prueba y valida sincronización prompts IA.
+
+## 1. Re-test Dashboard (post-Database)
+
+| API | Estado | Nota |
+|-----|--------|------|
+| GET /api/leads | 200 | ✅ Tabla `platform_leads` existe; devuelve [] (vacía) |
+| GET /api/platform-admin/clients | 200 | OK |
+
+## 2. Chatbot config – Prompts en BD
+
+| Bot | Contextos | Estado |
+|-----|-----------|--------|
+| telegram | landing, demo, soporte, residente | ✅ En BD |
+| web | landing, demo, soporte, residente | ✅ En BD |
+| whatsapp | landing, soporte, residente | ✅ En BD |
+
+**Ejemplo prompts.residente (BD):** "Ayudas a residentes a votar y ver información de asambleas..."
+
+## 3. Sincronización prompts → respuesta IA
+
+| Flujo | ¿Usa prompts de config? | Evidencia |
+|-------|-------------------------|-----------|
+| POST /api/chat/resident | ❌ **NO** | Usa `buildSystemPrompt()` hardcoded en route.ts; no consulta `chatbot_config.prompts.residente` |
+| Landing chatbot (saludo) | Parcial | `webConfig?.prompts?.landing` se carga para `webPrompt` (display); mensajes de usuario en landing pueden ir a otro backend |
+| Chat residente (texto libre) | ❌ **NO** | Siempre usa prompt fijo en código + `docs/chatbot-knowledge-resident.md` |
+
+**Hallazgo:** Los prompts editados por Henry en Configuración Chatbot se guardan en BD pero **no se envían a Gemini** en el flujo residente. La API `/api/chat/resident` ignora `prompts.residente`.
+
+## 4. Prueba respuesta IA
+
+| Prueba | Mensaje | Respuesta obtenida | Esperado |
+|--------|---------|--------------------|----------|
+| POST /api/chat/resident | "¿Cómo voto?" | Fallback genérico ("Soy Lex...") | Instrucciones de votación |
+| GET ?validate=1 | - | 404: model gemini-1.5-flash not found | OK si API responde |
+
+**Causa respuesta fallback:** Gemini devuelve 404 (modelo no encontrado) → API usa `FALLBACK_REPLY`. La clave GEMINI_API_KEY puede estar configurada pero el nombre del modelo podría requerir actualización.
+
+## 5. Acciones para Coder
+
+| Prioridad | Item | Acción |
+|-----------|------|--------|
+| Alta | Prompts residente no sincronizados | Hacer que `/api/chat/resident` consulte `chatbot_config` (bot web o residente) y use `prompts.residente` en el system prompt, o al menos como override opcional |
+| Media | Modelo Gemini 404 | Revisar `GEMINI_MODEL` (gemini-1.5-flash); verificar nombre correcto en API v1beta |
+
+---
+
+# QA Fase 4 – Reglas R1, R2, R3, R4, R8 (Dashboard Admin PH)
+
+**Fecha:** 26 Ene 2026  
+**Plan:** QA/PLAN_PRUEBAS_DASHBOARD_ADMIN_PH_USUARIOS_DEMO.md Fase 4  
+**Referencia:** Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md
+
+## Validación por regla (usuarios demo)
+
+| Regla | Qué validar | Resultado | Evidencia |
+|-------|-------------|-----------|-----------|
+| **R1** | Plan actual visible: bloque "Plan actual: [nombre] · X/Y asambleas · Z edificios" | OK | AdminPhShell líneas 270-273: "Plan actual: {label} · {detail}" en perfil |
+| **R2** | Botón/enlace "Modificar suscripción" visible | OK | AdminPhShell línea 276-278: enlace a /dashboard/admin-ph/subscription |
+| **R3** | Botón "← Volver al Dashboard" en subpáginas | OK | AdminPhShell líneas 224-230: condicional cuando pathname !== /dashboard/admin-ph |
+| **R4** | Lista de PHs al entrar | OK | page.tsx: "Tus propiedades horizontales", PH_LIST, "Entrar al dashboard", "Cambiar PH" |
+| **R8** | Página Suscripción: "Tu plan actual" arriba, planes debajo | OK | subscription/page.tsx: bloque "Tu plan actual" con Modificar; "Planes disponibles" debajo |
+
+## Rutas verificadas (200 OK)
+
+/dashboard/admin-ph, /subscription, /settings, /owners
+
+## Veredicto
+
+APROBADO – R1, R2, R3, R4 y R8 implementados. Contralor informado.
+
+---
+
+# QA Validación · Listado de residentes vs INSTRUCCIONES_LISTADO_RESIDENTES_BD
+
+**Fecha:** 26 Ene 2026  
+**Referencia:** Database_DBA/INSTRUCCIONES_LISTADO_RESIDENTES_BD.md
+
+## Comparativa código vs instrucciones
+
+### 1. Reseteo listado demo (sin BD)
+
+| Instrucción | Código | ¿Conforme? |
+|-------------|--------|------------|
+| Clave `assembly_demo_residents` | demoResidentsStore.ts: STORAGE_KEY = "assembly_demo_residents" | Sí |
+| Botón «Restablecer listado demo» | owners/page.tsx líneas 357-366: botón que llama resetDemoResidents() | Sí |
+| Borra clave y recarga 50 residentes por defecto | resetDemoResidents() genera seedDefaultDemoResidents() y setStored() | Sí |
+| No hace falta script SQL | Todo en front (localStorage) | Sí |
+
+### 2. Estado BD para residentes (producción)
+
+| Instrucción | Código | ¿Conforme? |
+|-------------|--------|------------|
+| GET /api/admin-ph/residents?organization_id=xxx | route.ts GET con organization_id | Sí |
+| Origen: tabla users | SELECT FROM users | Sí |
+| Columnas: id, email, face_id_enabled | route.ts líneas 61-66: SELECT id, email, face_id_enabled | Sí |
+| Filtro organization_id, role = 'RESIDENTE' | WHERE organization_id AND role = 'RESIDENTE' | Sí |
+| BD no tiene nombre, numero_finca, cedula, unit, cuota_pct, payment_status, habilitado_para_asamblea, titular_orden | Ninguna migración añade esas columnas | Sí |
+| Listado completo solo en demo (localStorage) | isDemoResidentsContext() → getDemoResidents(); else → API | Sí |
+
+### 3. UI Propietarios/Residentes
+
+| Elemento | Demo | Producción (API) |
+|----------|------|------------------|
+| Columnas mostradas | Estatus, Correo, Nombre, Unidad, Nº finca, ID identidad, Cuota %, Hab. asamblea, Face ID | id., Correo, Face ID; resto "—" (no vienen de API) |
+| Agregar residente | addDemoResident (localStorage) | POST /api/admin-ph/residents |
+| Eliminar | removeDemoResident | DELETE /api/admin-ph/residents/[userId] |
+| Editar (modal) | Solo demo: updateDemoResident | No (API no tiene PATCH para campos extra) |
+| Toggle Face ID | updateDemoResidentFaceId (demo) / PUT settings (producción) | PUT /api/admin-ph/residents/[userId]/settings |
+| Exportar CSV, Plantilla, Importar | Solo demo | No disponible |
+| Restablecer listado demo | Solo demo | N/A |
+
+### 4. isDemoResidentsContext()
+
+demoResidentsStore.ts: email === "demo@assembly2.com" O orgId === "demo-organization" O orgId === DEMO_ORG_ID (11111111...). Conforme: demo usa localStorage; resto usa API/BD.
+
+## Veredicto
+
+Conforme – El listado de residentes está alineado con INSTRUCCIONES_LISTADO_RESIDENTES_BD.md. Demo usa localStorage y clave assembly_demo_residents; producción usa API con id, email, face_id_enabled. La UI adapta columnas según el origen (demo completo, producción reducido).
+
+## Nota para Database/Coder (si se amplía BD)
+
+Las instrucciones §3 indican que, para que producción tenga los mismos datos que demo, hace falta migración (nombre, numero_finca, cedula_identidad, unit, cuota_pct, payment_status, habilitado_para_asamblea, titular_orden), GET ampliado y PATCH. Actualmente no implementado; el listado demo es el de referencia.

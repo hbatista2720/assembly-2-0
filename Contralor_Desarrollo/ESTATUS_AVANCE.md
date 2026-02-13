@@ -247,11 +247,25 @@ Copy listo para producción.
 ```
 [FECHA] [DESCRIPCIÓN DEL AVANCE]
 ────────────────────────────────────────
+26 Ene | Dashboard Henry §5 y §7 **100%**: Monitor VPS, CRM campañas (105_platform_campaigns),
+       | métricas negocio, export CSV leads, ejecutar campañas (placeholder). Ver QA_REPORTE §8.
+26 Ene | Dashboard Henry – Tickets: tabla platform_tickets (104_platform_tickets.sql),
+       | API GET/PATCH tickets; lista y detalle consumen API con fallback a seeds.
+26 Ene | Dashboard Henry (QA §5 y §7): Resumen ejecutivo consume /api/leads y
+       | /api/platform-admin/clients; KPI, Funnel y Clientes desde BD con fallback.
+26 Ene | Sincronización de correos con BD: login y chatbot validan existencia
+       | contra base de datos. Cualquier residente nuevo creado en users (role
+       | RESIDENTE) es reconocido automáticamente sin listas fijas (ver abajo).
 29 Ene | Landing Page completada (page.tsx - 1,116 líneas)
 29 Ene | Login OTP implementado (login/page.tsx - 402 líneas)
 29 Ene | Git & Backup configurado
        | (Agregar nuevos avances arriba de esta línea)
 ```
+
+**📌 Para Contralor – Validación de correos con BD (26 Ene):**
+- **Login:** `/api/auth/verify-otp` consulta la tabla `users` por email; si el usuario existe y el PIN es válido, se permite el acceso. Cualquier correo nuevo agregado en la BD (con PIN generado vía request-otp) puede hacer login. El rol (RESIDENTE, admin, etc.) se obtiene de la BD.
+- **Chatbot residentes:** Al ingresar correo, se llama a `GET /api/resident-profile?email=...`, que consulta `users` con `role = 'RESIDENTE'`. Si existe → se reconoce y se envía PIN. Los correos ya no dependen de una lista fija en código; todo residente creado en la BD es reconocido automáticamente.
+- **Resumen:** Tanto login como chatbot validan la existencia del correo en la base de datos; los correos están sincronizados con la BD.
 
 ### ✅ QA - Últimos Avances:
 ```

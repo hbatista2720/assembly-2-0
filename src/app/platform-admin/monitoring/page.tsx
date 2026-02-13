@@ -85,19 +85,29 @@ export default function MonitoringPage() {
   const [forecast, setForecast] = useState<ForecastItem[]>([]);
   const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([]);
 
-  const metrics = useMemo<ResourceMetric[]>(
-    () => [
-      { label: "RAM", used: 6.7, total: 16, unit: "GB" },
-      { label: "CPU", used: 2.8, total: 8, unit: "vCPU" },
-      { label: "Disco", used: 217, total: 320, unit: "GB" },
-      { label: "Conexiones DB", used: 2200, total: 10000, unit: "" },
-    ],
-    [],
-  );
+  const defaultMetrics: ResourceMetric[] = [
+    { label: "RAM", used: 6.7, total: 16, unit: "GB" },
+    { label: "CPU", used: 2.8, total: 8, unit: "vCPU" },
+    { label: "Disco", used: 217, total: 320, unit: "GB" },
+    { label: "Conexiones DB", used: 2200, total: 10000, unit: "" },
+  ];
+  const [metrics, setMetrics] = useState<ResourceMetric[]>(defaultMetrics);
+  const [activeAssemblies, setActiveAssemblies] = useState(8);
+  const [reservedToday, setReservedToday] = useState(12);
+  const [maxReservedWeek, setMaxReservedWeek] = useState(28);
 
-  const activeAssemblies = 8;
-  const reservedToday = 12;
-  const maxReservedWeek = 28;
+  useEffect(() => {
+    fetch("/api/platform-admin/monitoring")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.metrics?.length) setMetrics(data.metrics);
+        if (typeof data?.active_assemblies === "number") setActiveAssemblies(data.active_assemblies);
+        if (typeof data?.reserved_today === "number") setReservedToday(data.reserved_today);
+        if (typeof data?.max_reserved_week === "number") setMaxReservedWeek(data.max_reserved_week);
+      })
+      .catch(() => {});
+  }, []);
+
   const recommendation = getRecommendation(activeAssemblies, reservedToday, maxReservedWeek);
 
   useEffect(() => {

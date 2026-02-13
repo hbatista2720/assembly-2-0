@@ -73,6 +73,27 @@ function LeadsContent() {
     }
   }
 
+  function exportLeadsCsv() {
+    const headers = ["email", "phone", "company_name", "lead_source", "funnel_stage", "lead_score", "lead_qualified", "created_at"];
+    const rows = leads.map((l) =>
+      headers.map((h) => {
+        const v = (l as any)[h];
+        if (v == null) return "";
+        const s = String(v);
+        return s.includes(",") || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+      }).join(",")
+    );
+    const csv = "\uFEFF" + [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `leads_${stage || "todos"}_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Descarga iniciada.");
+  }
+
   return (
     <>
       <div className="card" style={{ marginBottom: "16px" }}>
@@ -83,7 +104,7 @@ function LeadsContent() {
         <p className="muted" style={{ marginTop: "6px" }}>
           Filtra, califica y activa demos. Datos desde chatbot y CRM.
         </p>
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "12px" }}>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "12px", alignItems: "center" }}>
           <a href="/platform-admin/leads" className={`btn ${!stage ? "btn-primary" : "btn-ghost"}`}>
             Todos
           </a>
@@ -96,6 +117,14 @@ function LeadsContent() {
               {s === "new" ? "Nuevos" : s === "qualified" ? "Calificados" : s === "demo_active" ? "Demo activo" : "Convertidos"}
             </a>
           ))}
+          <button
+            type="button"
+            className="btn"
+            onClick={exportLeadsCsv}
+            disabled={loading || leads.length === 0}
+          >
+            Exportar CSV
+          </button>
         </div>
       </div>
 

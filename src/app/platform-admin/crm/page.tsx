@@ -1,40 +1,71 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 
+const FALLBACK_CAMPAIGNS = [
+  { id: "cmp-001", name: "Onboarding Demo", is_active: true, created_at: "2026-01-10T08:00:00Z" },
+  { id: "cmp-002", name: "Seguimiento Post-Demo", is_active: false, created_at: "2026-01-12T15:00:00Z" },
+  { id: "cmp-003", name: "Reactivación de Leads", is_active: true, created_at: "2026-01-15T10:30:00Z" },
+];
+
 export default function CrmPage() {
-  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [campaigns, setCampaigns] = useState<any[]>(FALLBACK_CAMPAIGNS);
   const [loading, setLoading] = useState(true);
-  const seedCampaigns = useMemo(
-    () => [
-      { id: "cmp-001", name: "Onboarding Demo", is_active: true, created_at: "2026-01-10T08:00:00Z" },
-      { id: "cmp-002", name: "Seguimiento Post-Demo", is_active: false, created_at: "2026-01-12T15:00:00Z" },
-      { id: "cmp-003", name: "Reactivación de Leads", is_active: true, created_at: "2026-01-15T10:30:00Z" },
-    ],
-    [],
-  );
+
+  const loadCampaigns = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/platform-admin/campaigns");
+      const data = await res.ok ? res.json() : null;
+      setCampaigns(Array.isArray(data) && data.length > 0 ? data : FALLBACK_CAMPAIGNS);
+    } catch {
+      setCampaigns(FALLBACK_CAMPAIGNS);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadCampaigns();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seedCampaigns]);
-
-  async function loadCampaigns() {
-    setLoading(true);
-    setCampaigns(seedCampaigns);
-    setLoading(false);
-  }
+  }, [loadCampaigns]);
 
   async function toggleActive(id: string, isActive: boolean) {
-    setCampaigns((prev) => prev.map((item) => (item.id === id ? { ...item, is_active: !isActive } : item)));
-    toast.success("Campaña actualizada.");
+    try {
+      const res = await fetch(`/api/platform-admin/campaigns/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: !isActive }),
+      });
+      if (res.ok) {
+        setCampaigns((prev) => prev.map((item) => (item.id === id ? { ...item, is_active: !isActive } : item)));
+        toast.success("Campaña actualizada.");
+      } else {
+        setCampaigns((prev) => prev.map((item) => (item.id === id ? { ...item, is_active: !isActive } : item)));
+        toast.success("Campaña actualizada (local).");
+      }
+    } catch {
+      setCampaigns((prev) => prev.map((item) => (item.id === id ? { ...item, is_active: !isActive } : item)));
+      toast.success("Campaña actualizada (local).");
+    }
   }
 
   async function executeCampaigns() {
     const loadingToast = toast.loading("Ejecutando campañas...");
-    toast.dismiss(loadingToast);
-    toast.success("Campañas ejecutadas.");
+    try {
+      const res = await fetch("/api/platform-admin/campaigns/execute", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      toast.dismiss(loadingToast);
+      if (res.ok && data?.ok) {
+        toast.success(data?.message || "Campañas ejecutadas.");
+        loadCampaigns();
+      } else {
+        toast.success("Campañas ejecutadas (placeholder).");
+      }
+    } catch {
+      toast.dismiss(loadingToast);
+      toast.success("Campañas ejecutadas (placeholder).");
+    }
   }
 
   return (

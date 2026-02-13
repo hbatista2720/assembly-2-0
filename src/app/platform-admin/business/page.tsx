@@ -1,35 +1,41 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 
-type BusinessMetric = {
-  label: string;
-  value: string;
-  note: string;
-};
+type BusinessMetric = { label: string; value: string; note: string };
+
+const DEFAULT_METRICS: BusinessMetric[] = [
+  { label: "Ingresos mensuales", value: "$18.4k", note: "+12% vs mes anterior" },
+  { label: "Clientes activos", value: "45", note: "Churn 3.1%" },
+  { label: "Asambleas realizadas", value: "128", note: "+22 este mes" },
+  { label: "Proyeccion 90 dias", value: "+18%", note: "Crecimiento esperado" },
+];
+const DEFAULT_REVENUE = [
+  { month: "Ene", value: 12 },
+  { month: "Feb", value: 14 },
+  { month: "Mar", value: 16 },
+  { month: "Abr", value: 18 },
+];
+const DEFAULT_CHURN = [
+  { label: "Activos", value: 92 },
+  { label: "Churned", value: 8 },
+];
 
 export default function BusinessMetricsPage() {
-  const metrics = useMemo<BusinessMetric[]>(
-    () => [
-      { label: "Ingresos mensuales", value: "$18.4k", note: "+12% vs mes anterior" },
-      { label: "Clientes activos", value: "45", note: "Churn 3.1%" },
-      { label: "Asambleas realizadas", value: "128", note: "+22 este mes" },
-      { label: "Proyeccion 90 dias", value: "+18%", note: "Crecimiento esperado" },
-    ],
-    [],
-  );
+  const [metrics, setMetrics] = useState<BusinessMetric[]>(DEFAULT_METRICS);
+  const [revenueByMonth, setRevenueByMonth] = useState(DEFAULT_REVENUE);
+  const [churnData, setChurnData] = useState(DEFAULT_CHURN);
 
-  const revenueByMonth = [
-    { month: "Ene", value: 12 },
-    { month: "Feb", value: 14 },
-    { month: "Mar", value: 16 },
-    { month: "Abr", value: 18 },
-  ];
-
-  const churnData = [
-    { label: "Activos", value: 92 },
-    { label: "Churned", value: 8 },
-  ];
+  useEffect(() => {
+    fetch("/api/platform-admin/business")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.metrics?.length) setMetrics(data.metrics);
+        if (data?.revenue_by_month?.length) setRevenueByMonth(data.revenue_by_month);
+        if (data?.churn_data?.length) setChurnData(data.churn_data);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <>

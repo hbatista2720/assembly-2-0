@@ -117,14 +117,31 @@ Reportar resultado en QA/QA_FEEDBACK.md (sección §J / rec 14). Referencia: Con
 
 | # | Rol | Usuario de prueba | Zona esperada tras login | Qué validar | OK / Fallo |
 |---|-----|-------------------|--------------------------|--------------|------------|
-| 1 | **Residente** | residente1@demo.assembly2.com o residente2@demo.assembly2.com | **/residentes/chat** (chatbot de residentes) | No debe ir a Dashboard Admin PH ni a Platform Admin. Debe ver el chat Lex y flujo residente. | ☐ |
-| 2 | **Admin PH** | demo@assembly2.com (PH A) | **/dashboard/admin-ph** (zona Admin PH) | Dashboard con Propietarios, Asambleas, Votaciones, etc. | ☐ |
-| 3 | **Admin PH** | admin@torresdelpacifico.com (PH B) | **/dashboard/admin-ph** | Idem. | ☐ |
-| 4 | **Platform Admin (Henry)** | henry.batista27@gmail.com | **/dashboard/platform-admin** (zona Henry) | Dashboard plataforma (monitoring, clients, leads, etc.). | ☐ |
+| 1 | **Residente** | residente1@demo.assembly2.com o residente2@demo.assembly2.com | **/residentes/chat** (chatbot de residentes) | No debe ir a Dashboard Admin PH ni a Platform Admin. Debe ver el chat Lex y flujo residente. | ✅ OK |
+| 2 | **Admin PH** | demo@assembly2.com (PH A) | **/dashboard/admin-ph** (zona Admin PH) | Dashboard con Propietarios, Asambleas, Votaciones, etc. | ✅ OK |
+| 3 | **Admin PH** | admin@torresdelpacifico.com (PH B) | **/dashboard/admin-ph** | Idem. | ✅ OK |
+| 4 | **Platform Admin (Henry)** | henry.batista27@gmail.com | **/dashboard/platform-admin** (zona Henry) | Dashboard plataforma (monitoring, clients, leads, etc.). | ✅ OK |
 
 **Criterio de aprobación:** Los 4 perfiles redirigen a la zona indicada. En especial: **ningún residente** (role RESIDENTE) debe terminar en `/dashboard/admin-ph`.
 
-**Reportar resultado en:** QA/QA_FEEDBACK.md (sección "Validación redirección por rol"). Informar al Contralor al finalizar.
+**Resultado:** ✅ **Aprobado.** QA ejecutó y reportó en QA/QA_FEEDBACK.md § "QA Validación · Redirección por rol (todos los perfiles)". Contralor actualizó informes. Siguiente: más pruebas (abajo).
+
+---
+
+## Próximas pruebas (más pruebas)
+
+Tras cerrar la validación redirección por rol, QA puede seguir con cualquiera de estas (orden sugerido por prioridad):
+
+| # | Prueba | Dónde está | Qué validar |
+|---|--------|-------------|-------------|
+| 1 | **§J + Recomendación #14** (residente con asamblea activa) | Arriba en este doc; QA_FEEDBACK ya tiene 4/4 en código | En navegador: mensaje bienvenida, correo en chat, card Votación, badge "Asamblea activa". |
+| 2 | **Chatbot Gemini** (texto libre con residente validado) | Arriba § "Prueba sugerida: Chatbot Gemini" | "¿Qué más hay?", "ya estoy registrado" → respuestas coherentes; no "No encuentro ese correo". GEMINI_API_KEY. |
+| 3 | **§K** – Mensaje y botones /residentes/chat | Arriba § "Hallazgo Marketing §K" | Tras cerrar sesión: mensaje "chatbot para asambleas de PH"; solo flujo residente (no 4 perfiles). |
+| 4 | **Validación demo por perfil** (asamblea activa/programada/pre-registro) | Arriba § "Hallazgo Marketing – Validación demo chatbot por perfil" | Botones según contexto; mensaje "No hay asambleas programadas" cuando aplique. |
+| 5 | **PH A y PH B assembly-context** | Arriba § "Prueba: PH A y PH B con assembly-context" | GET /api/assembly-context con organization_id y ?profile= → context activa/programada/sin_asambleas. |
+| 6 | **Revalidación §E** (abandono de sala) | ESTATUS_AVANCE; tabla resident_abandon_events | Cuando la tabla exista en entorno: API y flujo de abandonos. Opcional: botón Cerrar sesión, alerta, vista Admin PH. |
+
+Reportar cada resultado en QA/QA_FEEDBACK.md en la sección correspondiente. Informar al Contralor al finalizar cada una.
 
 ---
 

@@ -17,6 +17,8 @@ Esta carpeta se monta en el contenedor Postgres como **`/docker-entrypoint-initd
 | **`seeds_residentes_demo.sql`** | **Usuarios residentes demo** (residente1@…residente5@demo.assembly2.com, org demo). Entregado por Database. |
 | **`seeds_leads_demo.sql`** | **Leads demo para Funnel** (5 leads, etapas: new, qualified, demo_active, converted). Para validar Gestión de Leads. |
 | `98_platform_admin_clients.sql` | Tabla `platform_client_status` (estado Activo/Suspendido/Cancelado por organización) para dashboard Henry. |
+| `104_platform_tickets.sql` | Tabla `platform_tickets` y seeds (TKT-2026-021, 019, 017) para Tickets inteligentes. Ref: QA_REPORTE_DASHBOARD_HENRY §5 y §7. |
+| `105_platform_campaigns.sql` | Tabla `platform_campaigns` y seeds para CRM campañas (Dashboard Henry). |
 
 ## Ejecución manual (instancia ya creada)
 

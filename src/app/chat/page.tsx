@@ -10,12 +10,18 @@ const DEMO_RESIDENT_EMAILS = [
   "residente3@demo.assembly2.com",
   "residente4@demo.assembly2.com",
   "residente5@demo.assembly2.com",
+  "residente1@torresdelpacifico.com",
+  "residente2@torresdelpacifico.com",
+  "residente3@torresdelpacifico.com",
 ];
 
 const RESIDENT_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const ABANDON_CONFIRM_PHRASE = "Si abandonar";
 
-const RESIDENTES_CHAT_PROMPT = "Hola, soy Lex. Soy tu asistente para asambleas de PH. ¿Cuál es el correo que tienes registrado en tu PH?";
+const RESIDENTES_CHAT_PROMPT = "Soy Lex, chatbot para asambleas de PH (propiedades horizontales). ¿Cuál es el correo que tienes registrado en tu PH?";
+/** Saludo visible al abrir el chat tipo landing. El prompt de config no se muestra al usuario. */
+const LANDING_CHAT_GREETING =
+  "Hola, soy Lex, asistente de Assembly 2.0. ¿Qué perfil te describe mejor: Administrador PH, Junta Directiva o solo demo? Escribe o elige una opción abajo.";
 
 export default function ChatPage() {
   const pathname = usePathname();
@@ -26,7 +32,10 @@ export default function ChatPage() {
   const [residentEmailValidated, setResidentEmailValidated] = useState(false);
   type ChatCard = "votacion" | "asambleas" | "calendario" | "tema" | "poder";
   const [chatMessages, setChatMessages] = useState<Array<{ from: "bot" | "user"; text: string; card?: ChatCard }>>([]);
+  const MAX_VOTE_MODIFICATIONS = 2;
   const [residentVoteSent, setResidentVoteSent] = useState(false);
+  const [residentLastVote, setResidentLastVote] = useState<"Sí" | "No" | "Abstengo" | null>(null);
+  const [residentVoteModifyCount, setResidentVoteModifyCount] = useState(0);
   const [residentVoteParticiparClicked, setResidentVoteParticiparClicked] = useState(false);
   const [poderSubmitted, setPoderSubmitted] = useState(false);
   const [hasPendingPowerRequest, setHasPendingPowerRequest] = useState(false);
@@ -38,10 +47,9 @@ export default function ChatPage() {
   const [poderVigencia, setPoderVigencia] = useState("");
   type AssemblyContext = "activa" | "programada" | "sin_asambleas";
   const [assemblyContext, setAssemblyContext] = useState<AssemblyContext>("activa");
-  const [webPrompt] = useState("Hola, soy Lex. ¿Qué perfil tienes?");
   type ResidentProfile = { organization_id?: string; organization_name: string; unit: string | null; resident_name: string; email: string } | null;
   const [residentProfile, setResidentProfile] = useState<ResidentProfile>(null);
-  const [temaActivo, setTemaActivo] = useState<{ title?: string; description?: string } | null>(null);
+  const [temaActivo, setTemaActivo] = useState<{ title?: string; description?: string; status?: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
   const [abandonConfirmPhrase, setAbandonConfirmPhrase] = useState("");
@@ -61,12 +69,10 @@ export default function ChatPage() {
     fetch("/api/chatbot/config")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        const webConfig = Array.isArray(data) ? data.find((item: { bot_name: string }) => item.bot_name === "web") : null;
-        const prompt = webConfig?.prompts?.landing || webPrompt;
-        setChatMessages([{ from: "bot", text: prompt }]);
+        setChatMessages([{ from: "bot", text: LANDING_CHAT_GREETING }]);
       })
       .catch(() => {
-        setChatMessages([{ from: "bot", text: webPrompt }]);
+        setChatMessages([{ from: "bot", text: LANDING_CHAT_GREETING }]);
       });
   }, [isResidentesChat]);
 
@@ -122,7 +128,7 @@ export default function ChatPage() {
     fetch("/api/tema-activo")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data?.title) setTemaActivo({ title: data.title, description: data.description });
+        if (data?.title) setTemaActivo({ title: data.title, description: data.description, status: data?.status });
       })
       .catch(() => {});
   }, [chatRole, residentEmailValidated]);
@@ -229,6 +235,33 @@ export default function ChatPage() {
     }
 
     if (chatRole === "residente" && residentEmailValidated && chatStep >= 8) {
+      const isModificar = /^\s*modificar(\s+voto)?\s*$/i.test(trimmed.trim());
+      if (isModificar && residentVoteSent && residentLastVote) {
+        setChatInput("");
+        pushUserMessage(trimmed.trim());
+        if (residentVoteModifyCount >= MAX_VOTE_MODIFICATIONS) {
+          pushBotMessage("Ya alcanzaste el límite de 2 correcciones de voto. No puedes modificar nuevamente.");
+          return;
+        }
+        const votacionAbierta = temaActivo?.status === "Abierto";
+        if (votacionAbierta) {
+          setResidentVoteSent(false);
+          setResidentLastVote(null);
+          setResidentVoteModifyCount((c) => c + 1);
+          const remaining = MAX_VOTE_MODIFICATIONS - residentVoteModifyCount - 1;
+          if (remaining === 1) {
+            pushBotMessage("Tu voto fue anulado. Puedes votar de nuevo. Te queda 1 oportunidad para modificar tu voto.");
+          } else if (remaining === 0) {
+            pushBotMessage("Tu voto fue anulado. Puedes votar de nuevo. Esta fue tu última corrección permitida.");
+          } else {
+            pushBotMessage("Tu voto fue anulado. Puedes votar de nuevo con los botones de arriba.");
+          }
+        } else {
+          pushBotMessage("La votación ya fue cerrada por el administrador. No puedes modificar tu voto.");
+        }
+        return;
+      }
+
       setChatInput("");
       const email = typeof window !== "undefined" ? localStorage.getItem("assembly_resident_email") || "" : "";
       const history = chatMessages.slice(-12).map((m) => ({ role: m.from === "user" ? "user" : "model", text: m.text }));
@@ -305,6 +338,33 @@ export default function ChatPage() {
         return;
       }
 
+      const proceedToOtp = () => {
+        setResidentEmailPending(emailLower);
+        setChatStep(4);
+        setChatInput("");
+        fetch("/api/auth/request-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: emailLower }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.success) {
+              pushBotMessage(`Te enviamos un PIN a ${emailLower}. Revisa tu bandeja (y spam) e ingrésalo aquí.`);
+              if (data?.otp) pushBotMessage(`Código de prueba (modo local): ${data.otp}`);
+            } else {
+              pushBotMessage(data?.error || "No se pudo enviar el PIN. Intenta más tarde.");
+              setResidentEmailPending(null);
+              setChatStep(3);
+            }
+          })
+          .catch(() => {
+            pushBotMessage("No se pudo enviar el PIN. Intenta más tarde.");
+            setResidentEmailPending(null);
+            setChatStep(3);
+          });
+      };
+
       let recognized = false;
       try {
         const existingUsers = JSON.parse(localStorage.getItem("assembly_users") || "[]") as Array<{ email: string }>;
@@ -312,35 +372,26 @@ export default function ChatPage() {
       } catch {
         // ignore
       }
-      if (!recognized && DEMO_RESIDENT_EMAILS.includes(emailLower)) recognized = true;
-      if (!recognized) {
-        pushBotMessage("No encuentro ese correo. Contacta al administrador de tu PH para validar. Puedes escribir otro correo para reintentar.");
-        setChatInput("");
+      if (recognized) {
+        proceedToOtp();
         return;
       }
-      setResidentEmailPending(emailLower);
-      setChatStep(4);
-      setChatInput("");
-      fetch("/api/auth/request-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: emailLower }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data?.success) {
-            pushBotMessage(`Te enviamos un PIN a ${emailLower}. Revisa tu bandeja (y spam) e ingrésalo aquí.`);
-            if (data?.otp) pushBotMessage(`Código de prueba (modo local): ${data.otp}`);
-          } else {
-            pushBotMessage(data?.error || "No se pudo enviar el PIN. Intenta más tarde.");
-            setResidentEmailPending(null);
-            setChatStep(3);
+      if (DEMO_RESIDENT_EMAILS.includes(emailLower)) {
+        proceedToOtp();
+        return;
+      }
+      fetch(`/api/resident-profile?email=${encodeURIComponent(emailLower)}`)
+        .then((res) => {
+          if (res.ok) {
+            proceedToOtp();
+            return;
           }
+          pushBotMessage("No encuentro ese correo. Contacta al administrador de tu PH para validar. Puedes escribir otro correo para reintentar.");
+          setChatInput("");
         })
         .catch(() => {
-          pushBotMessage("No se pudo enviar el PIN. Intenta más tarde.");
-          setResidentEmailPending(null);
-          setChatStep(3);
+          pushBotMessage("No encuentro ese correo. Contacta al administrador de tu PH para validar. Puedes escribir otro correo para reintentar.");
+          setChatInput("");
         });
       return;
     }
@@ -352,6 +403,7 @@ export default function ChatPage() {
 
   return (
     <main
+      className="auth-root"
       style={{
         minHeight: "100vh",
         background: "radial-gradient(circle at 30% 20%, rgba(124, 58, 237, 0.25), transparent 55%), rgba(2,6,23,0.92)",
@@ -528,8 +580,10 @@ export default function ChatPage() {
                                   style={{ borderRadius: "999px", padding: "8px 14px" }}
                                   onClick={() => {
                                     setResidentVoteSent(true);
+                                    setResidentLastVote(op);
                                     pushUserMessage(`Voto: ${op}`);
-                                    pushBotMessage("Tu voto quedó registrado con trazabilidad legal.");
+                                    pushBotMessage(`Tu voto ya fue aplicado. Voto aplicado: ${op}.`);
+                                    pushBotMessage('Para revertir tu voto escribe «modificar». Solo puedes modificar mientras la votación esté abierta. Máximo 2 correcciones permitidas.');
                                   }}
                                 >
                                   {op}
@@ -537,7 +591,21 @@ export default function ChatPage() {
                               ))}
                             </div>
                           ) : (
-                            <span className="muted" style={{ fontSize: "12px" }}>Tu voto fue registrado.</span>
+                            <>
+                              <p style={{ margin: "0 0 4px", fontSize: "13px" }}>Tu voto ya fue aplicado.</p>
+                              <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: 600 }}>Voto aplicado: {residentLastVote ?? "—"}.</p>
+                              <p className="muted" style={{ fontSize: "12px", margin: 0 }}>
+                                Escribe «modificar» para revertir tu voto (solo mientras la votación esté abierta). Máximo 2 correcciones.
+                              </p>
+                              <p style={{ fontSize: "12px", margin: "8px 0 0", color: "#f59e0b" }}>
+                                Correcciones usadas: {residentVoteModifyCount} de {MAX_VOTE_MODIFICATIONS}.
+                              </p>
+                              {residentVoteModifyCount >= MAX_VOTE_MODIFICATIONS && (
+                                <p style={{ fontSize: "12px", margin: "4px 0 0", color: "#ef4444", fontWeight: 600 }}>
+                                  Ya no puedes modificar tu voto.
+                                </p>
+                              )}
+                            </>
                           )}
                         </>
                       )}

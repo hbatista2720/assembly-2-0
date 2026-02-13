@@ -35,7 +35,7 @@ export default function DemoBanner() {
           Los datos son de ejemplo y se reinician cada 24h.
         </span>
       </div>
-      <a href="/pricing" className="btn btn-primary" style={{ flexShrink: 0 }}>
+      <a href="/dashboard/admin-ph/subscription" className="btn btn-primary" style={{ flexShrink: 0 }}>
         Subir a plan real
       </a>
     </div>

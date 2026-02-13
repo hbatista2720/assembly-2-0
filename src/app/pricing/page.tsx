@@ -1,12 +1,24 @@
 "use client";
 
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import PricingSelector from "../../components/pricing/PricingSelector";
 import ROICalculator from "../../components/pricing/ROICalculator";
 import EnterprisePlanCard from "../../components/pricing/EnterprisePlanCard";
 
-export default function PricingPage() {
+function PricingContent() {
+  const searchParams = useSearchParams();
+  const fromDashboardPh = searchParams.get("from") === "dashboard-admin-ph";
+
   return (
     <main className="container">
+      {fromDashboardPh && (
+        <div style={{ marginBottom: "16px" }}>
+          <a className="btn btn-ghost" href="/dashboard/admin-ph">
+            ← Volver al Dashboard PH
+          </a>
+        </div>
+      )}
       <section className="card" style={{ padding: "28px", marginBottom: "16px" }}>
         <span className="pill">Precios v4.0</span>
         <h1 style={{ margin: "12px 0 8px" }}>Planes y suscripciones</h1>
@@ -27,5 +39,19 @@ export default function PricingPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={
+      <main className="container">
+        <div className="card" style={{ padding: "28px", marginBottom: "16px" }}>
+          <p className="muted">Cargando…</p>
+        </div>
+      </main>
+    }>
+      <PricingContent />
+    </Suspense>
   );
 }

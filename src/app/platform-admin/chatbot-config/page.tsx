@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
-import ChatbotPreview from "../../../components/chatbot/ChatbotPreview";
+import ChatbotPreview, { type TestProfile } from "../../../components/chatbot/ChatbotPreview";
 
 const TELEGRAM_BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "";
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "test";
@@ -41,6 +41,7 @@ export default function ChatbotConfigPage() {
   const [saving, setSaving] = useState(false);
   const [baseUrl, setBaseUrl] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewProfile, setPreviewProfile] = useState<TestProfile>("residente");
 
   useEffect(() => {
     if (typeof window !== "undefined") setBaseUrl(window.location.origin);
@@ -189,7 +190,10 @@ export default function ChatbotConfigPage() {
                   <button
                     type="button"
                     className="btn btn-primary"
-                    onClick={() => setPreviewOpen(true)}
+                    onClick={() => {
+                      setPreviewProfile("residente");
+                      setPreviewOpen(true);
+                    }}
                   >
                     Probar chatbot (ventana emergente)
                   </button>
@@ -237,6 +241,66 @@ export default function ChatbotConfigPage() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: "16px" }}>
+        <h3 style={{ marginTop: 0 }}>3 tests de prueba (sincronizados con el chatbot real)</h3>
+        <p className="muted" style={{ marginBottom: "12px" }}>
+          Prueba cada flujo desde la vista previa o abre el enlace en nueva pestaña. La vista previa usa las mismas preguntas y lógica que la landing.
+        </p>
+        <div className="grid grid-3" style={{ gap: "12px" }}>
+          <div className="card" style={{ padding: "16px" }}>
+            <span className="pill" style={{ marginBottom: "8px" }}>Test 1</span>
+            <strong>Residente</strong>
+            <p className="muted" style={{ margin: "8px 0", fontSize: "13px" }}>
+              Correo de prueba: <code style={{ fontSize: "12px" }}>residente2@demo.assembly2.com</code>. Flujo: correo → validación BD → PIN → chat residente.
+            </p>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button type="button" className="btn btn-primary" onClick={() => { setPreviewProfile("residente"); setPreviewOpen(true); }}>
+                Probar en vista previa
+              </button>
+              {baseUrl && (
+                <a className="btn btn-ghost" href={baseUrl + "/residentes/chat"} target="_blank" rel="noopener noreferrer">
+                  Abrir chat residente
+                </a>
+              )}
+            </div>
+          </div>
+          <div className="card" style={{ padding: "16px" }}>
+            <span className="pill" style={{ marginBottom: "8px" }}>Test 2</span>
+            <strong>Administrador existente</strong>
+            <p className="muted" style={{ margin: "8px 0", fontSize: "13px" }}>
+              Correo de prueba: <code style={{ fontSize: "12px" }}>admin@torresdelpacifico.com</code>. Flujo: landing → Admin PH → correo → PIN → dashboard Admin PH.
+            </p>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button type="button" className="btn btn-primary" onClick={() => { setPreviewProfile("admin"); setPreviewOpen(true); }}>
+                Probar en vista previa
+              </button>
+              {baseUrl && (
+                <a className="btn btn-ghost" href={baseUrl + "/?openChat=1"} target="_blank" rel="noopener noreferrer">
+                  Abrir landing
+                </a>
+              )}
+            </div>
+          </div>
+          <div className="card" style={{ padding: "16px" }}>
+            <span className="pill" style={{ marginBottom: "8px" }}>Test 3</span>
+            <strong>Cliente nuevo (demo)</strong>
+            <p className="muted" style={{ margin: "8px 0", fontSize: "13px" }}>
+              Flujo: landing → Demo / Junta → correo → PIN → acceso demo. Sin usuario previo en BD.
+            </p>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button type="button" className="btn btn-primary" onClick={() => { setPreviewProfile("demo"); setPreviewOpen(true); }}>
+                Probar en vista previa
+              </button>
+              {baseUrl && (
+                <a className="btn btn-ghost" href={baseUrl + "/?openChat=1"} target="_blank" rel="noopener noreferrer">
+                  Abrir landing
+                </a>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -412,7 +476,7 @@ export default function ChatbotConfigPage() {
           onClick={() => setPreviewOpen(false)}
         >
           <div onClick={(e) => e.stopPropagation()}>
-            <ChatbotPreview onClose={() => setPreviewOpen(false)} />
+            <ChatbotPreview onClose={() => setPreviewOpen(false)} initialProfile={previewProfile} />
           </div>
         </div>
       )}
