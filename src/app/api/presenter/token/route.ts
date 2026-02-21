@@ -46,8 +46,9 @@ export async function POST(request: NextRequest) {
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
   if (!isUuid) {
+    const demoUrl = `/presenter/demo-token${assemblyId ? `?assemblyId=${encodeURIComponent(assemblyId)}` : ""}`;
     return NextResponse.json({
-      presenter_url: "/presenter/demo-token",
+      presenter_url: demoUrl,
       expires_at: expiresAt.toISOString(),
       warning: "assemblyId no es UUID, token en modo demo.",
     });

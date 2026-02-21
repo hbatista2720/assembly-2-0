@@ -139,13 +139,6 @@ export default function MonitorQuorumListPage() {
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-        <WidgetCard
-          title="Demo"
-          subtitle="Tablero quórum con datos de ejemplo"
-          href="/dashboard/admin-ph/monitor/quorum/demo"
-          variant="demo"
-          assembly={null}
-        />
         {assemblies.length === 0 ? (
           <div
             style={{
@@ -156,15 +149,26 @@ export default function MonitorQuorumListPage() {
               border: "1px solid rgba(148, 163, 184, 0.2)",
             }}
           >
-            <p className="muted" style={{ margin: "0 0 16px" }}>
-              No hay asambleas. Cree una desde el módulo Asambleas.
+            <p className="muted" style={{ margin: "0 0 8px" }}>
+              No hay asambleas. El Monitor solo muestra datos de una asamblea.
+            </p>
+            <p className="muted" style={{ margin: "0 0 16px", fontSize: "13px" }}>
+              Cree al menos una asamblea en el módulo Asambleas para ver aquí el tablero de unidades.
             </p>
             <Link className="btn btn-primary" href="/dashboard/admin-ph/assemblies">
               Ir a Asambleas
             </Link>
           </div>
         ) : (
-          sortedAssemblies.map((a) => (
+          <>
+          <WidgetCard
+            title="Demo"
+            subtitle="Tablero quórum con datos de ejemplo"
+            href="/dashboard/admin-ph/monitor/quorum/demo"
+            variant="demo"
+            assembly={null}
+          />
+          {sortedAssemblies.map((a) => (
             <WidgetCard
               key={a.id}
               title={a.title}
@@ -173,7 +177,8 @@ export default function MonitorQuorumListPage() {
               variant={a.id === proximaId ? "proxima" : "default"}
               assembly={a}
             />
-          ))
+          ))}
+          </>
         )}
       </div>
     </div>

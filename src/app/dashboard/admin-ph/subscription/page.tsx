@@ -21,6 +21,10 @@ export default function SubscriptionPage() {
 
   return (
     <>
+      <h2 style={{ marginTop: 0, marginBottom: "8px" }}>Modificar suscripciones</h2>
+      <p className="muted" style={{ marginBottom: "16px" }}>
+        Mismo diseño en todo el dashboard Admin PH. Lo que varía es el plan: <strong>Plan Demo</strong> (límites de ejemplo) o <strong>planes de pago único / suscripción</strong> (Evento Único, Standard, Multi-PH, etc.).
+      </p>
       <div className="card">
         <h2 style={{ marginTop: 0, marginBottom: "8px" }}>Tu plan actual</h2>
         <p className="muted" style={{ margin: "0 0 12px" }}>
@@ -55,7 +59,7 @@ export default function SubscriptionPage() {
       <p className="muted" style={{ marginBottom: "16px" }}>
         Ideal para 1 o 2 asambleas al año. Sin suscripción mensual. Los mismos planes que en la landing.
       </p>
-      <div className="pricing-grid" style={{ marginBottom: "28px" }}>
+      <div className="pricing-grid pricing-grid--pago-unico" style={{ marginBottom: "28px" }}>
         {PLANES_PAGO_UNICO.map((plan) => (
           <PlanCard key={plan.id} plan={plan} planActualNombre={planActualNombre} />
         ))}

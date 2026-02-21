@@ -4,18 +4,19 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import {
   getDemoResidents,
-  addDemoResident,
-  removeDemoResident,
   updateDemoResidentFaceId,
   updateDemoResident,
   setDemoResidentHabilitadoParaAsamblea,
+  updateDemoResidentByEmail,
+  setDemoResidentHabilitadoParaAsambleaByEmail,
+  updateDemoResidentFaceIdByEmail,
+  ensureDemoResident,
   exportDemoResidentsCsv,
   getImportTemplateCsv,
   importDemoResidentsFromCsv,
   getResidentsByUnit,
   updateUnitTemplate,
   isDemoResidentsContext,
-  resetDemoResidents,
   DEMO_RESIDENTS_LIMIT,
   DEMO_PH_NAME,
 } from "../../../../lib/demoResidentsStore";
@@ -38,9 +39,35 @@ type Resident = {
   assembly_activity?: string;
   titular_orden?: 1 | 2;
   habilitado_para_asamblea?: boolean;
+  /** Ocupada | Alquilada | Sin inquilino */
+  estatus_unidad?: "Ocupada" | "Alquilada" | "Sin inquilino";
 };
 
 const DEFAULT_RESIDENT_LIMIT = 250;
+/** UUID de la organización demo (usado en pestaña Poderes para cargar config y solicitudes desde BD). */
+const DEMO_ORG_ID = "11111111-1111-1111-1111-111111111111";
+
+type PowerRequestItem = {
+  id: string;
+  resident_email: string;
+  apoderado_tipo: string;
+  apoderado_email: string;
+  apoderado_nombre: string;
+  apoderado_cedula?: string;
+  apoderado_telefono?: string;
+  vigencia?: string;
+  status: string;
+  created_at: string;
+};
+
+/** 5 solicitudes de poder demo para simular recepción de datos y aprobar/rechazar. */
+const DEMO_POWER_REQUESTS: PowerRequestItem[] = [
+  { id: "demo-power-1", resident_email: "residente5@demo.assembly2.com", apoderado_tipo: "titular_mayor_edad", apoderado_email: "maria.garcia@email.com", apoderado_nombre: "María García López", apoderado_cedula: "1.234.567-8", apoderado_telefono: "+56 9 8765 4321", vigencia: "Asamblea 2026-01", status: "PENDING", created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+  { id: "demo-power-2", resident_email: "residente12@demo.assembly2.com", apoderado_tipo: "residente_mismo_ph", apoderado_email: "carlos.vega@email.com", apoderado_nombre: "Carlos Vega Soto", apoderado_cedula: "9.876.543-2", apoderado_telefono: "+56 9 1234 5678", vigencia: "Una asamblea", status: "PENDING", created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+  { id: "demo-power-3", resident_email: "residente8@demo.assembly2.com", apoderado_tipo: "titular_mayor_edad", apoderado_email: "ana.rodriguez@email.com", apoderado_nombre: "Ana Rodríguez", apoderado_cedula: "12.345.678-9", vigencia: "Hasta dic 2026", status: "APPROVED", created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+  { id: "demo-power-4", resident_email: "residente20@demo.assembly2.com", apoderado_tipo: "residente_mismo_ph", apoderado_email: "pedro.silva@email.com", apoderado_nombre: "Pedro Silva", apoderado_telefono: "+56 9 5555 1234", status: "REJECTED", created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() },
+  { id: "demo-power-5", resident_email: "residente3@demo.assembly2.com", apoderado_tipo: "titular_mayor_edad", apoderado_email: "lucia.mendoza@email.com", apoderado_nombre: "Lucía Mendoza Fernández", apoderado_cedula: "11.222.333-4", apoderado_telefono: "+56 9 7777 8888", vigencia: "Asamblea ordinaria 2026", status: "PENDING", created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString() },
+];
 
 const iconBtn = { width: 16, height: 16, flexShrink: 0 };
 const IconEdit = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={iconBtn} aria-hidden><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>;
@@ -61,6 +88,7 @@ export default function OwnersPage() {
   const [editModalForm, setEditModalForm] = useState({
     email: "", nombre: "", unit: "", cuota_pct: "", numero_finca: "", cedula_identidad: "",
     payment_status: "al_dia" as "al_dia" | "mora", face_id_enabled: true, habilitado_para_asamblea: false,
+    estatus_unidad: "Ocupada" as "Ocupada" | "Alquilada" | "Sin inquilino",
   });
   const [savingEditModal, setSavingEditModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -72,6 +100,17 @@ export default function OwnersPage() {
   const [unitForm, setUnitForm] = useState({ titular_1_email: "", titular_2_email: "", habilitado_titular_1: true, habilitado_titular_2: false });
   const [savingUnit, setSavingUnit] = useState(false);
   const [activeTab, setActiveTab] = useState<"residents" | "powers">("residents");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkApplying, setBulkApplying] = useState(false);
+  const [powersEnabled, setPowersEnabled] = useState(false);
+  const [powerRequests, setPowerRequests] = useState<PowerRequestItem[]>([]);
+  const [loadingPowers, setLoadingPowers] = useState(false);
+  const [updatingPowerId, setUpdatingPowerId] = useState<string | null>(null);
+  const [savingPowersConfig, setSavingPowersConfig] = useState(false);
+  const [deleteResidentPending, setDeleteResidentPending] = useState<{ userId: string; email: string } | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { limits } = useUpgradeBanner(subscriptionId);
 
@@ -83,30 +122,130 @@ export default function OwnersPage() {
     setIsDemo(isDemoResidentsContext());
   }, []);
 
-  useEffect(() => {
-    if (isDemo) {
-      try {
-        setResidents(getDemoResidents());
-        setError("");
-      } catch {
-        setError("Error al cargar residentes demo.");
-        setResidents([]);
-      }
-      setLoading(false);
-      return;
+  const orgIdForResidents = isDemo ? DEMO_ORG_ID : organizationId;
+
+  /** En demo, fusiona la lista de la API con el store local para que payment_status, nombre, unit, etc. se muestren y persistan al cambiar estatus. */
+  const mergeResidentsWithDemoStore = (
+    apiList: { user_id: string; email: string; face_id_enabled?: boolean }[]
+  ): Resident[] => {
+    if (orgIdForResidents !== DEMO_ORG_ID || typeof window === "undefined") {
+      return apiList.map((r) => ({
+        user_id: r.user_id,
+        email: r.email,
+        face_id_enabled: r.face_id_enabled !== false,
+      }));
     }
-    if (!organizationId) {
+    const storeList = getDemoResidents();
+    return apiList.map((r) => {
+      const stored = storeList.find(
+        (s) =>
+          (s.email ?? "").toLowerCase() === (r.email ?? "").toLowerCase() || s.user_id === r.user_id
+      );
+      return {
+        user_id: r.user_id,
+        email: r.email,
+        face_id_enabled: stored?.face_id_enabled ?? r.face_id_enabled !== false,
+        nombre: stored?.nombre,
+        numero_finca: stored?.numero_finca,
+        cedula_identidad: stored?.cedula_identidad,
+        unit: stored?.unit,
+        cuota_pct: stored?.cuota_pct,
+        payment_status: stored?.payment_status ?? "al_dia",
+        habilitado_para_asamblea: stored?.habilitado_para_asamblea,
+        estatus_unidad: stored?.estatus_unidad,
+      };
+    });
+  };
+
+  /** En demo: lista de los 50 residentes del store para mostrar de inmediato (evita 0/50) y para limitar a 50. */
+  const getDemoResidentsAsResidentList = (): Resident[] => {
+    if (typeof window === "undefined") return [];
+    return getDemoResidents().map((d) => ({
+      user_id: d.user_id,
+      email: d.email ?? "",
+      face_id_enabled: d.face_id_enabled ?? true,
+      nombre: d.nombre,
+      numero_finca: d.numero_finca,
+      cedula_identidad: d.cedula_identidad,
+      unit: d.unit,
+      cuota_pct: d.cuota_pct,
+      payment_status: (d.payment_status ?? "al_dia") as "al_dia" | "mora",
+      habilitado_para_asamblea: d.habilitado_para_asamblea,
+      estatus_unidad: d.estatus_unidad,
+    }));
+  };
+
+  const capDemoResidents = (merged: Resident[]): Resident[] => {
+    if (orgIdForResidents !== DEMO_ORG_ID || merged.length <= DEMO_RESIDENTS_LIMIT) return merged;
+    const storeOrder = getDemoResidents().map((r) => (r.email ?? "").toLowerCase());
+    return [...merged]
+      .sort((a, b) => {
+        const ai = storeOrder.indexOf((a.email ?? "").toLowerCase());
+        const bi = storeOrder.indexOf((b.email ?? "").toLowerCase());
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+      })
+      .slice(0, DEMO_RESIDENTS_LIMIT);
+  };
+
+  useEffect(() => {
+    if (!orgIdForResidents) {
       setLoading(false);
       return;
     }
     setError("");
     setLoading(true);
+    if (orgIdForResidents === DEMO_ORG_ID && typeof window !== "undefined") {
+      setResidents(getDemoResidentsAsResidentList());
+    }
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
-    fetch(`/api/admin-ph/residents?organization_id=${encodeURIComponent(organizationId)}`, { signal: controller.signal })
+    fetch(`/api/admin-ph/residents?organization_id=${encodeURIComponent(orgIdForResidents)}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Error al cargar"))))
-      .then((data) => {
-        setResidents(Array.isArray(data?.residents) ? data.residents : []);
+      .then(async (data) => {
+        const list = Array.isArray(data?.residents) ? data.residents : [];
+        const apiEmails = new Set(list.map((r: { email: string }) => (r.email || "").toLowerCase()));
+        let merged = mergeResidentsWithDemoStore(
+          list.map((r: { user_id: string; email: string; face_id_enabled?: boolean }) => ({
+            user_id: r.user_id,
+            email: r.email,
+            face_id_enabled: r.face_id_enabled,
+          }))
+        );
+        merged = capDemoResidents(merged);
+        if (orgIdForResidents !== DEMO_ORG_ID || merged.length > 0) setResidents(merged);
+        if (orgIdForResidents === DEMO_ORG_ID && orgIdForResidents) {
+          try {
+            const storeList = getDemoResidents();
+            const storeEmails = [...new Set(storeList.map((r) => (r.email || "").trim().toLowerCase()).filter((e) => e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)))];
+            const toSync = storeEmails.filter((e) => !apiEmails.has(e));
+            if (toSync.length > 0) {
+              await Promise.all(
+                toSync.map((email) =>
+                  fetch("/api/admin-ph/residents", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ organization_id: orgIdForResidents, email }),
+                  })
+                )
+              );
+              const res2 = await fetch(`/api/admin-ph/residents?organization_id=${encodeURIComponent(orgIdForResidents)}`);
+              const data2 = res2.ok ? await res2.json() : null;
+              if (Array.isArray(data2?.residents)) {
+                let merged2 = mergeResidentsWithDemoStore(
+                  data2.residents.map((r: { user_id: string; email: string; face_id_enabled?: boolean }) => ({
+                    user_id: r.user_id,
+                    email: r.email,
+                    face_id_enabled: r.face_id_enabled,
+                  }))
+                );
+                merged2 = capDemoResidents(merged2);
+                setResidents(merged2);
+              }
+            }
+          } catch {
+            // ignorar errores de sincronización
+          }
+        }
       })
       .catch((err) => {
         if (err.name !== "AbortError") setError("No se pudieron cargar los residentes.");
@@ -119,40 +258,134 @@ export default function OwnersPage() {
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [organizationId, isDemo]);
+  }, [orgIdForResidents]);
+
+  useEffect(() => {
+    if (!orgIdForResidents) return;
+    const onResidentsChanged = () => {
+      fetch(`/api/admin-ph/residents?organization_id=${encodeURIComponent(orgIdForResidents)}`)
+        .then((res) => (res.ok ? res.json() : Promise.reject()))
+        .then((data) => {
+          const list = Array.isArray(data?.residents) ? data.residents : [];
+          let merged = mergeResidentsWithDemoStore(
+            list.map((r: { user_id: string; email: string; face_id_enabled?: boolean }) => ({
+              user_id: r.user_id,
+              email: r.email,
+              face_id_enabled: r.face_id_enabled,
+            }))
+          );
+          merged = capDemoResidents(merged);
+          setResidents(merged);
+        })
+        .catch(() => {});
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("admin-ph-residents-changed", onResidentsChanged);
+      return () => window.removeEventListener("admin-ph-residents-changed", onResidentsChanged);
+    }
+  }, [orgIdForResidents]);
+
+  const orgIdForPowers = isDemo ? DEMO_ORG_ID : organizationId;
+  useEffect(() => {
+    if (activeTab !== "powers" || !orgIdForPowers) return;
+    setLoadingPowers(true);
+    Promise.all([
+      fetch(`/api/admin-ph/powers-config?organization_id=${encodeURIComponent(orgIdForPowers)}`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/admin-ph/power-requests?organization_id=${encodeURIComponent(orgIdForPowers)}`).then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([config, list]) => {
+        if (config?.powers_enabled !== undefined) setPowersEnabled(config.powers_enabled);
+        if (isDemo) {
+          setPowerRequests(DEMO_POWER_REQUESTS);
+        } else if (Array.isArray(list?.requests)) {
+          setPowerRequests(list.requests);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPowers(false));
+  }, [activeTab, orgIdForPowers, isDemo]);
+
+  const handleTogglePowersEnabled = () => {
+    if (!orgIdForPowers || savingPowersConfig) return;
+    setSavingPowersConfig(true);
+    fetch("/api/admin-ph/powers-config", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ organization_id: orgIdForPowers, powers_enabled: !powersEnabled }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.success) setPowersEnabled(data.powers_enabled);
+      })
+      .finally(() => setSavingPowersConfig(false));
+  };
+
+  const handlePowerRequestAction = (requestId: string, status: "APPROVED" | "REJECTED") => {
+    if (!orgIdForPowers || updatingPowerId) return;
+    setUpdatingPowerId(requestId);
+    if (isDemo) {
+      setPowerRequests((prev) => prev.map((r) => (r.id === requestId ? { ...r, status } : r)));
+      setUpdatingPowerId(null);
+      return;
+    }
+    fetch(`/api/admin-ph/power-requests/${requestId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ organization_id: orgIdForPowers, status }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.success) {
+          setPowerRequests((prev) => prev.map((r) => (r.id === requestId ? { ...r, status } : r)));
+        }
+      })
+      .finally(() => setUpdatingPowerId(null));
+  };
+
+  const refetchResidents = () => {
+    if (!orgIdForResidents) return;
+    fetch(`/api/admin-ph/residents?organization_id=${encodeURIComponent(orgIdForResidents)}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Error al cargar"))))
+      .then((data) => {
+        const list = Array.isArray(data?.residents) ? data.residents : [];
+        let merged = mergeResidentsWithDemoStore(
+          list.map((r: { user_id: string; email: string; face_id_enabled?: boolean }) => ({
+            user_id: r.user_id,
+            email: r.email,
+            face_id_enabled: r.face_id_enabled,
+          }))
+        );
+        merged = capDemoResidents(merged);
+        setResidents(merged);
+        if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("admin-ph-residents-changed"));
+      })
+      .catch(() => {});
+  };
 
   const refreshDemoResidents = () => {
     if (!isDemo) return;
-    try {
-      setResidents(() => [...getDemoResidents()]);
-    } catch {
-      setResidents([]);
-    }
+    refetchResidents();
   };
 
   const handleToggleHabilitadoAsamblea = (userId: string, current: boolean) => {
     if (!isDemo || updatingId) return;
+    const r = residents.find((x) => x.user_id === userId);
+    if (!r?.email) return;
     setUpdatingId(userId);
-    setDemoResidentHabilitadoParaAsamblea(userId, !current);
+    ensureDemoResident(r.email);
+    setDemoResidentHabilitadoParaAsambleaByEmail(r.email, !current);
     refreshDemoResidents();
     setUpdatingId(null);
   };
 
   const handleToggleFaceId = (userId: string, current: boolean) => {
-    if (isDemo) {
-      if (updatingId) return;
-      setUpdatingId(userId);
-      updateDemoResidentFaceId(userId, !current);
-      refreshDemoResidents();
-      setUpdatingId(null);
-      return;
-    }
-    if (!organizationId || updatingId) return;
+    const orgId = orgIdForResidents ?? organizationId;
+    if (!orgId || updatingId) return;
     setUpdatingId(userId);
     fetch(`/api/admin-ph/residents/${userId}/settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ organization_id: organizationId, face_id_enabled: !current }),
+      body: JSON.stringify({ organization_id: orgId, face_id_enabled: !current }),
     })
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => {
@@ -166,21 +399,8 @@ export default function OwnersPage() {
 
   const handleAddResident = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isDemo) {
-      if (!newEmail.trim() || adding) return;
-      setAdding(true);
-      setError("");
-      const result = addDemoResident(newEmail.trim());
-      if (result.ok) {
-        setResidents((prev) => [...prev, result.resident]);
-        setNewEmail("");
-      } else {
-        setError(result.error);
-      }
-      setAdding(false);
-      return;
-    }
-    if (!organizationId || !newEmail.trim() || adding) return;
+    const orgId = orgIdForResidents ?? organizationId;
+    if (!orgId || !newEmail.trim() || adding) return;
     if (residents.length >= residentLimit) {
       setError(`Su plan permite hasta ${residentLimit} residentes. Actualice el plan para agregar más.`);
       return;
@@ -190,13 +410,16 @@ export default function OwnersPage() {
     fetch("/api/admin-ph/residents", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ organization_id: organizationId, email: newEmail.trim().toLowerCase() }),
+      body: JSON.stringify({ organization_id: orgId, email: newEmail.trim().toLowerCase() }),
     })
       .then((res) => res.json().then((data) => ({ res, data })))
       .then(({ res, data }) => {
         if (res.ok) {
+          if (isDemo && data?.email) ensureDemoResident(data.email);
           setResidents((prev) => [...prev, { user_id: data.user_id, email: data.email, face_id_enabled: true }]);
           setNewEmail("");
+          if (isDemo) refetchResidents();
+          if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("admin-ph-residents-changed"));
         } else {
           setError(data?.error || "Error al agregar residente");
         }
@@ -205,22 +428,31 @@ export default function OwnersPage() {
       .finally(() => setAdding(false));
   };
 
-  const handleRemoveResident = (userId: string) => {
-    if (isDemo) {
-      if (!confirm("¿Quitar a este residente de la lista?")) return;
-      removeDemoResident(userId);
-      refreshDemoResidents();
-      return;
-    }
-    if (!organizationId || !confirm("¿Eliminar residente de la organización?")) return;
-    fetch(`/api/admin-ph/residents/${userId}`, {
+  const openDeleteResidentModal = (userId: string) => {
+    const r = residents.find((x) => x.user_id === userId);
+    if (!r) return;
+    setDeleteResidentPending({ userId, email: r.email || "" });
+    setDeleteConfirmText("");
+    setError("");
+  };
+
+  const confirmRemoveResident = () => {
+    const pending = deleteResidentPending;
+    const orgId = orgIdForResidents ?? organizationId;
+    if (!pending || !orgId) return;
+    if (deleteConfirmText.trim().toLowerCase() !== "eliminar") return;
+    setDeleteResidentPending(null);
+    setDeleteConfirmText("");
+    fetch(`/api/admin-ph/residents/${pending.userId}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ organization_id: organizationId }),
+      body: JSON.stringify({ organization_id: orgId }),
     })
       .then((res) => {
-        if (res.ok) setResidents((prev) => prev.filter((r) => r.user_id !== userId));
-        else res.json().then((d) => setError(d?.error || "No se pudo eliminar"));
+        if (res.ok) {
+          setResidents((prev) => prev.filter((r) => r.user_id !== pending.userId));
+          if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("admin-ph-residents-changed"));
+        } else res.json().then((d) => setError(d?.error || "No se pudo eliminar"));
       })
       .catch(() => setError("Error al eliminar"));
   };
@@ -262,8 +494,8 @@ export default function OwnersPage() {
       const text = String(reader.result ?? "");
       const result = importDemoResidentsFromCsv(text);
       if (result.ok) {
-        setResidents(getDemoResidents());
-        setImportSuccess(`Se importaron ${result.count} residente(s).`);
+        refetchResidents();
+        setImportSuccess(`Se importaron ${result.count} residente(s). Listado actualizado.`);
       } else {
         setError(result.error);
       }
@@ -284,6 +516,7 @@ export default function OwnersPage() {
       payment_status: r.payment_status ?? "al_dia",
       face_id_enabled: r.face_id_enabled ?? false,
       habilitado_para_asamblea: !!r.habilitado_para_asamblea,
+      estatus_unidad: r.estatus_unidad ?? "Ocupada",
     });
     setError("");
   };
@@ -298,8 +531,9 @@ export default function OwnersPage() {
     if (!r || !isDemo || savingEditModal) return;
     setSavingEditModal(true);
     setError("");
+    if (r.email) ensureDemoResident(r.email);
     const cuota = editModalForm.cuota_pct.trim() ? parseFloat(editModalForm.cuota_pct.replace(",", ".")) : undefined;
-    const ok = updateDemoResident(r.user_id, {
+    const ok = updateDemoResidentByEmail(r.email, {
       email: editModalForm.email.trim() || undefined,
       nombre: editModalForm.nombre.trim() || undefined,
       unit: editModalForm.unit.trim() || undefined,
@@ -309,9 +543,9 @@ export default function OwnersPage() {
       payment_status: editModalForm.payment_status,
       face_id_enabled: editModalForm.face_id_enabled,
       habilitado_para_asamblea: editModalForm.habilitado_para_asamblea,
+      estatus_unidad: editModalForm.estatus_unidad,
     });
     if (ok) {
-      setDemoResidentHabilitadoParaAsamblea(r.user_id, editModalForm.habilitado_para_asamblea);
       refreshDemoResidents();
       closeEditModal();
     } else {
@@ -336,6 +570,68 @@ export default function OwnersPage() {
     return true;
   });
   const countHabilitados = residents.filter((r) => r.habilitado_para_asamblea).length;
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const allFilteredSelected = filteredResidents.length > 0 && filteredResidents.every((r) => selectedIds.has(r.user_id));
+  const toggleSelectAll = () => {
+    if (allFilteredSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(filteredResidents.map((r) => r.user_id)));
+  };
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const applyBulkMora = () => {
+    if (!isDemo || selectedIds.size === 0 || bulkApplying) return;
+    setBulkApplying(true);
+    selectedIds.forEach((userId) => {
+      const r = residents.find((x) => x.user_id === userId);
+      if (r?.email) {
+        ensureDemoResident(r.email);
+        updateDemoResidentByEmail(r.email, { payment_status: "mora" });
+        setDemoResidentHabilitadoParaAsambleaByEmail(r.email, false);
+      }
+    });
+    refetchResidents();
+    setSelectedIds(new Set());
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("admin-ph-residents-changed"));
+    setBulkApplying(false);
+  };
+  const applyBulkAlDia = () => {
+    if (!isDemo || selectedIds.size === 0 || bulkApplying) return;
+    setBulkApplying(true);
+    selectedIds.forEach((userId) => {
+      const r = residents.find((x) => x.user_id === userId);
+      if (r?.email) {
+        ensureDemoResident(r.email);
+        updateDemoResidentByEmail(r.email, { payment_status: "al_dia" });
+      }
+    });
+    refetchResidents();
+    setSelectedIds(new Set());
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("admin-ph-residents-changed"));
+    setBulkApplying(false);
+  };
+  const applyBulkFaceId = (enabled: boolean) => {
+    if (!isDemo || selectedIds.size === 0 || bulkApplying) return;
+    setBulkApplying(true);
+    selectedIds.forEach((userId) => {
+      const r = residents.find((x) => x.user_id === userId);
+      if (r?.email) {
+        ensureDemoResident(r.email);
+        updateDemoResidentFaceIdByEmail(r.email, enabled);
+      }
+    });
+    refetchResidents();
+    setSelectedIds(new Set());
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("admin-ph-residents-changed"));
+    setBulkApplying(false);
+  };
 
   const isConnected = (lastActivity?: string) => {
     if (!lastActivity) return false;
@@ -378,8 +674,10 @@ export default function OwnersPage() {
     setUnitForm({ titular_1_email: "", titular_2_email: "", habilitado_titular_1: true, habilitado_titular_2: false });
   };
 
-  const saveUnitTemplate = () => {
+  const saveUnitTemplate = async () => {
     if (!unitModalUnit || !isDemo || savingUnit) return;
+    const orgId = orgIdForResidents ?? organizationId;
+    if (!orgId) return;
     setSavingUnit(true);
     setError("");
     const result = updateUnitTemplate(unitModalUnit, {
@@ -388,19 +686,60 @@ export default function OwnersPage() {
       habilitado_titular_1: unitForm.habilitado_titular_1,
       habilitado_titular_2: unitForm.habilitado_titular_2,
     });
-    setSavingUnit(false);
-    if (result.ok) {
-      setResidents(getDemoResidents());
-      closeUnitModal();
-    } else {
+    if (!result.ok) {
       setError(result.error);
+      setSavingUnit(false);
+      return;
     }
+    const emails = [unitForm.titular_1_email.trim(), unitForm.titular_2_email.trim()].filter((e) => e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    const uniqueEmails = [...new Set(emails)];
+    try {
+      await Promise.all(
+        uniqueEmails.map((email) =>
+          fetch("/api/admin-ph/residents", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ organization_id: orgId, email: email.toLowerCase() }),
+          })
+        )
+      );
+    } catch {
+      // Si falla el registro en BD, la plantilla ya se guardó en el store
+    }
+    refetchResidents();
+    closeUnitModal();
+    setSavingUnit(false);
   };
 
   return (
     <div className="card">
       <style>{`
         .owners-list-wrap .owners-list-item:hover { background: rgba(148,163,184,0.06); }
+        html[data-theme="light"] .resident-status--al-dia {
+          background: rgba(34, 197, 94, 0.22) !important;
+          border: 1px solid #22c55e !important;
+          color: #15803d !important;
+          padding: 4px 8px !important;
+          border-radius: 8px !important;
+          font-weight: 600 !important;
+        }
+        html[data-theme="light"] .resident-status--al-dia span {
+          color: #15803d !important;
+        }
+        html[data-theme="light"] .resident-status--mora {
+          background: rgba(239, 68, 68, 0.22) !important;
+          border: 1px solid #ef4444 !important;
+          color: #b91c1c !important;
+          padding: 4px 8px !important;
+          border-radius: 8px !important;
+          font-weight: 600 !important;
+        }
+        html[data-theme="light"] .resident-status--mora span {
+          color: #b91c1c !important;
+        }
+        html[data-theme="light"] .resident-status--mora span[style*="background"] {
+          background: #dc2626 !important;
+        }
       `}</style>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center" }}>
         <div style={{ flex: 1 }}>
@@ -418,7 +757,7 @@ export default function OwnersPage() {
               </span>
             )}
             {isDemo && !atLimit && " Puede usar correos como "}
-            {isDemo && !atLimit && <code>residente.Urban1@demo.assembly2.com</code>}
+            {isDemo && !atLimit && <code>residente1@demo.assembly2.com</code>}
           </p>
           <p className="muted" style={{ marginTop: "2px", fontSize: "12px" }}>
             Puede agregar hasta <strong>{residentLimit}</strong> residentes (plan actual).
@@ -434,7 +773,7 @@ export default function OwnersPage() {
           <form onSubmit={handleAddResident} style={{ marginTop: "8px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
             <input
               type="email"
-              placeholder="Correo del residente (ej. residente.Urban1@demo.assembly2.com)"
+              placeholder="Correo del residente (ej. residente1@demo.assembly2.com)"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               style={{ padding: "8px 12px", borderRadius: "8px", flex: "1 1 200px", minWidth: "180px" }}
@@ -459,15 +798,12 @@ export default function OwnersPage() {
                 type="button"
                 className="btn btn-ghost"
                 onClick={() => {
-                if (typeof window !== "undefined" && window.confirm("¿Restablecer el listado demo? Se borrarán sus cambios y se cargarán de nuevo los 50 residentes por defecto.")) {
-                  resetDemoResidents();
-                  setResidents(() => [...getDemoResidents()]);
-                }
-              }}
+                  refetchResidents();
+                }}
                 style={{ fontSize: "13px" }}
-                title="Borrar datos del listado demo y volver a los 50 residentes por defecto"
+                title="Actualizar el listado desde la base de datos (sincronizado con el chatbot)"
               >
-                Restablecer listado demo
+                Actualizar listado
               </button>
               <button
                 type="button"
@@ -549,11 +885,69 @@ export default function OwnersPage() {
           </div>
 
           {activeTab === "powers" && (
-            <div className="card" style={{ marginTop: "12px", padding: "24px", background: "rgba(15,23,42,0.3)", borderRadius: "12px" }}>
+            <div className="card owners-powers-card" style={{ marginTop: "12px", padding: "24px", background: "rgba(15,23,42,0.3)", borderRadius: "12px" }}>
               <h3 style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 600 }}>Gestión y solicitudes de poderes de asamblea</h3>
-              <p className="muted" style={{ margin: 0, fontSize: "14px" }}>
-                Aquí podrá gestionar los poderes otorgados por los residentes para representación en asambleas y consultar solicitudes pendientes. (Próximamente.)
+              <p className="muted" style={{ margin: 0, marginBottom: "16px", fontSize: "14px" }}>
+                Active el botón &quot;Ceder poder&quot; para que los residentes lo vean en el chatbot y puedan enviar solicitudes. Revise y apruebe o rechace las solicitudes pendientes.
               </p>
+              {isDemo && <p className="muted" style={{ margin: 0, marginBottom: "12px", fontSize: "12px" }}>Modo demo: se usa la organización demo en BD. Si hay residentes con sesión en esa organización, podrán ver &quot;Ceder poder&quot; y las solicitudes aparecerán aquí.</p>}
+              {loadingPowers ? (
+                <p className="muted" style={{ margin: 0 }}>Cargando…</p>
+              ) : (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "14px", fontWeight: 500 }}>
+                      <input
+                        type="checkbox"
+                        checked={powersEnabled}
+                        onChange={handleTogglePowersEnabled}
+                        disabled={savingPowersConfig}
+                        style={{ width: "18px", height: "18px" }}
+                      />
+                      Activar botón de poderes para residentes
+                    </label>
+                    {savingPowersConfig && <span className="muted" style={{ fontSize: "13px" }}>Guardando…</span>}
+                    {powersEnabled && <span style={{ fontSize: "12px", color: "var(--color-primary, #818cf8)", fontWeight: 500 }}>Los residentes ven &quot;Ceder poder&quot; en el chatbot.</span>}
+                  </div>
+                  <h4 style={{ margin: "0 0 10px", fontSize: "14px", fontWeight: 600 }}>
+                    Solicitudes
+                    {isDemo && powerRequests.length > 0 && <span className="muted" style={{ marginLeft: "8px", fontWeight: 400, fontSize: "12px" }}>(ejemplo demo — puede aprobar o rechazar)</span>}
+                  </h4>
+                  {powerRequests.length === 0 ? (
+                    <p className="muted" style={{ margin: 0, fontSize: "13px" }}>No hay solicitudes de poder. Cuando un residente envíe una desde el chatbot, aparecerá aquí.</p>
+                  ) : (
+                    <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                      {powerRequests.map((r) => (
+                        <li key={r.id} style={{ padding: "12px 0", borderBottom: "1px solid rgba(148,163,184,0.15)", display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center", justifyContent: "space-between" }}>
+                          <div style={{ flex: "1 1 260px" }}>
+                            <strong style={{ fontSize: "13px" }}>{r.resident_email}</strong>
+                            <span className="muted" style={{ margin: "0 8px", fontSize: "12px" }}>→</span>
+                            <span style={{ fontSize: "13px" }}>{r.apoderado_nombre}</span>
+                            <span className="muted" style={{ marginLeft: "6px", fontSize: "12px" }}>({r.apoderado_email})</span>
+                            <div className="muted" style={{ fontSize: "11px", marginTop: "4px" }}>
+                              {r.apoderado_tipo === "titular_mayor_edad" ? "Titular mayor de edad" : "Residente mismo PH"} · {new Date(r.created_at).toLocaleString("es")}
+                              {(r.apoderado_cedula || r.apoderado_telefono || r.vigencia) && (
+                                <span style={{ display: "block", marginTop: "2px" }}>
+                                  {[r.apoderado_cedula && `Cédula: ${r.apoderado_cedula}`, r.apoderado_telefono && `Tel: ${r.apoderado_telefono}`, r.vigencia && `Vigencia: ${r.vigencia}`].filter(Boolean).join(" · ")}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                            <span style={{ fontSize: "12px", fontWeight: 600, color: r.status === "PENDING" ? "#eab308" : r.status === "APPROVED" ? "#22c55e" : "#ef4444" }}>{r.status === "PENDING" ? "Pendiente" : r.status === "APPROVED" ? "Aprobado" : "Rechazado"}</span>
+                            {r.status === "PENDING" && (
+                              <>
+                                <button type="button" className="btn btn-primary" style={{ padding: "6px 12px", fontSize: "13px" }} disabled={updatingPowerId === r.id} onClick={() => handlePowerRequestAction(r.id, "APPROVED")}>{updatingPowerId === r.id ? "…" : "Aprobar"}</button>
+                                <button type="button" className="btn btn-ghost" style={{ padding: "6px 12px", fontSize: "13px", color: "var(--color-error, #ef4444)" }} disabled={updatingPowerId === r.id} onClick={() => handlePowerRequestAction(r.id, "REJECTED")}>{updatingPowerId === r.id ? "…" : "Rechazar"}</button>
+                              </>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
             </div>
           )}
 
@@ -584,12 +978,58 @@ export default function OwnersPage() {
                 </select>
                 <span className="muted" style={{ fontSize: "13px" }}>Mostrando {filteredResidents.length} de {residents.length}</span>
                 <span className="muted" style={{ fontSize: "11px" }} title="El estatus Al Día/Mora de este listado se usa en el Monitor back office para las votaciones (quién puede votar).">Estatus ↔ Monitor votación</span>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => setHelpModalOpen(true)}
+                  style={{ marginLeft: "auto", fontSize: "13px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                  title="Ver guía de uso del módulo"
+                >
+                  <span style={{ width: "18px", height: "18px", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", background: "var(--color-primary, #6366f1)", color: "#fff", fontWeight: 700, fontSize: "12px" }}>?</span>
+                  Ayuda
+                </button>
               </div>
-              <p className="muted" style={{ margin: "4px 0 0", fontSize: "12px" }}>
+              <div style={{ marginTop: "8px" }}>
+                <button
+                  type="button"
+                  onClick={() => setGuideOpen((o) => !o)}
+                  style={{ background: "none", border: "none", padding: "4px 0", fontSize: "13px", fontWeight: 600, color: "var(--color-primary, #818cf8)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                >
+                  {guideOpen ? "Ocultar guía" : "Ver guía"}
+                  <span style={{ fontSize: "10px" }}>{guideOpen ? "▼" : "▶"}</span>
+                </button>
+                {guideOpen && (
+                  <div className="muted" style={{ marginTop: "8px", padding: "12px 14px", background: "rgba(15,23,42,0.35)", borderRadius: "10px", border: "1px solid rgba(148,163,184,0.15)", maxWidth: "720px", fontSize: "12px" }}>
+                    <p style={{ margin: "0 0 8px" }}>
                 <strong>Hab. asamblea</strong> = habilitado para votar en la asamblea (solo uno por unidad puede estar en Sí). <strong>No</strong> = no vota en esta asamblea. El estatus <strong>Al Día / En Mora</strong> se sincroniza con el Monitor de votación.
+                    </p>
+                    <p style={{ margin: 0 }}>
+                      <strong>¿Cómo se relaciona este listado con las asambleas?</strong> Este es el listado <em>único</em> de residentes/propietarios de su PH. <strong>No se agregan residentes “a una asamblea”</strong>: cuando abre el Monitor de cualquier asamblea (Quórum o Votación), el sistema usa automáticamente este mismo listado. Quien esté aquí con Unidad asignada y (si aplica) Hab. asamblea = Sí y Al Día, podrá votar en esa asamblea. Mantenga el listado al día y el Monitor reflejará los mismos datos.
               </p>
+                  </div>
+                )}
+              </div>
+              {selectedIds.size > 0 && (
+                <div style={{ marginBottom: "12px", padding: "12px 14px", background: "rgba(99, 102, 241, 0.12)", borderRadius: "10px", border: "1px solid rgba(99, 102, 241, 0.25)", display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+                  <strong style={{ fontSize: "14px" }}>Edición masiva: {selectedIds.size} seleccionado(s)</strong>
+                  {isDemo ? (
+                    <>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={applyBulkMora} disabled={bulkApplying} style={{ fontSize: "13px" }}>Marcar como Mora</button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={applyBulkAlDia} disabled={bulkApplying} style={{ fontSize: "13px" }}>Marcar como Al Día</button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => applyBulkFaceId(true)} disabled={bulkApplying} style={{ fontSize: "13px" }}>Habilitar Face ID</button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => applyBulkFaceId(false)} disabled={bulkApplying} style={{ fontSize: "13px" }}>Deshabilitar Face ID</button>
+                    </>
+                  ) : (
+                    <span className="muted" style={{ fontSize: "13px" }}>Disponible en modo demo.</span>
+                  )}
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={clearSelection} style={{ marginLeft: "auto", fontSize: "13px" }}>Deseleccionar todo</button>
+                </div>
+              )}
             <div className="owners-list-wrap" style={{ border: "1px solid rgba(148,163,184,0.15)", borderRadius: "12px", overflow: "hidden", overflowX: "auto" }}>
-              <div className="owners-list-header" style={{ display: "grid", gridTemplateColumns: "80px 1fr 110px 90px 100px 110px 88px 100px 72px 140px", gap: "8px 12px", padding: "12px 14px", background: "rgba(15,23,42,0.4)", borderBottom: "1px solid rgba(148,163,184,0.2)", fontSize: "11px", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em", alignItems: "center", minWidth: "980px" }}>
+              <div className="owners-list-header" style={{ display: "grid", gridTemplateColumns: "44px 80px 1fr 110px 90px 100px 110px 88px 100px 72px 140px", gap: "8px 12px", padding: "12px 14px", background: "rgba(15,23,42,0.4)", borderBottom: "1px solid rgba(148,163,184,0.2)", fontSize: "11px", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em", alignItems: "center", minWidth: "1024px" }}>
+                <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll} aria-label="Seleccionar todos los visibles" style={{ width: "18px", height: "18px", accentColor: "var(--color-primary, #6366f1)" }} />
+                </span>
                 <span title="Al día o en mora (solo Al Día pueden votar, Ley 284)">Estatus</span>
                 <span>Correo</span>
                 <span>Nombre</span>
@@ -603,18 +1043,28 @@ export default function OwnersPage() {
               </div>
               <ul className="owners-list card-list" style={{ listStyle: "none", padding: 0, margin: 0 }}>
                 {filteredResidents.map((r) => (
-                  <li key={r.user_id} className="owners-list-item list-item" style={{ display: "grid", gridTemplateColumns: "80px 1fr 110px 90px 100px 110px 88px 100px 72px 140px", gap: "8px 12px", alignItems: "center", padding: "12px 14px", borderBottom: "1px solid rgba(148,163,184,0.08)", transition: "background 0.15s", minWidth: "980px" }}>
+                  <li key={r.user_id} className="owners-list-item list-item" style={{ display: "grid", gridTemplateColumns: "44px 80px 1fr 110px 90px 100px 110px 88px 100px 72px 140px", gap: "8px 12px", alignItems: "center", padding: "12px 14px", borderBottom: "1px solid rgba(148,163,184,0.08)", transition: "background 0.15s", minWidth: "1024px" }}>
+                    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", minWidth: "44px" }}>
+                      <input type="checkbox" checked={selectedIds.has(r.user_id)} onChange={() => toggleSelect(r.user_id)} aria-label={`Seleccionar ${r.email}`} style={{ width: "18px", height: "18px", accentColor: "var(--color-primary, #6366f1)" }} />
+                    </span>
                     <span style={{ minWidth: "72px" }}>
                       {isDemo ? (
                         <select
+                          className={`resident-status resident-status--${r.payment_status === "mora" ? "mora" : "al-dia"}`}
                           value={r.payment_status === "mora" ? "mora" : "al_dia"}
                           onChange={(e) => {
                             const v = e.target.value as "al_dia" | "mora";
                             if (v === r.payment_status) return;
-                            updateDemoResident(r.user_id, { payment_status: v });
-                            if (v === "mora") setDemoResidentHabilitadoParaAsamblea(r.user_id, false);
-                            // Forzar lectura del store y nueva referencia para que la columna Hab. asamblea se actualice
-                            setResidents(() => [...getDemoResidents()]);
+                            let ok = updateDemoResidentByEmail(r.email, { payment_status: v });
+                            if (!ok && r.email) {
+                              ensureDemoResident(r.email);
+                              ok = updateDemoResidentByEmail(r.email, { payment_status: v });
+                            }
+                            if (ok && v === "mora") setDemoResidentHabilitadoParaAsambleaByEmail(r.email, false);
+                            if (ok) {
+                              refetchResidents();
+                              if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("admin-ph-residents-changed"));
+                            }
                           }}
                           style={{ padding: "4px 6px", borderRadius: "6px", fontSize: "11px", fontWeight: 600, background: r.payment_status === "mora" ? "rgba(239,68,68,0.15)" : "rgba(34,197,94,0.15)", color: r.payment_status === "mora" ? "#f87171" : "#4ade80", border: "1px solid transparent", cursor: "pointer", minWidth: "72px" }}
                           title="Al día / En Mora. Cambiar actualiza Hab. asamblea."
@@ -623,9 +1073,9 @@ export default function OwnersPage() {
                           <option value="mora">En Mora</option>
                         </select>
                       ) : r.payment_status === "mora" ? (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }} title="En mora"><span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#f87171" }} aria-hidden /><span style={{ fontSize: "11px", fontWeight: 600, color: "#f87171" }}>Mora</span></span>
+                        <span className="resident-status resident-status--mora" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }} title="En mora"><span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#f87171" }} aria-hidden /><span style={{ fontSize: "11px", fontWeight: 600, color: "#f87171" }}>Mora</span></span>
                       ) : r.payment_status === "al_dia" ? (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }} title="Al día"><span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#4ade80" }} aria-hidden /><span style={{ fontSize: "11px", fontWeight: 600, color: "#4ade80" }}>Al día</span></span>
+                        <span className="resident-status resident-status--al-dia" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }} title="Al día"><span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#4ade80" }} aria-hidden /><span style={{ fontSize: "11px", fontWeight: 600, color: "#4ade80" }}>Al día</span></span>
                       ) : (
                         <span className="muted" style={{ fontSize: "12px" }}>—</span>
                       )}
@@ -657,7 +1107,7 @@ export default function OwnersPage() {
                           <button type="button" className="btn btn-ghost" style={{ padding: "6px 8px", minWidth: "32px" }} onClick={() => r.unit && openUnitModal(r.unit)} disabled={!r.unit || r.unit === ""} title={r.unit ? "Plantilla de unidad" : "Asigne unidad"}><IconTemplate /></button>
                         </>
                       )}
-                      <button type="button" className="btn btn-ghost" style={{ color: "var(--color-error, #ef4444)", padding: "6px 8px", minWidth: "32px" }} onClick={() => handleRemoveResident(r.user_id)} title="Eliminar"><IconTrash /></button>
+                      <button type="button" className="btn btn-ghost" style={{ color: "var(--color-error, #ef4444)", padding: "6px 8px", minWidth: "32px" }} onClick={() => openDeleteResidentModal(r.user_id)} title="Eliminar"><IconTrash /></button>
                     </span>
                   </li>
                 ))}
@@ -761,6 +1211,118 @@ export default function OwnersPage() {
         </div>
       )}
 
+      {deleteResidentPending && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-resident-modal-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={(e) => e.target === e.currentTarget && (setDeleteResidentPending(null), setDeleteConfirmText(""))}
+        >
+          <div
+            style={{
+              background: "var(--color-surface, #1e293b)",
+              borderRadius: "12px",
+              padding: "20px 24px",
+              minWidth: "360px",
+              maxWidth: "90vw",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.3)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="delete-resident-modal-title" style={{ margin: "0 0 12px", fontSize: "18px", fontWeight: 600 }}>
+              Eliminar residente
+            </h2>
+            <p style={{ marginBottom: "8px", fontSize: "14px", color: "var(--color-text, #e2e8f0)" }}>
+              ¿Eliminar residente de la organización?
+              {deleteResidentPending.email && (
+                <span style={{ display: "block", marginTop: "6px", fontWeight: 500, color: "var(--color-primary, #818cf8)" }}>
+                  {deleteResidentPending.email}
+                </span>
+              )}
+            </p>
+            <p className="muted" style={{ marginBottom: "10px", fontSize: "12px" }}>
+              Escriba <strong>Eliminar</strong> para confirmar la acción.
+            </p>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="Eliminar"
+              autoComplete="off"
+              style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", fontSize: "14px", marginBottom: "16px" }}
+            />
+            {error && <p style={{ marginBottom: "12px", color: "var(--color-error, #ef4444)", fontSize: "13px" }}>{error}</p>}
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => { setDeleteResidentPending(null); setDeleteConfirmText(""); setError(""); }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{ background: "var(--color-error, #dc2626)", color: "#fff" }}
+                disabled={deleteConfirmText.trim().toLowerCase() !== "eliminar"}
+                onClick={confirmRemoveResident}
+              >
+                Eliminar residente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {helpModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="help-modal-title"
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}
+          onClick={(e) => e.target === e.currentTarget && setHelpModalOpen(false)}
+        >
+          <div
+            style={{ background: "var(--color-surface, #1e293b)", borderRadius: "12px", padding: "24px", maxWidth: "560px", width: "90vw", maxHeight: "85vh", overflow: "auto", boxShadow: "0 20px 40px rgba(0,0,0,0.3)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="help-modal-title" style={{ margin: "0 0 16px", fontSize: "20px", fontWeight: 600 }}>Cómo usar el módulo Propietarios / Residentes</h2>
+            <div className="muted" style={{ fontSize: "14px", lineHeight: 1.6 }}>
+              <p style={{ margin: "0 0 12px" }}>
+                <strong>Listado único.</strong> Este es el listado de residentes/propietarios de su PH. No se agregan residentes "a una asamblea": el Monitor de cualquier asamblea (Quórum o Votación) usa automáticamente este mismo listado.
+              </p>
+              <p style={{ margin: "0 0 12px" }}>
+                <strong>Estatus (Al Día / En Mora).</strong> Quien esté Al Día puede votar (según Ley 284). En Mora no vota. Puede cambiar el estatus en la tabla (demo) o en el modal Editar.
+              </p>
+              <p style={{ margin: "0 0 12px" }}>
+                <strong>Hab. asamblea (voto).</strong> Solo un titular por unidad puede tener "Sí". Quien tenga "No" no vota en esa asamblea. En demo puede cambiar desde la tabla o desde la plantilla de unidad (clic en Unidad).
+              </p>
+              <p style={{ margin: "0 0 12px" }}>
+                <strong>Agregar / Editar / Eliminar.</strong> Use el campo de correo para agregar; el lápiz para editar datos y estatus; el icono de eliminar para quitar al residente de la organización (con confirmación).
+              </p>
+              <p style={{ margin: "0 0 12px" }}>
+                <strong>Exportar / Importar CSV.</strong> En demo puede descargar la plantilla, rellenarla y subir un CSV para importar residentes en bloque.
+              </p>
+              <p style={{ margin: 0 }}>
+                Mantenga el listado al día y el Monitor de votación reflejará los mismos datos.
+              </p>
+            </div>
+            <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
+              <button type="button" className="btn btn-primary" onClick={() => setHelpModalOpen(false)}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {editModalResident && (
         <div role="dialog" aria-modal="true" aria-labelledby="edit-resident-modal-title" className="edit-resident-modal-overlay" onClick={(e) => e.target === e.currentTarget && closeEditModal()}>
           <div className="edit-resident-modal card create-ph-form" onClick={(e) => e.stopPropagation()}>
@@ -780,7 +1342,7 @@ export default function OwnersPage() {
                 </label>
                 <label className="create-ph-field create-ph-field--narrow">
                   <span className="create-ph-label">Unidad</span>
-                  <input type="text" className="create-ph-input" value={editModalForm.unit} onChange={(e) => setEditModalForm((f) => ({ ...f, unit: e.target.value }))} placeholder="Ej. 101" />
+                  <input type="text" className="create-ph-input" value={editModalForm.unit} onChange={(e) => setEditModalForm((f) => ({ ...f, unit: e.target.value }))} placeholder="Ej. 1" />
                 </label>
               </div>
               <div className="create-ph-field-row">
@@ -798,6 +1360,20 @@ export default function OwnersPage() {
                   <span className="create-ph-label">Cuota %</span>
                   <input type="text" className="create-ph-input" value={editModalForm.cuota_pct} onChange={(e) => setEditModalForm((f) => ({ ...f, cuota_pct: e.target.value }))} placeholder="2" />
                 </label>
+                <label className="create-ph-field create-ph-field--narrow">
+                  <span className="create-ph-label">Estatus de unidad</span>
+                  <select
+                    className="create-ph-input create-ph-select"
+                    value={editModalForm.estatus_unidad}
+                    onChange={(e) => setEditModalForm((f) => ({ ...f, estatus_unidad: e.target.value as "Ocupada" | "Alquilada" | "Sin inquilino" }))}
+                  >
+                    <option value="Ocupada">Ocupada</option>
+                    <option value="Alquilada">Alquilada</option>
+                    <option value="Sin inquilino">Sin inquilino</option>
+                  </select>
+                </label>
+              </div>
+              <div className="create-ph-field-row">
                 <label className="create-ph-field create-ph-field--narrow">
                   <span className="create-ph-label">Estatus de pago</span>
                   <select

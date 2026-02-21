@@ -4,13 +4,11 @@
  * FASE 10: Banner de modo demo/sandbox con CTA para upgrade.
  */
 
-const DEMO_ORG_ID = "11111111-1111-1111-1111-111111111111";
-
 export default function DemoBanner() {
   const isDemo =
     typeof window !== "undefined" &&
     (window.location.search.includes("mode=demo") ||
-      localStorage.getItem("assembly_organization_id") === DEMO_ORG_ID);
+      (localStorage.getItem("assembly_email") || "").toLowerCase() === "demo@assembly2.com");
 
   if (!isDemo) return null;
 
@@ -30,9 +28,9 @@ export default function DemoBanner() {
       }}
     >
       <div>
-        <strong>Modo demo</strong>
+        <strong>Modo demo (PH Urban Tower)</strong>
         <span className="muted" style={{ marginLeft: "8px" }}>
-          Los datos son de ejemplo y se reinician cada 24h.
+          Solo el correo demo@assembly2.com es el administrador de este PH demo. Los datos son de ejemplo.
         </span>
       </div>
       <a href="/dashboard/admin-ph/subscription" className="btn btn-primary" style={{ flexShrink: 0 }}>

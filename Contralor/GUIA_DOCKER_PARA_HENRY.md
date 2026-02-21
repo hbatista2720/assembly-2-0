@@ -67,6 +67,27 @@ docker compose down
 
 ---
 
+## Arranque automático de contenedores
+
+Los contenedores tienen **restart: unless-stopped**: al iniciar Docker Desktop (o el PC), deberían arrancar solos.  
+**Si no arrancaron solos** es porque fueron creados antes de tener esa política. Hay que **recrearlos una vez**:
+
+```bash
+# Desde la raíz del proyecto (donde está docker-compose.yml)
+docker compose up -d --force-recreate
+```
+
+O ejecutar el script incluido en el proyecto:
+
+```bash
+chmod +x start-assembly.sh
+./start-assembly.sh
+```
+
+Después de eso, al cerrar y volver a abrir Docker Desktop, los contenedores deberían levantarse automáticamente.
+
+---
+
 ## Recomendación: Quitar assembly-web (no existe en el stack actual)
 
 **assembly-web** NO está en el docker-compose del repo (GitHub). En el `docker-compose.yml` solo existen: assembly-app, assembly-web-chatbot, etc. — no hay servicio llamado "assembly-web".

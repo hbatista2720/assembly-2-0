@@ -37,16 +37,46 @@ const mulberry32 = (seed: number) => {
 };
 
 /**
- * Si forceDemoUnits es true (usuario demo), siempre se usan 50 unidades (Urban Tower PH).
- * Así el Monitor muestra la asamblea asociada con 50 residentes y no 311.
+ * Si forceDemoUnits es true (usuario demo), se generan 50 unidades con código "1".."50"
+ * para sincronizar con el listado de residentes (Propietarios). Misma numeración en Monitor y listado.
  */
 export const generateUnits = (assemblyId: string, forceDemoUnits?: boolean) => {
   const isDemo = forceDemoUnits || !assemblyId || assemblyId === "demo";
-  const towers = isDemo ? TOWERS_DEMO : TOWERS_FULL;
   const seed = hashString(assemblyId || "demo");
   const random = mulberry32(seed);
   const units: Unit[] = [];
 
+  if (isDemo) {
+    for (let i = 1; i <= 50; i += 1) {
+      const roll = random();
+      const paymentStatus = roll > 0.85 ? "MORA" : "AL_DIA";
+      const isPresent = roll > 0.2;
+      const hasFaceId = random() > 0.25;
+      const voteValue = isPresent && paymentStatus !== "MORA" && random() > 0.35
+        ? random() > 0.6
+          ? "SI"
+          : random() > 0.5
+            ? "NO"
+            : "ABSTENCION"
+        : null;
+      const voteMethod = isPresent ? (hasFaceId ? "FACE_ID" : "MANUAL") : null;
+      const code = String(i);
+      units.push({
+        id: code,
+        code,
+        tower: "A",
+        owner: `Residente ${i}`,
+        paymentStatus,
+        isPresent,
+        hasFaceId,
+        voteValue,
+        voteMethod,
+      });
+    }
+    return units;
+  }
+
+  const towers = TOWERS_FULL;
   for (const tower of towers) {
     for (let i = 1; i <= tower.count; i += 1) {
       const roll = random();
@@ -61,7 +91,6 @@ export const generateUnits = (assemblyId: string, forceDemoUnits?: boolean) => {
             : "ABSTENCION"
         : null;
       const voteMethod = isPresent ? (hasFaceId ? "FACE_ID" : "MANUAL") : null;
-
       units.push({
         id: `${tower.id}-${i}`,
         code: `${tower.id}${i}`,
@@ -130,7 +159,7 @@ export const buildSummary = (units: Unit[], options?: BuildSummaryOptions) => {
 
   const topicTitle = options?.topicTitle && options.topicTitle.trim() !== ""
     ? options.topicTitle.trim()
-    : "Votación en curso";
+    : "Aprobación del presupuesto 2026";
 
   return {
     stats: { total, present, voted, mora, faceId },
@@ -147,9 +176,9 @@ export const buildSummary = (units: Unit[], options?: BuildSummaryOptions) => {
       results: resultsPct,
     },
     history: [
-      "✅ Tema 1: Acta anterior (98% SI)",
-      "✅ Tema 2: Informe financiero (85% SI)",
-      "⏳ Tema 3: En votación...",
+      "✅ Aprobar el orden del día",
+      "⏳ Aprobación del presupuesto 2026 (en votación)",
+      "— Aprobación de remodelación de garita (Extraordinaria)",
     ],
   };
 };

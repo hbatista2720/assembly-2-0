@@ -202,7 +202,48 @@
 
 ---
 
-## 13. Backup autorizado – Febrero 2026
+## 13. Formulario asambleas, dashboard (filtro/abandono/historial) y edición masiva propietarios (Feb 2026)
+
+**Destinatario:** Contralor. **Origen:** Coder (peticiones de usuario y Marketing/MARKETING_TIPOS_ASAMBLEA_Y_MAYORIAS_LEY284.md).
+
+### 13.1 Formulario «Nueva asamblea» – Diseño y tipos (Ley 284)
+
+- **Diseño:** El formulario de crear asamblea usa la misma estructura y clases que «Crear PH»: `create-ph-form`, `create-ph-form-header`, `create-ph-form-fields`, `create-ph-field`, `create-ph-input`, `create-ph-field-row`, `create-ph-form-actions`.
+- **Tipo de asamblea (dropdown):**
+  - **Ordinaria** (Ley 284, mín. 10 días).
+  - **Extraordinaria** (Ley 284, mín. 3 días).
+  - **Por derecho propio** (3-5 días, por los residentes; plazo distinto a Extraordinaria).
+  - **Especial** (fecha libre): al elegir Especial aparece campo de texto para escribir el tipo o convocante manualmente (ej. «20% de propietarios al día»); botones rápidos «Por derecho propio» y «20% de propietarios al día».
+- **Temas para votación:** Sección opcional «Temas para votación (tipo de aprobación por tema)». Por cada tema: título + tipo de aprobación (Informativo, Mayoría simple 51%, Mayoría calificada 66%, Mayoría reglamento). Botón «+ Añadir tema» y «Quitar». Sugerencia automática del tipo según el nombre del tema (ej. presupuesto → 51%, acta → informativo, reglamento → mayoría reglamento).
+- **Store:** `AssemblyType` = Ordinaria | Extraordinaria | Por derecho propio | Especial. `typeCustom` opcional cuando tipo es Especial. `TopicApprovalType` incluye `votacion_reglamento`. `createAssembly` acepta `topics` con id, title, type.
+
+### 13.2 Dashboard principal – Filtro año/mes, fecha de hoy, abandono de sala e historial
+
+- **Fecha de hoy:** Barra bajo el panel principal muestra **«Hoy: [día], [fecha]»** (ej. Lunes, 26 de enero de 2026).
+- **Filtro por periodo:** Desplegables **Año** (actual −1, actual, actual +1) y **Mes** (Enero–Diciembre). El periodo seleccionado se usa en las tarjetas de abandono de sala e historial de asambleas.
+- **Tarjeta «Abandono de sala (chatbot)»:** Sustituye la antigua «Análisis abono de sala». Contenido: residentes que se salieron de la sesión del chatbot antes de finalizar la asamblea. Métricas (datos desde API cuando hay organización): **Abandonos [Mes] [Año]** (eventos en el periodo), **Total abandonos (chatbot)** (todos los eventos), **Promedio por asamblea celebrada**. Enlace «Ver histórico de abandonos» (Monitor por asamblea o vista por organización). **Nota:** Se eliminó toda referencia a «abono»; solo «abandono» de sala.
+- **Tarjeta «Historial de asambleas»:** Título «Celebradas y canceladas · [Mes] [Año]». Lista **Celebradas** (asambleas con estado Completada en ese mes/año) y **Canceladas** (si en el modelo existiera el campo; por ahora vacío). Enlace «Ver todas las asambleas».
+
+### 13.3 Lista Propietarios/Residentes – Edición masiva
+
+- **Columna de selección:** Primera columna de la tabla con checkbox por fila. En la cabecera, checkbox «Seleccionar todos los visibles» (solo los que pasan filtros).
+- **Barra de edición masiva:** Cuando hay al menos un residente seleccionado aparece una barra con: «Edición masiva: X seleccionado(s)», botones **Marcar como Mora**, **Marcar como Al Día**, **Habilitar Face ID**, **Deshabilitar Face ID**, y **Deseleccionar todo**. En modo no demo se muestra «Disponible en modo demo».
+- **Lógica (demo):** Usa `updateDemoResident` (payment_status), `setDemoResidentHabilitadoParaAsamblea` (false al marcar Mora) y `updateDemoResidentFaceId`. Tras aplicar se refresca la lista y se dispara `admin-ph-residents-changed`.
+
+### 13.4 Archivos principales tocados en esta entrega
+
+- `src/app/dashboard/admin-ph/assemblies/page.tsx` – Formulario create-ph-form, tipos Ordinaria/Extraordinaria/Por derecho propio/Especial, tipoCustom, temas con tipo de aprobación y sugerencia, filtro tipo Manual/Especial en panel filtros.
+- `src/lib/assembliesStore.ts` – AssemblyType con Por derecho propio y Especial, typeCustom, TopicApprovalType con votacion_reglamento, createAssembly con topics; normalización «Manual» → «Especial» al cargar.
+- `src/app/dashboard/admin-ph/page.tsx` – Filtro año/mes, todayLabel, barra «Abandono de sala (chatbot)» con métricas desde GET /api/resident-abandon, historial celebradas/canceladas, enlace «Ver histórico de abandonos».
+- `src/app/dashboard/admin-ph/owners/page.tsx` – selectedIds, bulkApplying, toggleSelect/toggleSelectAll/clearSelection, applyBulkMora/AlDia/FaceId, barra edición masiva, columna checkbox en cabecera y filas.
+
+### 13.5 Sugerencia para el Contralor
+
+- **Validación:** (1) Crear asamblea: elegir tipo Por derecho propio o Especial, añadir temas con tipo de aprobación y comprobar sugerencia. (2) Dashboard: cambiar año/mes y revisar que «Abandono de sala» e «Historial» respetan el periodo. (3) Propietarios (demo): seleccionar varios residentes y aplicar Marcar como Mora, Al Día, Habilitar/Deshabilitar Face ID; comprobar que la lista se actualiza.
+
+---
+
+## 14. Backup autorizado – Febrero 2026
 
 **Autorización:** Henry (Product Owner) autoriza backup.  
 **Ejecución:** Contralor ejecuta commit. Push a GitHub lo ejecuta Henry en su terminal.
@@ -216,6 +257,21 @@
 **Formato commit:** Backup Feb 2026: INFORME_ULTIMOS_CAMBIOS_FEB2026 + validación Marketing Ley 284 (T6) + RESUMEN_DASHBOARD_ADMIN_PH + ESTATUS_AVANCE.
 
 **Tras el commit:** Henry ejecuta `git push origin main` para completar el backup.
+
+---
+
+## 15. Demo PH Urban Tower – Solo un administrador
+
+**Objetivo:** Evitar confusión sobre quién es el administrador del PH demo (Urban Tower).
+
+| Regla | Descripción |
+|-------|-------------|
+| **Admin del demo** | Solo el correo **demo@assembly2.com** se considera administrador del PH demo. Es el único que ve el modo demo (listado 50 residentes, «Restablecer todo (demo)», etc.). |
+| **Cómo se aplica** | `isDemoResidentsContext()` (demoResidentsStore) devuelve `true` únicamente cuando `assembly_email === "demo@assembly2.com"`. Ya no se usa solo el `organization_id` para determinar modo demo. |
+| **No administradores con la misma organización** | Si hay otros usuarios (p. ej. residentes) con `organization_id` = PH Urban Tower en BD: tienen rol RESIDENTE, entran por el **chatbot** (/residentes/chat) y no ven el panel Admin PH. Si en el futuro hubiera otro usuario con rol ADMIN_PH y la misma organización, no vería la UI específica de demo (límite 50, restablecer) porque el modo demo se atiende solo por correo. |
+| **Mismo nombre de PH** | Si existieran dos organizaciones con el mismo nombre «Urban Tower» (IDs distintos), cada admin vería solo la suya según su `organization_id` al iniciar sesión. No hay cruce de datos. |
+
+**Banner:** En modo demo se muestra «Modo demo (PH Urban Tower) – Solo el correo demo@assembly2.com es el administrador de este PH demo.»
 
 ---
 

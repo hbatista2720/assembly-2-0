@@ -57,12 +57,26 @@ type Summary = {
 
 const BUILDING_NAME_SINGLE = "Urban Tower PH";
 
+/** Lógica de colores (Marketing): Verde = Presente+Votó, Amarillo = Presente+No votó, Gris claro = Ausente, Ámbar = En mora. */
 const getBackgroundColor = (unit: Unit) => {
-  if (unit.paymentStatus === "MORA") return "#475569";
-  if (!unit.isPresent) return "#64748b";
+  if (unit.paymentStatus === "MORA") return "#b45309";
+  if (!unit.isPresent) return "#94a3b8";
+  if (unit.voteValue === "NO") return "#dc2626";
   if (unit.voteValue) return "#10b981";
   return "#eab308";
 };
+
+/** Mismo color pero para borde (tablero con fondo blanco + marco de color). */
+const getBorderColor = (unit: Unit) => getBackgroundColor(unit);
+
+/** Clase de estado para casilla (permite estilizar iconos cuando el fondo es blanco). */
+function getUnitCellStatusClass(unit: Unit): string {
+  if (unit.paymentStatus === "MORA") return "unit-cell--mora";
+  if (!unit.isPresent) return "unit-cell--ausente";
+  if (unit.voteValue === "NO") return "unit-cell--voto-no";
+  if (unit.voteValue) return "unit-cell--presente-voto";
+  return "unit-cell--presente-no-voto";
+}
 
 /** Solo 2 colores para la vista Tablero Quórum: presente = verde, no presente = gris. Quien abandonó deja de contar como presente. */
 function getBackgroundColorQuorum(unit: Unit, abandonedCodes: Set<string>) {
@@ -73,17 +87,17 @@ function getBackgroundColorQuorum(unit: Unit, abandonedCodes: Set<string>) {
 /* Iconos modernos para estado de voto y método */
 const IconCheck = () => (
   <span className="unit-icon unit-icon-si" title="Votó SI" aria-hidden>
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
   </span>
 );
 const IconCross = () => (
   <span className="unit-icon unit-icon-no" title="Votó NO" aria-hidden>
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
   </span>
 );
 const IconCircle = () => (
   <span className="unit-icon unit-icon-abst" title="Abstención" aria-hidden>
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9" /></svg>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="9" /></svg>
   </span>
 );
 const IconManual = () => (
@@ -97,14 +111,18 @@ const IconLock = () => (
   </span>
 );
 
+/** Iconos de voto solo en casillas verdes (Presente+Votó). Ausente/En mora no muestran ✓, X ni ○ (Ley 284). */
 function getVoteIcon(unit: Unit): ReactNode {
-  if (!unit.voteValue) return null;
+  if (!unit.isPresent || unit.paymentStatus === "MORA" || !unit.voteValue) return null;
   if (unit.voteValue === "SI") return <IconCheck />;
   if (unit.voteValue === "NO") return <IconCross />;
   return <IconCircle />;
 }
 
+/** Método: mano = voto manual; candado = Face ID activo (solo en presentes). En mora mostramos candado para indicar "solo asistencia". */
 function getMethodIcon(unit: Unit): ReactNode {
+  if (!unit.isPresent) return null;
+  if (unit.paymentStatus === "MORA") return <IconLock />;
   if (unit.voteMethod === "MANUAL") return <IconManual />;
   if (unit.hasFaceId) return <IconLock />;
   return null;
@@ -222,7 +240,7 @@ export default function MonitorPage() {
   }, [pathname, assemblyId, router]);
 
   const [isDemo, setIsDemo] = useState(false);
-  const [viewMode, setViewMode] = useState<"summary" | "grid" | "quorum">("summary");
+  const [viewMode, setViewMode] = useState<"summary" | "grid" | "quorum">("grid");
   const [filterTower, setFilterTower] = useState("all");
   const [zoomLevel, setZoomLevel] = useState<"compact" | "normal" | "large">("normal");
   const [units, setUnits] = useState<Unit[]>([]);
@@ -232,6 +250,8 @@ export default function MonitorPage() {
   const [voteModalUnit, setVoteModalUnit] = useState<Unit | null>(null);
   const [voteModalValue, setVoteModalValue] = useState<"SI" | "NO" | "ABSTENCION">("SI");
   const [voteModalComment, setVoteModalComment] = useState("");
+  const [moraConfirmText, setMoraConfirmText] = useState("");
+  const [moraComment, setMoraComment] = useState("");
   const [assembly, setAssembly] = useState<Assembly | null>(null);
   const [votingTopics, setVotingTopics] = useState<AssemblyTopic[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<AssemblyTopic | null>(null);
@@ -251,6 +271,7 @@ export default function MonitorPage() {
     notifyLabel?: string;
     onConfirm: () => void;
   }>({ open: false, title: "", message: "", onConfirm: () => {} });
+  const [showGuiaVotacion, setShowGuiaVotacion] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setLiveNow(new Date()), 1000);
@@ -412,12 +433,15 @@ export default function MonitorPage() {
       if (active && isDemoResidentsContext()) {
         try {
           const residents = getDemoResidents();
-          list = list.map((u, idx) => {
-            const unitNum = String(101 + idx);
-            const inUnit = residents.filter((r) => (r.unit ?? "").trim() === unitNum);
+          // Solo mostrar unidades que tengan al menos un residente en el listado (QA Mejora 2)
+          list = list.filter((u) => residents.some((r) => (r.unit ?? "").trim() === (u.code ?? "").trim()));
+          list = list.map((u) => {
+            const unitCode = (u.code ?? "").trim();
+            const inUnit = residents.filter((r) => (r.unit ?? "").trim() === unitCode);
             const resident = inUnit.find((r) => r.habilitado_para_asamblea) ?? inUnit[0];
             const paymentStatus = resident?.payment_status === "mora" ? "MORA" : "AL_DIA";
-            return { ...u, paymentStatus };
+            const owner = resident?.nombre ?? resident?.email ?? u.owner;
+            return { ...u, paymentStatus, owner };
           });
         } catch {
           // keep API units if store fails
@@ -487,15 +511,58 @@ export default function MonitorPage() {
 
   const displayStats = useMemo(() => {
     if (!summary) return null;
+    const isDemo = isDemoResidentsContext();
     const hasOverrides = Object.keys(manualOverrides).length > 0;
-    if (!hasOverrides) return summary.stats;
-    const total = effectiveUnits.length;
-    const present = effectiveUnits.filter((u) => u.isPresent).length;
-    const voted = effectiveUnits.filter((u) => u.voteValue).length;
-    const mora = effectiveUnits.filter((u) => u.paymentStatus === "MORA").length;
-    const faceId = effectiveUnits.filter((u) => u.hasFaceId).length;
-    return { total, present, voted, mora, faceId };
+    if (isDemo && effectiveUnits.length > 0) {
+      const total = effectiveUnits.length;
+      const present = effectiveUnits.filter((u) => u.isPresent).length;
+      const voted = effectiveUnits.filter((u) => u.voteValue).length;
+      const mora = effectiveUnits.filter((u) => u.paymentStatus === "MORA").length;
+      const faceId = effectiveUnits.filter((u) => u.hasFaceId).length;
+      return { total, present, voted, mora, faceId };
+    }
+    if (hasOverrides) {
+      const total = effectiveUnits.length;
+      const present = effectiveUnits.filter((u) => u.isPresent).length;
+      const voted = effectiveUnits.filter((u) => u.voteValue).length;
+      const mora = effectiveUnits.filter((u) => u.paymentStatus === "MORA").length;
+      const faceId = effectiveUnits.filter((u) => u.hasFaceId).length;
+      return { total, present, voted, mora, faceId };
+    }
+    return summary.stats;
   }, [summary, manualOverrides, effectiveUnits]);
+
+  /** Contadores detallados por estado y tipo de voto. Presente+No votó = Presentes − Votaron (una sola fuente de verdad). */
+  const detailCounts = useMemo(() => {
+    const list = effectiveUnits;
+    const present = list.filter((u) => u.isPresent).length;
+    const voted = list.filter((u) => u.voteValue).length;
+    const presenteYVoto = list.filter((u) => u.isPresent && u.voteValue).length;
+    const presenteNoVoto = Math.max(0, present - voted);
+    const ausente = list.filter((u) => !u.isPresent).length;
+    const enMora = list.filter((u) => u.paymentStatus === "MORA").length;
+    const votaronSi = list.filter((u) => u.voteValue === "SI").length;
+    const votaronNo = list.filter((u) => u.voteValue === "NO").length;
+    const abstencion = list.filter((u) => u.voteValue === "ABSTENCION").length;
+    const votoManual = list.filter((u) => u.voteMethod === "MANUAL").length;
+    return { presenteYVoto, presenteNoVoto, ausente, enMora, votaronSi, votaronNo, abstencion, votoManual };
+  }, [effectiveUnits]);
+
+  /** Mismos contadores sobre las unidades filtradas (tablero) para que grid y resumen coincidan. */
+  const detailCountsFiltered = useMemo(() => {
+    const list = filteredUnits;
+    const present = list.filter((u) => u.isPresent).length;
+    const voted = list.filter((u) => u.voteValue).length;
+    const presenteYVoto = list.filter((u) => u.isPresent && u.voteValue).length;
+    const presenteNoVoto = Math.max(0, present - voted);
+    const ausente = list.filter((u) => !u.isPresent).length;
+    const enMora = list.filter((u) => u.paymentStatus === "MORA").length;
+    const votaronSi = list.filter((u) => u.voteValue === "SI").length;
+    const votaronNo = list.filter((u) => u.voteValue === "NO").length;
+    const abstencion = list.filter((u) => u.voteValue === "ABSTENCION").length;
+    const votoManual = list.filter((u) => u.voteMethod === "MANUAL").length;
+    return { presenteYVoto, presenteNoVoto, ausente, enMora, votaronSi, votaronNo, abstencion, votoManual };
+  }, [filteredUnits]);
 
   /** Quórum considerando abandonos: quien abandona deja de contar como presente (T12). Si tras abandonos ya no se alcanza, quorumLost. */
   const quorumResult = useMemo(() => {
@@ -717,6 +784,10 @@ export default function MonitorPage() {
     setVoteModalUnit(unit);
     setVoteModalValue(ov?.voteValue ?? unit.voteValue ?? "SI");
     setVoteModalComment(ov?.comment ?? "");
+    if (unit.paymentStatus === "MORA") {
+      setMoraConfirmText("");
+      setMoraComment("");
+    }
   };
 
   const saveVoteModal = () => {
@@ -744,7 +815,7 @@ export default function MonitorPage() {
     if (typeof window !== "undefined") {
       const key = `vote_changes_${assemblyId}`;
       const raw = localStorage.getItem(key);
-      const list: { id: string; resident_name: string; unit: string; email: string; voto_anterior: string; voto_nuevo: string; changed_at: string }[] = raw ? JSON.parse(raw) : [];
+      const list: { id: string; resident_name: string; unit: string; email: string; voto_anterior: string; voto_nuevo: string; changed_at: string; comment?: string }[] = raw ? JSON.parse(raw) : [];
       list.unshift({
         id: `vc-${Date.now()}-${voteModalUnit.id}`,
         resident_name: voteModalUnit.owner,
@@ -753,17 +824,18 @@ export default function MonitorPage() {
         voto_anterior: typeof votoAnterior === "string" ? votoAnterior : "—",
         voto_nuevo: votoNuevo,
         changed_at: new Date().toISOString(),
+        comment: voteModalComment.trim() || undefined,
       });
       localStorage.setItem(key, JSON.stringify(list));
     }
     setVoteModalUnit(null);
   };
 
-  const setAlDiaOverride = (unitId: string) => {
+  const setAlDiaOverride = (unitId: string, comment?: string) => {
     const existing = manualOverrides[unitId];
     const nextOverrides = {
       ...manualOverrides,
-      [unitId]: { ...existing, paymentStatusOverride: "AL_DIA" as const },
+      [unitId]: { ...existing, paymentStatusOverride: "AL_DIA" as const, comment: comment || existing?.comment },
     };
     setManualOverrides(nextOverrides);
     saveOverridesToStorage(assemblyId, nextOverrides);
@@ -1273,7 +1345,7 @@ export default function MonitorPage() {
       )}
 
       {monitorMode === "votacion" && assembly?.status === "Completada" && (
-        <div style={{ padding: "12px 16px", background: "rgba(34, 197, 94, 0.15)", border: "1px solid rgba(34, 197, 94, 0.35)", borderRadius: "12px", marginBottom: "16px" }}>
+        <div className="monitor-banner-finalizada" style={{ padding: "12px 16px", background: "rgba(34, 197, 94, 0.15)", border: "1px solid rgba(34, 197, 94, 0.35)", borderRadius: "12px", marginBottom: "16px" }}>
           <strong>Asamblea finalizada.</strong> La votación por tema está cerrada para residentes.
         </div>
       )}
@@ -1306,6 +1378,42 @@ export default function MonitorPage() {
             <div className="monitor-confirm-actions">
               <button type="button" className="btn btn-ghost" onClick={closeConfirm}>Cancelar</button>
               <button type="button" className="btn btn-primary" onClick={handleConfirm}>Aceptar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showGuiaVotacion && (
+        <div className="monitor-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="guia-votacion-title" onClick={() => setShowGuiaVotacion(false)}>
+          <div className="monitor-confirm-modal" style={{ maxWidth: "480px" }} onClick={(e) => e.stopPropagation()}>
+            <h3 id="guia-votacion-title" className="monitor-confirm-title">Guía de votación</h3>
+            <p className="muted" style={{ marginBottom: "16px", fontSize: "13px" }}>Explicación de colores y símbolos del tablero.</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "20px", textAlign: "left" }}>
+              <div>
+                <strong style={{ fontSize: "12px", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em" }}>Colores de las casillas</strong>
+                <ul style={{ margin: "6px 0 0", paddingLeft: "20px", fontSize: "14px", lineHeight: 1.7 }}>
+                  <li><span style={{ display: "inline-block", width: "12px", height: "12px", borderRadius: "4px", background: "#10b981", verticalAlign: "middle", marginRight: "8px" }} /> <strong>Verde</strong> — Presente + Votó (SI, NO o Abstención)</li>
+                  <li><span style={{ display: "inline-block", width: "12px", height: "12px", borderRadius: "4px", background: "#eab308", verticalAlign: "middle", marginRight: "8px" }} /> <strong>Amarillo</strong> — Presente + No votó aún</li>
+                  <li><span style={{ display: "inline-block", width: "12px", height: "12px", borderRadius: "4px", background: "#94a3b8", verticalAlign: "middle", marginRight: "8px" }} /> <strong>Gris</strong> — Ausente</li>
+                  <li><span style={{ display: "inline-block", width: "12px", height: "12px", borderRadius: "4px", background: "#b45309", verticalAlign: "middle", marginRight: "8px" }} /> <strong>Ámbar</strong> — En mora (solo asistencia, Ley 284)</li>
+                </ul>
+              </div>
+              <div>
+                <strong style={{ fontSize: "12px", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em" }}>Símbolos de voto</strong>
+                <ul style={{ margin: "6px 0 0", paddingLeft: "20px", fontSize: "14px", lineHeight: 1.7 }}>
+                  <li><span className="legend-icon-wrap legend-icon-si" style={{ marginRight: "8px" }}><IconCheck /></span> <strong>✓</strong> — Votó SI</li>
+                  <li><span className="legend-icon-wrap legend-icon-no" style={{ marginRight: "8px" }}><IconCross /></span> <strong>✗</strong> — Votó NO</li>
+                  <li><span className="legend-icon-wrap legend-icon-abst" style={{ marginRight: "8px" }}><IconCircle /></span> <strong>○</strong> — Abstención</li>
+                  <li><span className="legend-icon-wrap legend-icon-manual" style={{ marginRight: "8px" }}><IconManual /></span> <strong>Mano</strong> — Voto registrado manualmente por el administrador</li>
+                  <li><span className="legend-icon-wrap legend-icon-faceid" style={{ marginRight: "8px" }}><IconLock /></span> <strong>Candado</strong> — Face ID activo o unidad en mora</li>
+                </ul>
+              </div>
+              <p style={{ margin: 0, fontSize: "13px", color: "#94a3b8", padding: "10px 12px", background: "rgba(99, 102, 241, 0.12)", borderRadius: "8px", border: "1px solid rgba(99, 102, 241, 0.25)" }}>
+                💡 <strong>Voto manual:</strong> haga clic en cualquier casilla del tablero para abrir el cuadro de voto manual (SI / NO / Abstención) y registrar o modificar el voto de esa unidad.
+              </p>
+            </div>
+            <div className="monitor-confirm-actions">
+              <button type="button" className="btn btn-primary" onClick={() => setShowGuiaVotacion(false)}>Cerrar</button>
             </div>
           </div>
         </div>
@@ -1358,17 +1466,31 @@ export default function MonitorPage() {
                   <div className="summary-label">{item.label}</div>
                 </div>
               ))}
+              <div className="summary-detail-row">
+                <div className="summary-detail-title">Resumen por estado y voto</div>
+                <div className="summary-detail-grid">
+                  <div className="summary-detail-card" style={{ borderLeftColor: "#10b981" }}><span className="summary-detail-label">Presente + Votó</span><strong>{detailCounts.presenteYVoto}</strong></div>
+                  <div className="summary-detail-card" style={{ borderLeftColor: "#eab308" }}><span className="summary-detail-label">Presente + No votó</span><strong>{detailCounts.presenteNoVoto}</strong></div>
+                  <div className="summary-detail-card" style={{ borderLeftColor: "#94a3b8" }}><span className="summary-detail-label">Ausente</span><strong>{detailCounts.ausente}</strong></div>
+                  <div className="summary-detail-card" style={{ borderLeftColor: "#b45309" }}><span className="summary-detail-label">En mora</span><strong>{detailCounts.enMora}</strong></div>
+                  <div className="summary-detail-card" style={{ borderLeftColor: "#10b981" }}><span className="summary-detail-label">Votó SI</span><strong>{detailCounts.votaronSi}</strong></div>
+                  <div className="summary-detail-card summary-detail-card--voto-no" style={{ borderLeftColor: "#ef4444" }}><span className="summary-detail-label">Votó NO</span><strong>{detailCounts.votaronNo}</strong></div>
+                  <div className="summary-detail-card" style={{ borderLeftColor: "#94a3b8" }}><span className="summary-detail-label">Abstención</span><strong>{detailCounts.abstencion}</strong></div>
+                  <div className="summary-detail-card" style={{ borderLeftColor: "#8b5cf6" }}><span className="summary-detail-label">Voto manual</span><strong>{detailCounts.votoManual}</strong></div>
+                </div>
+              </div>
+              {(displayStats ? displayStats.voted : summary.votation.votesCount) > 0 ? (
               <div className="summary-card large">
                 <div className="summary-title">{summary.votation.topic}</div>
                 <div className="summary-bars">
                   {[
-                    { label: "SI", value: summary.votation.results.si, color: "#10b981" },
-                    { label: "NO", value: summary.votation.results.no, color: "#ef4444" },
-                    { label: "ABST", value: summary.votation.results.abst, color: "#94a3b8" },
-                  ].map((bar) => (
-                    <div key={bar.label} className="vote-bar">
+                    { value: summary.votation.results.si, color: "#10b981" },
+                    { value: summary.votation.results.no, color: "#ef4444" },
+                    { value: summary.votation.results.abst, color: "#94a3b8" },
+                  ].map((bar, i) => (
+                    <div key={i} className="vote-bar">
                       <div className="vote-bar-label">
-                        {bar.label} · {bar.value}%
+                        {bar.value}%
                       </div>
                       <div className="vote-bar-track">
                         <span style={{ width: `${bar.value}%`, backgroundColor: bar.color }} />
@@ -1376,10 +1498,11 @@ export default function MonitorPage() {
                     </div>
                   ))}
                 </div>
-                <div className="summary-foot">
-                  Votos emitidos: {displayStats ? `${displayStats.voted} / ${displayStats.present}` : `${summary.votation.votesCount} / ${summary.votation.attendeesCount}`} presentes
-                </div>
+                <p className="muted" style={{ margin: "4px 0 0", fontSize: "12px" }}>
+                  % sobre {summary.votation.votesCount} votos emitidos
+                </p>
               </div>
+            ) : null}
             </>
           ) : (
             <div className="summary-card large">Cargando métricas...</div>
@@ -1387,41 +1510,70 @@ export default function MonitorPage() {
         </div>
       ) : (
         <div className="units-grid-container">
-          <div className="legend legend-modern">
-            <div className="legend-item">
-              <span className="legend-color" style={{ background: "#10b981" }} />
-              <span>Presente + Votó</span>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+            <div className="legend legend-modern" style={{ flex: "1 1 auto" }}>
+              <div className="legend-item">
+                <span className="legend-color" style={{ background: "#10b981" }} />
+                <span>Presente + Votó</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-color" style={{ background: "#eab308" }} />
+                <span>Presente + No votó</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-color" style={{ background: "#94a3b8" }} />
+                <span>Ausente</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-color" style={{ background: "#b45309" }} />
+                <span>En mora (solo asistencia)</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-icon-wrap legend-icon-faceid"><IconLock /></span>
+                <span>Candado (Face ID activo / En mora)</span>
+              </div>
+              <div className="legend-item legend-item--vote">
+                <span className="legend-icon-wrap legend-icon-si"><IconCheck /></span>
+                <span>Votó SI</span>
+              </div>
+              <div className="legend-item legend-item--vote">
+                <span className="legend-icon-wrap legend-icon-no"><IconCross /></span>
+                <span>Votó NO</span>
+              </div>
+              <div className="legend-item legend-item--vote">
+                <span className="legend-icon-wrap legend-icon-abst"><IconCircle /></span>
+                <span>Abstención</span>
+              </div>
+              <div className="legend-item legend-item--vote">
+                <span className="legend-icon-wrap legend-icon-manual"><IconManual /></span>
+                <span>Voto manual</span>
+              </div>
+              <p className="legend-note" style={{ gridColumn: "1 / -1", margin: "8px 0 0", fontSize: "12px", color: "#94a3b8" }}>
+                Verde = Presente + Votó SI o Abstención. Roja = Votó NO. Los iconos ✓, X, ○ y mano en verdes o rojas.
+              </p>
+              <div className="legend-cta" style={{ gridColumn: "1 / -1" }}>
+                <span className="legend-cta-icon" aria-hidden>👆</span>
+                <span>Clic en cualquier casilla para abrir voto manual</span>
+              </div>
             </div>
-            <div className="legend-item">
-              <span className="legend-color" style={{ background: "#eab308" }} />
-              <span>Presente + No votó</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-color" style={{ background: "#64748b" }} />
-              <span>Ausente</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-color" style={{ background: "#475569" }} />
-              <span>En mora</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-icon-wrap legend-icon-si"><IconCheck /></span>
-              <span>Votó SI</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-icon-wrap legend-icon-no"><IconCross /></span>
-              <span>Votó NO</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-icon-wrap legend-icon-abst"><IconCircle /></span>
-              <span>Abstención</span>
-            </div>
-            <div className="legend-item">
-              <span className="legend-icon-wrap legend-icon-manual"><IconManual /></span>
-              <span>Voto manual</span>
-            </div>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setShowGuiaVotacion(true)}
+              style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "8px", fontSize: "13px", padding: "8px 14px" }}
+              title="Ver explicación de colores y símbolos"
+            >
+              <span style={{ fontSize: "16px" }}>📋</span>
+              Guía de votación
+            </button>
           </div>
 
+          {filteredUnits.length === 0 ? (
+            <div className="monitor-empty-units" style={{ padding: "24px", textAlign: "center", color: "#94a3b8", fontSize: "14px" }}>
+              No hay unidades en el tablero. En modo demo, agregue residentes en <strong>Propietarios/Residentes</strong> o use &quot;Restablecer listado demo&quot; para cargar las 50 unidades.
+            </div>
+          ) : (
+          <>
           <div className={`units-grid zoom-${zoomLevel}`} style={{ gridTemplateColumns: `repeat(${getGridColumns()}, 1fr)` }}>
             {filteredUnits.map((unit) => {
               const isPending = unit.isPresent && !unit.voteValue && unit.paymentStatus !== "MORA";
@@ -1429,9 +1581,12 @@ export default function MonitorPage() {
                 <button
                   key={unit.id}
                   type="button"
-                  className={`unit-cell unit-cell-clickable ${isPending ? "pending-vote" : ""}`}
-                  style={{ backgroundColor: getBackgroundColor(unit) }}
-                  title={`${unit.code} · ${unit.owner}. Clic para voto manual.`}
+                  className={`unit-cell unit-cell-clickable ${getUnitCellStatusClass(unit)} ${isPending ? "pending-vote" : ""}`}
+                  style={{
+                    border: `3px solid ${getBorderColor(unit)}`,
+                    color: "#fff",
+                  }}
+                  title={`Unidad ${unit.code} · ${unit.owner}${unit.paymentStatus === "MORA" ? " · En mora (solo asistencia)" : ""}. Clic para voto manual.`}
                   onClick={() => openVoteModal(unit)}
                 >
                   <div className="unit-code">{unit.code}</div>
@@ -1443,7 +1598,6 @@ export default function MonitorPage() {
               );
             })}
           </div>
-
           <div className="grid-stats monitor-grid-stats">
             <div className="stat">
               Total: <strong>{filteredUnits.length}</strong>
@@ -1458,6 +1612,21 @@ export default function MonitorPage() {
               En mora: <strong>{filteredUnits.filter((unit) => unit.paymentStatus === "MORA").length}</strong>
             </div>
           </div>
+          <div className="monitor-detail-counts">
+            <div className="monitor-detail-counts-title">Resumen por estado y voto (coincide con el grid)</div>
+            <div className="monitor-detail-counts-grid">
+              <div className="monitor-detail-stat" style={{ borderLeftColor: "#10b981" }}><span className="monitor-detail-stat-label">Presente + Votó</span><strong>{detailCountsFiltered.presenteYVoto}</strong></div>
+              <div className="monitor-detail-stat" style={{ borderLeftColor: "#eab308" }}><span className="monitor-detail-stat-label">Presente + No votó</span><strong>{detailCountsFiltered.presenteNoVoto}</strong></div>
+              <div className="monitor-detail-stat" style={{ borderLeftColor: "#94a3b8" }}><span className="monitor-detail-stat-label">Ausente</span><strong>{detailCountsFiltered.ausente}</strong></div>
+              <div className="monitor-detail-stat" style={{ borderLeftColor: "#b45309" }}><span className="monitor-detail-stat-label">En mora</span><strong>{detailCountsFiltered.enMora}</strong></div>
+              <div className="monitor-detail-stat" style={{ borderLeftColor: "#10b981" }}><span className="monitor-detail-stat-label">Votó SI</span><strong>{detailCountsFiltered.votaronSi}</strong></div>
+              <div className="monitor-detail-stat monitor-detail-stat--voto-no" style={{ borderLeftColor: "#ef4444" }}><span className="monitor-detail-stat-label">Votó NO</span><strong>{detailCountsFiltered.votaronNo}</strong></div>
+              <div className="monitor-detail-stat" style={{ borderLeftColor: "#94a3b8" }}><span className="monitor-detail-stat-label">Abstención</span><strong>{detailCountsFiltered.abstencion}</strong></div>
+              <div className="monitor-detail-stat" style={{ borderLeftColor: "#8b5cf6" }}><span className="monitor-detail-stat-label">Voto manual</span><strong>{detailCountsFiltered.votoManual}</strong></div>
+            </div>
+          </div>
+          </>
+          )}
         </div>
       )}
 
@@ -1855,40 +2024,103 @@ export default function MonitorPage() {
           width: 20px;
           height: 20px;
         }
-        .legend-icon-wrap.legend-icon-si { color: #10b981; }
-        .legend-icon-wrap.legend-icon-no { color: #ef4444; }
-        .legend-icon-wrap.legend-icon-abst { color: #94a3b8; }
-        .legend-icon-wrap.legend-icon-manual { color: #6366f1; }
+        .legend-modern .legend-icon-wrap svg {
+          width: 100%;
+          height: 100%;
+        }
+        .legend-modern .legend-item--vote .legend-icon-wrap {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: #ffffff;
+          padding: 4px;
+          box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.4);
+        }
+        /* Tema oscuro: resaltar tono de los símbolos para buena visibilidad */
+        .legend-item--vote .legend-icon-wrap.legend-icon-si { color: #10b981; }
+        .legend-item--vote .legend-icon-wrap.legend-icon-no { color: #ef4444; }
+        .legend-item--vote .legend-icon-wrap.legend-icon-abst {
+          color: #334155;
+          background: #f1f5f9 !important;
+          box-shadow: 0 0 0 1px #94a3b8;
+        }
+        .legend-item--vote .legend-icon-wrap.legend-icon-manual { color: #818cf8; }
+        .legend-icon-wrap.legend-icon-manual { color: #818cf8; }
+        .legend-icon-wrap.legend-icon-faceid { color: #94a3b8; }
+        .legend-cta {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          margin-top: 10px;
+          padding: 10px 16px;
+          background: rgba(99, 102, 241, 0.2);
+          border: 1px solid rgba(99, 102, 241, 0.5);
+          border-radius: 12px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #c7d2fe;
+        }
+        .legend-cta-icon {
+          font-size: 18px;
+        }
         .unit-icon {
           display: inline-flex;
           align-items: center;
           justify-content: center;
         }
-        .unit-icon.unit-icon-si { color: #052e16; }
-        .unit-icon.unit-icon-no { color: #450a0a; }
-        .unit-icon.unit-icon-abst { color: #1e293b; }
-        .unit-icon.unit-icon-manual { color: #312e81; }
-        .unit-icon.unit-icon-faceid { color: rgba(0,0,0,0.5); }
-        .unit-cell[style*="10b981"] .unit-icon.unit-icon-si { color: #fff; }
-        .unit-cell[style*="10b981"] .unit-icon.unit-icon-no { color: #fecaca; }
-        .unit-cell[style*="eab308"] .unit-icon { color: #422006; }
-        .unit-cell[style*="475569"] .unit-icon { color: #e2e8f0; }
+        .unit-icon.unit-icon-si { color: #6ee7b7; }
+        .unit-icon.unit-icon-no { color: #fca5a5; }
+        .unit-icon.unit-icon-abst { color: #cbd5e1; }
+        .unit-icon.unit-icon-manual { color: #a5b4fc; }
+        .unit-icon.unit-icon-faceid { color: rgba(255,255,255,0.85); }
+        /* Casilla con fondo oscuro: iconos visibles en tema oscuro */
+        .unit-cell--presente-voto .unit-icon.unit-icon-si,
+        .unit-cell--presente-voto .unit-icon.unit-icon-no,
+        .unit-cell--presente-voto .unit-icon.unit-icon-abst {
+          border-radius: 50%;
+          padding: 3px;
+          box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+        }
+        .unit-cell--presente-voto .unit-icon.unit-icon-si { color: #34d399; }
+        .unit-cell--presente-voto .unit-icon.unit-icon-no { color: #f87171; }
+        .unit-cell--presente-voto .unit-icon.unit-icon-abst { color: #94a3b8; }
+        .unit-cell--voto-no .unit-icon.unit-icon-si,
+        .unit-cell--voto-no .unit-icon.unit-icon-no,
+        .unit-cell--voto-no .unit-icon.unit-icon-abst {
+          border-radius: 50%;
+          padding: 3px;
+          box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+        }
+        .unit-cell--voto-no .unit-icon.unit-icon-no { color: #f87171; }
+        .unit-cell--presente-no-voto .unit-icon { color: #fde047; }
+        .unit-cell--ausente .unit-icon { color: #94a3b8; }
+        .unit-cell--mora .unit-icon { color: #fdba74; }
         .units-grid {
           display: grid;
-          gap: 4px;
+          gap: 6px;
         }
         .unit-cell {
-          border-radius: 4px;
+          border-radius: 8px;
           min-height: 36px;
           font-size: 10px;
-          color: #0f172a;
+          color: #fff;
           display: flex;
           align-items: center;
           justify-content: center;
           flex-direction: column;
           font-weight: 700;
           position: relative;
+          transition: box-shadow 0.15s ease, transform 0.15s ease;
         }
+        .unit-cell .unit-code {
+          color: #fff;
+          text-shadow: 0 0 1px rgba(0,0,0,0.3);
+        }
+        .unit-cell--presente-voto { background-color: rgba(16, 185, 129, 0.14); }
+        .unit-cell--voto-no { background-color: rgba(239, 68, 68, 0.1); }
+        .unit-cell--presente-no-voto { background-color: rgba(234, 179, 8, 0.16); }
+        .unit-cell--ausente { background-color: rgba(148, 163, 184, 0.14); }
+        .unit-cell--mora { background-color: rgba(180, 83, 9, 0.18); }
         .units-grid.zoom-compact .unit-cell {
           min-height: 22px;
           font-size: 8px;
@@ -1918,13 +2150,98 @@ export default function MonitorPage() {
         .grid-stats strong {
           color: white;
         }
+        .monitor-detail-counts {
+          margin-top: 16px;
+          padding: 14px 16px;
+          background: rgba(15, 23, 42, 0.5);
+          border-radius: 12px;
+          border: 1px solid rgba(148, 163, 184, 0.15);
+        }
+        .monitor-detail-counts-title {
+          font-size: 12px;
+          font-weight: 600;
+          color: #94a3b8;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          margin-bottom: 12px;
+        }
+        .monitor-detail-counts-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+          gap: 10px;
+        }
+        .monitor-detail-stat {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          padding: 8px 12px;
+          background: rgba(30, 41, 59, 0.6);
+          border-radius: 10px;
+          border-left: 3px solid #64748b;
+          font-size: 13px;
+          color: #e2e8f0;
+        }
+        .monitor-detail-stat strong {
+          font-size: 18px;
+          color: #f1f5f9;
+        }
+        .monitor-detail-stat-label {
+          font-size: 11px;
+          color: #94a3b8;
+        }
+        .summary-detail-row {
+          grid-column: 1 / -1;
+          padding: 14px 16px;
+          background: rgba(15, 23, 42, 0.5);
+          border-radius: 12px;
+          border: 1px solid rgba(148, 163, 184, 0.15);
+        }
+        .summary-detail-title {
+          font-size: 12px;
+          font-weight: 600;
+          color: #94a3b8;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          margin-bottom: 12px;
+        }
+        .summary-detail-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+          gap: 10px;
+        }
+        .summary-detail-card {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          padding: 10px 12px;
+          background: rgba(30, 41, 59, 0.6);
+          border-radius: 10px;
+          border-left: 3px solid #64748b;
+          font-size: 13px;
+          color: #e2e8f0;
+        }
+        .summary-detail-card strong {
+          font-size: 18px;
+          color: #f1f5f9;
+        }
+        .summary-detail-label {
+          font-size: 11px;
+          color: #94a3b8;
+        }
+        .summary-detail-card--voto-no,
+        .monitor-detail-stat--voto-no {
+          background: rgba(239, 68, 68, 0.18);
+          border-left-width: 4px;
+          border-left-color: #ef4444;
+        }
         .unit-cell-clickable {
           cursor: pointer;
           border: none;
           font: inherit;
         }
         .unit-cell-clickable:hover {
-          filter: brightness(1.1);
+          box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4);
+          transform: scale(1.02);
         }
         .monitor-vote-modal-overlay {
           position: fixed;
@@ -1940,10 +2257,11 @@ export default function MonitorPage() {
           background: #1e293b;
           color: #f1f5f9;
           border-radius: 16px;
-          padding: 24px;
-          max-width: 420px;
+          padding: 28px;
+          max-width: 440px;
           width: 100%;
           border: 1px solid rgba(148, 163, 184, 0.3);
+          box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
         }
         .monitor-vote-modal h3 {
           margin: 0 0 8px;
@@ -1990,6 +2308,120 @@ export default function MonitorPage() {
           gap: 10px;
           justify-content: flex-end;
         }
+        /* Tema claro: misma secuencia en todos los módulos (fondo claro + texto oscuro), sin afectar tema oscuro */
+        html[data-theme="light"] .monitor-container .tablero-card {
+          background: #ffffff !important;
+          border-color: #e2e8f0 !important;
+          color: #0f172a;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        }
+        html[data-theme="light"] .monitor-container .tablero-title {
+          color: #0f172a !important;
+        }
+        html[data-theme="light"] .monitor-container .tablero-quorum-label,
+        html[data-theme="light"] .monitor-container .tablero-quorum-detail,
+        html[data-theme="light"] .monitor-container .tablero-quorum-help,
+        html[data-theme="light"] .monitor-container .tablero-primer-text {
+          color: #334155 !important;
+        }
+        html[data-theme="light"] .monitor-container .tablero-quorum-value {
+          color: #047857 !important;
+        }
+        html[data-theme="light"] .monitor-container .tablero-clock {
+          color: #0f172a !important;
+        }
+        html[data-theme="light"] .monitor-container .conv-timeline-title {
+          color: #0f172a !important;
+        }
+        html[data-theme="light"] .monitor-container .conv-timeline-step--pending .conv-timeline-title {
+          color: #475569 !important;
+        }
+        html[data-theme="light"] .monitor-container .conv-timeline-muted {
+          color: #475569 !important;
+        }
+        html[data-theme="light"] .monitor-container .conv-timeline-time,
+        html[data-theme="light"] .monitor-container .conv-timeline-time--approved {
+          color: #047857 !important;
+        }
+        html[data-theme="light"] .monitor-container .conv-timeline-next-msg {
+          color: #4338ca !important;
+        }
+        html[data-theme="light"] .monitor-container .tablero-conv-label {
+          color: #475569 !important;
+        }
+        html[data-theme="light"] .monitor-container .tablero-conv-value {
+          color: #0f172a !important;
+        }
+        html[data-theme="light"] .monitor-container .tablero-conv-done .tablero-conv-value {
+          color: #047857 !important;
+        }
+        html[data-theme="light"] .monitor-container .tablero-live {
+          color: #047857 !important;
+        }
+        html[data-theme="light"] .monitor-container .tablero-quorum-badge.achieved {
+          color: #047857 !important;
+          border-color: rgba(16, 185, 129, 0.5);
+        }
+        html[data-theme="light"] .monitor-container .tablero-quorum-badge.not-achieved {
+          color: #b45309 !important;
+        }
+        html[data-theme="light"] .monitor-container .tablero-quorum-badge.quorum-lost {
+          color: #b91c1c !important;
+        }
+        html[data-theme="light"] .monitor-container .tablero-card .btn-ghost {
+          color: #1e293b !important;
+        }
+        html[data-theme="light"] .monitor-container .tablero-card .btn-ghost:hover {
+          color: #0f172a !important;
+          background: rgba(0, 0, 0, 0.06);
+        }
+        html[data-theme="light"] .monitor-container .tablero-card .muted {
+          color: #475569 !important;
+        }
+        html[data-theme="light"] .monitor-container .conv-timeline-dot {
+          border-color: #94a3b8 !important;
+        }
+        html[data-theme="light"] .monitor-container .conv-timeline-step--pending .conv-timeline-dot {
+          background: #cbd5e1 !important;
+          border-color: #94a3b8 !important;
+        }
+        html[data-theme="light"] .monitor-container .conv-timeline-step--done .conv-timeline-dot {
+          background: #10b981 !important;
+          border-color: #059669 !important;
+        }
+        html[data-theme="light"] .monitor-container .conv-timeline-step--current .conv-timeline-dot {
+          background: #6366f1 !important;
+          border-color: #4f46e5 !important;
+        }
+        html[data-theme="light"] .monitor-container .monitor-acciones-asamblea,
+        html[data-theme="light"] .monitor-container .monitor-acciones-asamblea h3 {
+          color: #0f172a !important;
+        }
+        html[data-theme="light"] .monitor-container .monitor-acciones-asamblea {
+          background: #f8fafc !important;
+          border-color: #e2e8f0 !important;
+        }
+        /* Tema claro: casillas del grid con número e iconos en negro para misma secuencia */
+        html[data-theme="light"] .monitor-container .unit-cell,
+        html[data-theme="light"] .monitor-container .unit-cell .unit-code {
+          color: #0f172a !important;
+        }
+        html[data-theme="light"] .monitor-container .unit-cell .unit-icon.unit-icon-si { color: #047857 !important; }
+        html[data-theme="light"] .monitor-container .unit-cell .unit-icon.unit-icon-no { color: #b91c1c !important; }
+        html[data-theme="light"] .monitor-container .unit-cell .unit-icon.unit-icon-abst { color: #475569 !important; }
+        html[data-theme="light"] .monitor-container .unit-cell .unit-icon.unit-icon-manual { color: #4338ca !important; }
+        html[data-theme="light"] .monitor-container .unit-cell .unit-icon.unit-icon-faceid { color: #475569 !important; }
+        html[data-theme="light"] .monitor-container .monitor-banner-finalizada {
+          color: #0f172a !important;
+        }
+        html[data-theme="light"] .monitor-container .monitor-banner-finalizada strong {
+          color: #0f172a !important;
+        }
+        html[data-theme="light"] .monitor-container .legend-item--vote .legend-icon-wrap.legend-icon-abst {
+          background: #ffffff !important;
+          box-shadow: 0 0 0 1px #e2e8f0;
+          color: #475569 !important;
+        }
       `}</style>
 
       {voteModalUnit && (() => {
@@ -2000,37 +2432,91 @@ export default function MonitorPage() {
         return (
           <div className="monitor-vote-modal-overlay" onClick={() => setVoteModalUnit(null)} role="dialog" aria-modal="true" aria-labelledby="vote-modal-title">
             <div className="monitor-vote-modal" onClick={(e) => e.stopPropagation()}>
-              <h3 id="vote-modal-title">
+              <h3 id="vote-modal-title" style={{ fontSize: "1.25rem", marginBottom: "4px" }}>
                 {isMora ? "Unidad en mora" : (manualOverrides[voteModalUnit.id]?.voteValue || originalUnit?.voteValue) ? "Modificar voto" : "Voto manual"}
               </h3>
-              <p className="muted" style={{ margin: "0 0 12px", fontSize: "14px" }}>
+              <p className="muted" style={{ margin: "0 0 16px", fontSize: "14px", paddingBottom: "12px", borderBottom: "1px solid rgba(148, 163, 184, 0.2)" }}>
                 Unidad {voteModalUnit.code} · {voteModalUnit.owner}
               </p>
               {isMora ? (
                 <>
+                  <div style={{ marginBottom: "16px", padding: "12px 14px", background: "rgba(180, 83, 9, 0.2)", border: "1px solid rgba(180, 83, 9, 0.5)", borderRadius: "12px", fontSize: "13px" }}>
+                    <strong style={{ color: "#f59e0b" }}>Advertencia:</strong> Esta unidad está en mora. <strong>No se puede registrar voto</strong> hasta marcarla como &quot;Al día&quot; (abajo). Las unidades en mora solo tienen asistencia, no voto (Ley 284).
+                  </div>
                   <p style={{ margin: "0 0 16px", fontSize: "14px", color: "#cbd5e1" }}>
-                    Las unidades en mora no pueden votar. Si el residente regularizó a última hora y validó que está al día, marque la unidad como &quot;Al día&quot; para permitir el voto desde este tablero.
+                    Si el residente regularizó a última hora y validó que está al día, marque la unidad como &quot;Al día&quot; para permitir el voto desde este tablero.
                   </p>
+                  <div style={{ marginBottom: "12px" }}>
+                    <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Escriba &quot;Permitir&quot; para confirmar</label>
+                    <input
+                      type="text"
+                      value={moraConfirmText}
+                      onChange={(e) => setMoraConfirmText(e.target.value)}
+                      placeholder='Escriba Permitir'
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1px solid rgba(148, 163, 184, 0.3)", fontSize: "14px", background: "rgba(15, 23, 42, 0.6)", color: "#e2e8f0" }}
+                      aria-label="Confirmar escribiendo Permitir"
+                    />
+                  </div>
+                  <div style={{ marginBottom: "16px" }}>
+                    <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Comentario / motivo del cambio</label>
+                    <textarea
+                      value={moraComment}
+                      onChange={(e) => setMoraComment(e.target.value)}
+                      placeholder="Indique el motivo por el que se permite el voto (ej. residente regularizó a última hora)"
+                      rows={3}
+                      style={{ width: "100%", padding: "10px", borderRadius: "10px", border: "1px solid rgba(148, 163, 184, 0.3)", fontSize: "14px", background: "rgba(15, 23, 42, 0.6)", color: "#e2e8f0" }}
+                    />
+                  </div>
                   <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", flexWrap: "wrap" }}>
                     <button type="button" className="btn btn-ghost" onClick={() => setVoteModalUnit(null)}>
                       Cancelar
                     </button>
-                    <button type="button" className="btn btn-primary" onClick={() => setAlDiaOverride(voteModalUnit.id)}>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={moraConfirmText.trim().toLowerCase() !== "permitir" || !moraComment.trim()}
+                      onClick={() => setAlDiaOverride(voteModalUnit.id, moraComment.trim())}
+                    >
                       Marcar como al día (permitir voto)
                     </button>
                   </div>
                 </>
               ) : (
                 <>
-                  <div style={{ marginBottom: "12px" }}>
-                    <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Voto</label>
-                    <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-                      {(["SI", "NO", "ABSTENCION"] as const).map((v) => (
-                        <label key={v} style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
-                          <input type="radio" name="vote" checked={voteModalValue === v} onChange={() => setVoteModalValue(v)} />
-                          {v === "ABSTENCION" ? "Abstención" : v}
-                        </label>
-                      ))}
+                  {(manualOverrides[voteModalUnit.id]?.voteValue || originalUnit?.voteValue) && (
+                    <p className="muted" style={{ margin: "0 0 14px", fontSize: "13px", padding: "10px 12px", background: "rgba(148, 163, 184, 0.15)", borderRadius: "10px" }}>
+                      <strong>Voto actual:</strong> {manualOverrides[voteModalUnit.id]?.voteValue ?? originalUnit?.voteValue ?? "—"}
+                    </p>
+                  )}
+                  <div style={{ marginBottom: "16px" }}>
+                    <label style={{ display: "block", marginBottom: "8px", fontWeight: 600, fontSize: "14px" }}>Nuevo voto</label>
+                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                      {(["SI", "NO", "ABSTENCION"] as const).map((v) => {
+                        const isChecked = voteModalValue === v;
+                        const chipBorder = v === "SI" ? "#10b981" : v === "NO" ? "#ef4444" : "#94a3b8";
+                        const chipBgSoft = v === "SI" ? "rgba(16, 185, 129, 0.12)" : v === "NO" ? "rgba(239, 68, 68, 0.1)" : "rgba(148, 163, 184, 0.15)";
+                        return (
+                          <label
+                            key={v}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              cursor: "pointer",
+                              padding: "10px 16px",
+                              borderRadius: "12px",
+                              background: isChecked ? chipBgSoft : "rgba(30, 41, 59, 0.5)",
+                              border: `2px solid ${isChecked ? chipBorder : "rgba(148, 163, 184, 0.35)"}`,
+                              color: isChecked ? (v === "SI" ? "#047857" : v === "NO" ? "#b91c1c" : "#475569") : "#e2e8f0",
+                              fontWeight: 600,
+                              fontSize: "14px",
+                            }}
+                          >
+                            <input type="radio" name="vote" checked={isChecked} onChange={() => setVoteModalValue(v)} style={{ accentColor: chipBorder }} />
+                            {v === "ABSTENCION" ? "Abstención" : v}
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                   <div style={{ marginBottom: "16px" }}>
@@ -2042,7 +2528,7 @@ export default function MonitorPage() {
                       onChange={(e) => setVoteModalComment(e.target.value)}
                       placeholder="Motivo del voto manual o del cambio de voto..."
                       rows={3}
-                      style={{ width: "100%", padding: "10px", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "14px" }}
+                      style={{ width: "100%", padding: "10px", borderRadius: "10px", border: "1px solid rgba(148, 163, 184, 0.3)", fontSize: "14px", background: "rgba(15, 23, 42, 0.6)", color: "#e2e8f0" }}
                     />
                   </div>
                   {showRevertMora && (

@@ -59,7 +59,7 @@ export const PLANS: Plan[] = [
     ],
     restrictions: ["Un solo evento", "Histórico 30 días"],
     cta: "Comprar Evento Único",
-    ctaVariant: "secondary",
+    ctaVariant: "primary",
   },
   {
     id: "DUO_PACK",
@@ -83,7 +83,7 @@ export const PLANS: Plan[] = [
       "Soporte durante asambleas",
     ],
     cta: "Comprar Dúo Pack",
-    ctaVariant: "secondary",
+    ctaVariant: "primary",
   },
   {
     id: "STANDARD",

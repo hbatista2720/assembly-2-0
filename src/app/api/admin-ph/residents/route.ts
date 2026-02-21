@@ -1,7 +1,11 @@
 /**
  * Listar y crear residentes de una organización (Admin PH).
  * GET ?organization_id=xxx → lista de residentes con face_id_enabled.
- * POST { organization_id, email } → crea residente (chatbot lo reconocerá automáticamente).
+ * POST { organization_id, email } → crea/asigna residente en la BD (el chatbot lo reconoce al instante).
+ *
+ * Sincronización con el chatbot: No hay proceso de sync por PH. Todos los PH (demo y reales)
+ * escriben en la misma tabla users. El chatbot consulta esa misma BD por email; por tanto
+ * cualquier residente creado o asignado aquí es reconocido en el chatbot sin pasos extra.
  * Ref: Arquitecto/FACE_ID_OPCIONAL_ADMIN_RESIDENTE.md
  */
 
@@ -21,17 +25,31 @@ export async function POST(req: Request) {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: "Correo inválido" }, { status: 400 });
     }
-    const [existing] = await sql<{ id: string }[]>`
-      SELECT id FROM users WHERE email = ${email} LIMIT 1
+    const [existing] = await sql<{ id: string; role: string; organization_id: string | null }[]>`
+      SELECT id, role, organization_id FROM users WHERE email = ${email} LIMIT 1
     `;
-    if (existing) {
-      return NextResponse.json({ error: "Ese correo ya está registrado" }, { status: 409 });
-    }
     const [org] = await sql<{ id: string }[]>`
       SELECT id FROM organizations WHERE id = ${organizationId}::uuid LIMIT 1
     `;
     if (!org) {
       return NextResponse.json({ error: "Organización no encontrada" }, { status: 404 });
+    }
+    if (existing) {
+      if (existing.role === "RESIDENTE" && existing.organization_id === organizationId) {
+        return NextResponse.json({ error: "Ese correo ya es residente de este PH" }, { status: 409 });
+      }
+      await sql`
+        UPDATE users
+        SET organization_id = ${organizationId}::uuid, role = 'RESIDENTE'
+        WHERE id = ${existing.id}::uuid
+      `;
+      return NextResponse.json({
+        success: true,
+        user_id: existing.id,
+        email,
+        organization_id: organizationId,
+        message: "Correo asignado como residente de este PH. El chatbot lo reconocerá al ingresar con este correo.",
+      });
     }
     const [inserted] = await sql<{ id: string }[]>`
       INSERT INTO users (organization_id, email, role, is_platform_owner)

@@ -78,7 +78,7 @@ export default function AbandonosPage() {
   return (
     <div className="monitor-container">
       <div style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-        <Link href={`/dashboard/admin-ph/monitor/${encodeURIComponent(assemblyId)}`} className="btn btn-ghost" scroll={true}>
+        <Link href={`/dashboard/admin-ph/monitor/${encodeURIComponent(assemblyId)}`} className="btn btn-primary" scroll={true} style={{ fontWeight: 600 }}>
           ← Volver al Monitor
         </Link>
         <button type="button" className="btn btn-ghost" onClick={goToDashboardPrincipal}>

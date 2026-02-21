@@ -36,6 +36,10 @@ El **Dashboard Admin PH** es el panel principal para administradores de propieda
 
 **Modo demo:** Usuario `demo@assembly2.com`, plan Demo, **50 propietarios**, 2 asambleas de ejemplo (Ordinaria 2026, Extraordinaria Piscina), 1 crédito. Datos en localStorage (clave `assembly_admin_ph_assemblies_demo`).
 
+**Diseño unificado:** Todas las vistas del Dashboard Admin PH (principal, Propietarios, Asambleas, Monitor, Actas, **Modificar suscripciones**, Configuración, Soporte) comparten el mismo layout (AdminPhShell), sidebar, clases CSS (`.card`, `.muted`, `.btn`, `.pricing-grid`, `.pricing-card`) y tema claro/oscuro. **Lo que varía entre vistas es solo el contenido:** en Suscripción, lo que cambia es el **plan** (Plan Demo vs planes de pago único o mensuales), no el diseño.
+
+**Nombre del PH demo:** En todo el producto el PH de ejemplo se denomina **Urban Tower PH** (dashboard, Monitor, Actas, Configuración, store de residentes, platform-admin).
+
 ---
 
 ## 2. Últimos cambios realizados (para contralor y arquitecto)

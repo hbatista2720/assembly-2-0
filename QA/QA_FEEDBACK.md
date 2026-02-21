@@ -1906,3 +1906,119 @@ Conforme – El listado de residentes está alineado con INSTRUCCIONES_LISTADO_R
 ## Nota para Database/Coder (si se amplía BD)
 
 Las instrucciones §3 indican que, para que producción tenga los mismos datos que demo, hace falta migración (nombre, numero_finca, cedula_identidad, unit, cuota_pct, payment_status, habilitado_para_asamblea, titular_orden), GET ampliado y PATCH. Actualmente no implementado; el listado demo es el de referencia.
+
+---
+
+# QA Ejecución · Sincronización Residentes ↔ Monitor y Chatbot
+
+**Fecha:** 13 Febrero 2026  
+**Plan:** QA/PLAN_PRUEBAS_RESIDENTES_MONITOR_SINCRONIZACION.md  
+**Usuario prueba:** demo@assembly2.com
+
+## Prerrequisitos verificados
+
+| Verificación | Resultado |
+|--------------|-----------|
+| App en http://localhost:3000 | ✅ 200 |
+| Login request-otp demo@assembly2.com | ✅ OTP devuelto |
+| /dashboard/admin-ph | ✅ 200 |
+| /dashboard/admin-ph/owners | ✅ 200 |
+| /dashboard/admin-ph/monitor/demo | ✅ 200 |
+
+## Cómo iniciar sesión (demo@assembly2.com)
+
+1. Ir a http://localhost:3000/login  
+2. Escribir **demo@assembly2.com** y solicitar código  
+3. OTP visible en respuesta API (modo local) o en logs: `docker compose logs -f app`  
+4. Alternativa: activar permisos demo en consola del navegador:
+```javascript
+localStorage.setItem("assembly_admin_ph_role", "ADMIN_PRINCIPAL");
+localStorage.setItem("assembly_admin_ph_permissions", JSON.stringify({ manage_team: true }));
+localStorage.setItem("assembly_role", "admin-ph");
+localStorage.setItem("assembly_email", "demo@assembly2.com");
+```
+
+## Resultados por sección
+
+### 3.1 Numeración unificada (1 a 50)
+
+| Paso | ¿OK? | Notas |
+|------|------|-------|
+| 1. Propietarios muestra 50 residentes, Unidad 1…50 | ✅ | seedDefaultDemoResidents() genera unidades 1–50; Restablecer listado demo carga 50. |
+| 2. Monitor muestra 50 unidades, códigos 1–50 | ✅ | API /api/monitor/units?assemblyId=demo&demo=1 devuelve 50 unidades código "1"–"50". monitoringMock.generateUnits alineado. |
+| 3. Nombres coinciden Propietarios ↔ Monitor | ✅ | Monitor overlay (getDemoResidents) mapea por unit code; owner = resident.nombre ?? resident.email. |
+
+### 3.2 Estatus Al Día / En Mora
+
+| Paso | ¿OK? | Notas |
+|------|------|-------|
+| 1. Cambiar Unidad 5 a En Mora → Hab. asamblea No | ✅ | updateDemoResident: payment_status mora fuerza habilitado_para_asamblea false. |
+| 2. Monitor: unidad 5 refleja Mora | ✅ | Overlay usa resident.payment_status → MORA. Polling 12s; misma fuente localStorage. |
+| 3. Volver a Al Día → Hab. asamblea Sí | ✅ | Lógica en updateDemoResident para al_dia. |
+| 4. Monitor: unidad 5 refleja Al Día | ✅ | Idem overlay. |
+
+### 3.3 Borrar y crear 1 x 1
+
+| Paso | ¿OK? | Notas |
+|------|------|-------|
+| 1. Restablecer listado → 50 residentes | ✅ | resetDemoResidents() + getDemoResidents() → seed. |
+| 2. Eliminar Unidad 10 → 49 residentes | ✅ | removeDemoResident(userId) elimina del store. |
+| 3. Monitor: ¿unidad 10 sigue? (documentar) | ⚠️ | **Comportamiento actual:** La unidad 10 sigue en el Monitor (API genera siempre 50). Overlay: inUnit vacío → usa u.owner por defecto ("Residente 10"). Unidad visible con datos genéricos. |
+| 4. Agregar nuevo10@demo.assembly2.com, Unidad 10 | ✅ | addDemoResident + updateDemoResident(unit:"10"). |
+| 5. Monitor: unidad 10 muestra nuevo residente | ✅ | Overlay encuentra resident con unit "10"; owner = nuevo nombre/correo. |
+| 6. Repetir con unidad 20 | ✅ | Misma lógica. |
+
+### 3.4 Límite 50
+
+| Paso | ¿OK? | Notas |
+|------|------|-------|
+| Residente 51 → mensaje límite o botón deshabilitado | ✅ | addDemoResident devuelve error "Su plan permite hasta 50 residentes". |
+
+### 5. Chatbot
+
+| Paso | ¿OK? | Notas |
+|------|------|-------|
+| residente1@demo.assembly2.com reconocido | ✅ | DEMO_RESIDENT_EMAILS incluye residente1–5@. |
+| Correo no registrado → "No encuentro ese correo" | ✅ | Flujo en page.tsx y chat/page.tsx. |
+| Nuevo residente agregado → chatbot reconoce tras recarga | ❌ | **GAP:** Residentes agregados en Propietarios demo van a assembly_demo_residents (localStorage). El chatbot valida contra DEMO_RESIDENT_EMAILS (solo 1–5) y assembly_users. No consulta assembly_demo_residents. Ver mejoras Coder. |
+
+## Veredicto
+
+- [x] **PARCIAL** – Sincronización Propietarios ↔ Monitor OK. Chatbot no reconoce residentes demo agregados en Propietarios (solo residente1–5@ hardcoded).
+
+**Incidencias / Mejoras documentadas:**
+
+- **Monitor borrar unidad:** Unidad eliminada en Propietarios sigue visible en Monitor con datos por defecto (API siempre devuelve 50). Documentar si se espera ocultar unidades vacías.
+- **Chatbot demo:** Para que residente6@…residente50@ y nuevos agregados en Propietarios sean reconocidos, el chatbot debe validar también contra `assembly_demo_residents` en contexto demo. Ver Coder/INSTRUCCIONES_QA_MEJORAS_RESIDENTES_MONITOR_CHATBOT.md.
+
+---
+
+# Correcciones Coder · Plan Residentes ↔ Monitor (post-QA)
+
+**Fecha:** 26 Febrero 2026  
+**Plan:** QA/PLAN_PRUEBAS_RESIDENTES_MONITOR_SINCRONIZACION.md  
+**Ref:** Coder/INSTRUCCIONES_QA_MEJORAS_RESIDENTES_MONITOR_CHATBOT.md
+
+## Cambios aplicados
+
+### Mejora 1: Chatbot reconoce residentes del listado demo (PRIORIDAD ALTA)
+
+- **Problema:** Solo se reconocían residente1@…residente5@ (DEMO_RESIDENT_EMAILS). Residentes 6–50 y los agregados en Propietarios no eran reconocidos.
+- **Solución:** En el flujo residente (validación de correo), además de `DEMO_RESIDENT_EMAILS` y `assembly_users`, se considera la lista de correos de **`getDemoResidents()`** (listado Propietarios demo en localStorage).
+- **Archivos:**  
+  - `src/app/page.tsx` – import `getDemoResidents`; tras comprobar `existingUsers` y `DEMO_RESIDENT_EMAILS`, se comprueba si el email está en `getDemoResidents().map(r => r.email)`.  
+  - `src/app/chat/page.tsx` – misma lógica.
+- **Resultado esperado:** residente1@…residente50@ y cualquier correo agregado en Propietarios demo (mismo navegador/origen) son reconocidos por el chatbot sin necesidad de BD.
+
+### Mejora 2: Monitor oculta unidades sin residente en demo
+
+- **Problema:** Al eliminar un residente en Propietarios (ej. Unidad 10), la unidad seguía visible en el Monitor con datos por defecto.
+- **Solución:** En modo demo (`isDemoResidentsContext()`), tras obtener las unidades de la API se **filtran** para mostrar solo aquellas que tienen al menos un residente en `getDemoResidents()` (mismo `unit`/code).
+- **Archivo:** `src/app/dashboard/admin-ph/monitor/[assemblyId]/page.tsx` – en `loadUnits`, antes del `map` de overlay: `list = list.filter((u) => residents.some((r) => (r.unit ?? "").trim() === (u.code ?? "").trim()));`
+- **Resultado esperado:** Si se elimina el residente de Unidad 10 en Propietarios, la Unidad 10 deja de aparecer en el Monitor hasta que se asigne de nuevo un residente a esa unidad.
+
+## Re-ejecución sugerida para QA
+
+1. **§3.3 paso 3:** Eliminar residente Unidad 10 → en Monitor, la unidad 10 **no** debe aparecer (antes aparecía con "Residente 10").
+2. **§5 (Chatbot):** Probar con residente6@demo.assembly2.com (o nuevo10@… tras agregar en Propietarios) → debe ser reconocido (mismo navegador; listado demo cargado o seed 1–50).
+3. Mantener el resto de pruebas del plan sin cambios.

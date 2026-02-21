@@ -122,6 +122,58 @@
 
 ---
 
+## 🎨 Voto por tema y chatbot – Lógica de colores y correcciones (Henry)
+
+**Contexto:** Dashboard Admin PH – Monitor de votación. Dos vistas:
+- **Vista Resumen:** tarjetas con Total, Presentes, Votaron, En mora, Face ID; resumen por estado y voto (Presente+Votó, Presente+No votó, Ausente, En mora, Votó SI/NO, Abstención, Voto manual); barras de porcentaje por tema (ej. Aprobación presupuesto 2026).
+- **Vista Tablero:** grid de casillas por unidad (1–50), colores e iconos según estado y voto.
+
+**Pantalla de referencia:** "Voto por tema y chatbot" – tema "Aprobación de presupuesto 2026". Incluye leyenda, grid de unidades, resumen por estado y voto, porcentajes.
+
+### Entendimiento de la lógica de colores
+
+| Color fondo | Significado | Iconos dentro |
+|-------------|-------------|---------------|
+| **Verde** | Presente + Votó | ✓ (SI), X (NO), círculo (Abstención), mano (Voto manual) |
+| **Naranja/Amarillo** | Presente + No votó | Sin voto registrado; clic para voto manual |
+| **Gris claro** | Ausente | No debería mostrar iconos de voto |
+| **Gris oscuro** | En mora | No debería mostrar iconos de voto (Ley 284: en mora solo voz, no voto) |
+
+### Inconsistencias detectadas (para que el Coder corrija)
+
+| # | Problema | Recomendación |
+|---|----------|---------------|
+| 1 | **Grid y resumen no coinciden:** "Presente + Votó" = 25 pero en el grid hay menos casillas verdes. "Presente + No votó" = 16 pero hay más casillas naranjas. | Sincronizar datos: el grid debe reflejar exactamente los conteos del resumen. Una sola fuente de verdad. |
+| 2 | **Ausente vs En mora mismo color:** Ambos usan gris oscuro. No se distingue quién está ausente de quién está en mora. | Usar **colores distintos**: ej. gris claro para Ausente, otro tono (o borde/icono) para En mora. |
+| 3 | **Casilla naranja con icono de voto:** Si la unidad tiene Abstención o Voto manual, ya votó → debe ser **verde**, no naranja. Naranja = presente y **aún no ha votado**. | Regla: "Presente + No votó" = solo unidades presentes **sin** ningún voto (SI, NO, Abstención, Manual). Si tiene cualquier voto → verde. |
+| 4 | **Casilla gris (Ausente/En mora) con icono de voto:** Unidades ausentes o en mora no deben mostrar ✓, X o abstención (Ley 284: en mora no vota). Si hay voto por representación, debe quedar explícito (ej. "Votó por poder"). | No mostrar iconos de voto en casillas Ausente/En mora, o etiquetar claramente "Voto por representación" si aplica. |
+| 5 | **Cálculo "Presente + No votó":** Presentes (43) − Presente+Votó (25) = 18. En pantalla aparece 16. | Revisar fórmula: debe ser siempre Presentes − Votaron. |
+| 6 | **Porcentajes de aprobación (52%, 10%, 38%) vs conteos (11 SI, 8 NO, 6 ABST):** 11/25 = 44%, 8/25 = 32%, 6/25 = 24%. No cuadran con 52%, 10%, 38%. | Definir **denominador claro**: ¿% sobre total unidades (50), sobre presentes (43) o sobre votaron (25)? Que los % y los números (SI, NO, ABST) sean coherentes. Añadir etiqueta: "X% sobre [presentes/votaron/total]". |
+| 7 | **Voto manual:** No está claro si los 14 "Voto manual" están incluidos en Votó SI / NO / Abstención o son aparte. | Definir: voto manual es un **método** (SI, NO o ABST). Debe sumar a los totales SI, NO, ABST. No un cuarto tipo de voto. |
+| 8 | **Tarjeta "En mora" en resumen:** Arriba tiene icono amarillo de advertencia; en el resumen tiene borde azul/gris. | Unificar: usar **amarillo/ámbar** para "En mora" en todo el flujo (icono y tarjeta). |
+| 9 | **Leyenda:** Falta aclarar que los iconos (✓, X, círculo, mano) aparecen **solo en casillas verdes** (Presente + Votó). En naranja solo "Clic para voto manual" si aplica. | Ajustar leyenda: "En casillas verdes, el icono indica cómo votó (SI, NO, Abstención, Manual)." |
+| 10 | **Tooltip / identificación:** Al pasar el mouse, mostrar más que "39 - Residente 39": nombre, unidad (ej. Apt 302), si es posible. | Incluir en tooltip: nombre, unidad o número de finca para que el Admin PH identifique rápido. |
+
+### Ajustes visuales (Henry – revisión vista tablero)
+
+| # | Observación | Recomendación para el Coder |
+|---|-------------|-----------------------------|
+| 11 | **Votó NO debería ser rojo (más visible en el tablero)** | En el **mismo tablero (grid)** el voto NO debe ser más visible. Opciones para el Coder: **(A)** Icono X en **rojo bien visible** (no blanco/gris); **(B)** dar a la **casilla** que votó NO un color distinto — p. ej. **tinte rojo** en la casilla o **borde rojo** en la celda, para que se distinga de un vistazo de las verdes (SI) y neutras (abstención). Puede aplicarse A, B o ambos. Además, la tarjeta/resumen "Votó NO" con fondo o borde rojo más visible. |
+| 12 | **Iconos ✓, X, ○ no se aprecian bien** | Los iconos de gancho (✓), X (NO) y círculo (○ Abstención) dentro de las casillas son muy pequeños y poco visibles. **Aumentar tamaño** de los iconos en el grid, usar **colores** según leyenda (✓ verde, X rojo, ○ gris/neutro) y evitar que queden tapados por otros símbolos (ej. "D", mano). Que se distingan bien de un vistazo. |
+| 13 | **Casilla: línea/borde de color + fondo blanco (en lugar de relleno sólido)** | En lugar de pintar toda la casilla de un color (verde, rojo, amarillo, gris, naranja), usar **fondo blanco** (o claro) en la casilla y el **estado indicado por una línea/borde** del color correspondiente (verde = Presente+Votó SI/Abstención, rojo = Votó NO, amarillo = Presente+No votó, gris = Ausente, naranja = En mora). Así los iconos ✓, X, ○ se leen mejor sobre blanco y el tablero se ve más limpio. El borde debe ser suficientemente grueso (ej. 2–3 px) para que el estado se distinga de un vistazo. |
+
+### Resumen de prioridades para el Coder
+
+| Prioridad | Corrección |
+|-----------|------------|
+| **Alta** | Sincronizar grid con resumen (1). Regla naranja = sin voto, verde = ya votó (3). Ausente/En mora sin icono de voto o con etiqueta "por poder" (4). Coherencia % y conteos SI/NO/ABST (6). **Votó NO en rojo (11).** **Iconos ✓, X, ○ más grandes y visibles (12).** |
+| **Media** | Distinguir Ausente vs En mora con color (2). Cálculo Presente+No votó (5). Integración voto manual en SI/NO/ABST (7). **Ajustes visuales:** casilla con línea/borde de color + fondo blanco en lugar de relleno sólido (13). |
+| **Baja** | Color único En mora (8). Leyenda más clara (9). Tooltip con más datos (10). |
+
+**Nota para Contralor:** Los ítems de **Ajustes visuales** (en particular el 13: casilla con borde de color + fondo blanco) figuran como prioridad **Media** en la tabla anterior. El Contralor puede pasarlos al Coder cuando corresponda.
+
+---
+
 ## 🚨 BUG: Botones sección Monitor de asamblea (Dashboard Admin PH)
 
 **Reporte Henry / Marketing:** En el dashboard Admin PH (resumen), los botones de la sección de asamblea **no funcionan correctamente** — llevan al dashboard PH resumen en lugar del destino correcto.

@@ -15,14 +15,17 @@ export async function GET(request: NextRequest) {
     : undefined;
 
   if (token === "demo-token") {
-    const units = generateUnits("demo");
+    const assemblyIdParam = request.nextUrl.searchParams.get("assemblyId") || "demo";
+    const units = generateUnits(assemblyIdParam);
     const summary = buildSummary(units, summaryOptions);
     const topics = [
       { id: "current", label: summary.votation.topic },
       ...summary.history.map((h, i) => ({ id: `tema-${i + 1}`, label: h })),
     ];
     return NextResponse.json({
-      assemblyId: "demo",
+      assemblyId: assemblyIdParam,
+      assemblyTitle: "Asamblea Ordinaria 2026",
+      assemblyDate: "2026-02-15",
       ...summary,
       units,
       topics,

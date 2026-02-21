@@ -100,6 +100,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/admin-ph", label: "Dashboard principal", iconKey: "dashboard", match: (p) => p === "/dashboard/admin-ph", showWhenNoPh: true },
   { href: "/dashboard/admin-ph", label: "Tus propiedades", iconKey: "building", match: (p) => p === "/dashboard/admin-ph", showWhenNoPh: true },
+  { href: "/dashboard/admin-ph/subscription", label: "Modificar suscripciones", iconKey: "document", match: (p) => p.startsWith("/dashboard/admin-ph/subscription"), showWhenNoPh: true },
   { href: "/dashboard/admin-ph/owners", label: "Propietarios", iconKey: "users", match: (p) => p.startsWith("/dashboard/admin-ph/owners") },
   { href: "/dashboard/admin-ph/assemblies", label: "Asambleas", iconKey: "calendar", match: (p) => p.startsWith("/dashboard/admin-ph/assemblies") },
   { href: "/dashboard/admin-ph/monitor", label: "Monitor Back Office", iconKey: "monitor", match: (p) => p.startsWith("/dashboard/admin-ph/monitor") },
@@ -110,16 +111,16 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/admin-ph/support", label: "Soporte", iconKey: "support", match: (p) => p.startsWith("/dashboard/admin-ph/support") },
 ];
 
-/** Enlace(s) "Volver" según la ruta: primero al módulo, luego al Dashboard PH. */
+/** Enlace(s) "Volver" según la ruta: primero al módulo, luego al Dashboard PH. En la base no se muestra enlace, sino título y subtítulo. */
 function getBackLinks(pathname: string): { href: string; label: string }[] {
   const base = "/dashboard/admin-ph";
   if (pathname === base) {
-    return [{ href: "/dashboard", label: "← Volver al Dashboard principal" }];
+    return [];
   }
-  // Dentro del monitor de una asamblea (o abandonos / modificaciones) → volver al listado Monitor
+  // Dentro del monitor de una asamblea (o abandonos / modificaciones) → listado Monitor (acción secundaria; la prioridad es "Volver al Monitor" en la página)
   if (pathname.startsWith(base + "/monitor/") && pathname !== base + "/monitor") {
     return [
-      { href: base + "/monitor", label: "← Volver al Monitor Back Office" },
+      { href: base + "/monitor", label: "Listado Monitor" },
       { href: base, label: "Dashboard PH" },
     ];
   }
@@ -247,6 +248,15 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stored = typeof window !== "undefined" ? localStorage.getItem("assembly_admin_ph_sidebar_collapsed") : null;
     if (stored !== null) setSidebarCollapsed(stored === "1");
+  }, []);
+
+  useEffect(() => {
+    const root = typeof document !== "undefined" ? document.documentElement : null;
+    if (root) {
+      const theme = getStoredTheme();
+      root.setAttribute("data-theme", theme);
+      return () => { root.removeAttribute("data-theme"); };
+    }
   }, []);
 
   const toggleSidebar = () => {
@@ -420,13 +430,16 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
               title={sidebarCollapsed ? "Mostrar menú" : "Ocultar menú"}
               aria-label={sidebarCollapsed ? "Expandir barra lateral" : "Colapsar barra lateral"}
             >
-              {sidebarCollapsed ? "▶" : "◀ Ocultar"}
+              <span className="sidebar-toggle-icon" aria-hidden>
+                {sidebarCollapsed ? "▶" : "◀"}
+              </span>
+              {!sidebarCollapsed && <span className="sidebar-toggle-text">Ocultar</span>}
             </button>
             {!sidebarCollapsed && (
               <div className="sidebar-brand">
                 <span className="sidebar-pill">Assembly 2.0</span>
                 <h3 className="sidebar-title">Admin PH</h3>
-                <p className="sidebar-subtitle">Panel</p>
+                <p className="sidebar-subtitle">Panel de administración</p>
               </div>
             )}
           </div>
@@ -460,6 +473,7 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
                   <span className="sidebar-icon-wrap" aria-hidden>
                     {Icon ? <Icon /> : null}
                   </span>
+                  <span className="sidebar-label">{item.label}</span>
                   <span className="sidebar-tooltip sidebar-tooltip-static" role="tooltip" aria-hidden>{item.label}</span>
                 </Link>
               );
@@ -477,7 +491,8 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
                 onMouseLeave={hideTooltip}
               >
                 <span className="sidebar-tooltip sidebar-tooltip-static" role="tooltip" aria-hidden>Crear asamblea</span>
-                <span className="sidebar-icon-wrap" style={{ display: "inline-flex" }}><NavIcons.add /></span>
+                <span className="sidebar-icon-wrap" aria-hidden><NavIcons.add /></span>
+                <span className="sidebar-label">Crear asamblea</span>
               </Link>
             )}
           </div>
@@ -580,7 +595,13 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
               </span>
             </div>
           )}
-          {(() => {
+          {pathname === "/dashboard/admin-ph" && (
+              <div className="admin-ph-page-title-block">
+                <h1 className="admin-ph-page-title">Dashboard Principal</h1>
+                <p className="admin-ph-page-subtitle">Resumen general de tu actividad de asambleas residentes e inquilinos</p>
+              </div>
+            )}
+          {pathname !== "/dashboard/admin-ph" && (() => {
             const backLinks = getBackLinks(pathname);
             if (backLinks.length === 0) return null;
             const isBack = (label: string) => label.startsWith("←") || label.toLowerCase().includes("volver");
@@ -678,7 +699,7 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
 
           {profileModalOpen && (
             <div
-              className="profile-modal-overlay"
+              className={`profile-modal-overlay profile-modal--${profileTheme}`}
               role="dialog"
               aria-modal="true"
               aria-labelledby="admin-ph-profile-modal-title"

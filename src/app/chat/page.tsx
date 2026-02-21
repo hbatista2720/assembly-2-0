@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { getDemoResidents } from "../../lib/demoResidentsStore";
 
 const DEMO_RESIDENT_EMAILS = [
   "residente1@demo.assembly2.com",
@@ -39,6 +40,8 @@ export default function ChatPage() {
   const [residentVoteParticiparClicked, setResidentVoteParticiparClicked] = useState(false);
   const [poderSubmitted, setPoderSubmitted] = useState(false);
   const [hasPendingPowerRequest, setHasPendingPowerRequest] = useState(false);
+  /** Estatus de la última solicitud de poder (PENDING, APPROVED, REJECTED) para mostrar mensaje en chat. */
+  const [powerStatus, setPowerStatus] = useState<null | "PENDING" | "APPROVED" | "REJECTED">(null);
   const [poderEmail, setPoderEmail] = useState("");
   const [poderApoderadoTipo, setPoderApoderadoTipo] = useState<"residente_ph" | "titular_mayor_edad">("residente_ph");
   const [poderApoderadoNombre, setPoderApoderadoNombre] = useState("");
@@ -47,7 +50,11 @@ export default function ChatPage() {
   const [poderVigencia, setPoderVigencia] = useState("");
   type AssemblyContext = "activa" | "programada" | "sin_asambleas";
   const [assemblyContext, setAssemblyContext] = useState<AssemblyContext>("activa");
-  type ResidentProfile = { organization_id?: string; organization_name: string; unit: string | null; resident_name: string; email: string } | null;
+  const [powersEnabled, setPowersEnabled] = useState(false);
+  type ResidentProfile =
+    | { type: "resident"; organization_id?: string; organization_name: string; unit: string | null; resident_name: string; email: string; unit_code?: string | null }
+    | { type: "apoderado"; organization_id?: string; organization_name: string; email: string; powers: { unit_code: string; resident_email: string }[] }
+    | null;
   const [residentProfile, setResidentProfile] = useState<ResidentProfile>(null);
   const [temaActivo, setTemaActivo] = useState<{ title?: string; description?: string; status?: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -119,6 +126,7 @@ export default function ChatPage() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.context) setAssemblyContext(data.context);
+        setPowersEnabled(data?.powers_enabled === true);
       })
       .catch(() => {});
   }, [chatRole, residentEmailValidated, residentProfile?.organization_id]);
@@ -133,36 +141,103 @@ export default function ChatPage() {
       .catch(() => {});
   }, [chatRole, residentEmailValidated]);
 
+  const fetchPowerStatus = useCallback((): Promise<null | "PENDING" | "APPROVED" | "REJECTED"> => {
+    const userId = typeof window !== "undefined" ? localStorage.getItem("assembly_user_id") : null;
+    if (!userId) return Promise.resolve(null);
+    return fetch(`/api/power-requests?user_id=${encodeURIComponent(userId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data?.requests?.length) {
+          setHasPendingPowerRequest(false);
+          setPowerStatus(null);
+          return null;
+        }
+        const latest = data.requests[0];
+        const status = latest.status as "PENDING" | "APPROVED" | "REJECTED";
+        setPowerStatus(status);
+        setHasPendingPowerRequest(status === "PENDING");
+        return status;
+      })
+      .catch(() => null);
+  }, []);
+
   useEffect(() => {
     if (chatRole !== "residente" || !residentEmailValidated) return;
     const userId = typeof window !== "undefined" ? localStorage.getItem("assembly_user_id") : null;
     if (!userId) return;
-    fetch(`/api/power-requests?user_id=${encodeURIComponent(userId)}`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.has_pending) setHasPendingPowerRequest(true);
-      })
-      .catch(() => {});
-  }, [chatRole, residentEmailValidated]);
+    fetchPowerStatus();
+  }, [chatRole, residentEmailValidated, fetchPowerStatus]);
 
   useEffect(() => {
     if (chatRole !== "residente" || !residentEmailValidated) return;
     const email = typeof window !== "undefined" ? localStorage.getItem("assembly_resident_email") : null;
     if (!email) return;
-    fetch(`/api/resident-profile?email=${encodeURIComponent(email)}`)
+    fetch(`/api/chat-identity?email=${encodeURIComponent(email)}`)
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.organization_name != null) {
-          setResidentProfile({
-            organization_id: data.organization_id,
-            organization_name: data.organization_name ?? "PH",
-            unit: data.unit ?? null,
-            resident_name: data.resident_name ?? data.email ?? email,
-            email: data.email ?? email,
-          });
+      .then(async (data) => {
+        if (data?.organization_name) {
+          applyIdentityProfile(data, email);
+          return;
         }
-        if (data?.user_id) try { localStorage.setItem("assembly_user_id", data.user_id); } catch {}
-        if (data?.organization_id) try { localStorage.setItem("assembly_organization_id", data.organization_id); } catch {}
+        const profileRes = await fetch(`/api/resident-profile?email=${encodeURIComponent(email)}`);
+        if (profileRes.ok) {
+          const pr = await profileRes.json();
+          applyIdentityProfile({ type: "resident", ...pr, unit_code: pr.unit_code ?? (pr.unit ? pr.unit.replace(/\D/g, "") || null : null) }, email);
+          return;
+        }
+        try {
+          const demoList = getDemoResidents();
+          const demo = demoList.find((r) => (r.email || "").toLowerCase() === email.toLowerCase());
+          if (demo) {
+            const prefix = (demo.email || "").split("@")[0] || "";
+            const numPart = prefix.replace(/^residente/i, "") || "1";
+            const unit_code = /^residente\d*$/i.test(prefix) ? numPart : null;
+            applyIdentityProfile(
+              {
+                type: "resident",
+                organization_id: "11111111-1111-1111-1111-111111111111",
+                organization_name: "Urban Tower PH",
+                unit: unit_code ? `Unidad ${unit_code}` : null,
+                resident_name: demo.nombre || `Residente ${numPart}`,
+                email: demo.email || email,
+                unit_code,
+              },
+              email
+            );
+          }
+        } catch {
+          // ignore
+        }
+        function applyIdentityProfile(d: Record<string, unknown>, emailFallback: string) {
+          if (!d?.organization_name) return;
+          if (d.type === "apoderado" && Array.isArray(d.powers) && d.powers.length > 0) {
+            setResidentProfile({
+              type: "apoderado",
+              organization_id: d.organization_id as string,
+              organization_name: String(d.organization_name),
+              email: (d.email as string) ?? emailFallback,
+              powers: d.powers as { unit_code: string; resident_email: string }[],
+            });
+          } else {
+            setResidentProfile({
+              type: "resident",
+              organization_id: d.organization_id as string,
+              organization_name: String(d.organization_name),
+              unit: (d.unit as string) ?? null,
+              resident_name: (d.resident_name as string) ?? (d.email as string) ?? emailFallback,
+              email: (d.email as string) ?? emailFallback,
+              unit_code: (d.unit_code as string) ?? null,
+            });
+            if (d.user_id) try { localStorage.setItem("assembly_user_id", String(d.user_id)); } catch {}
+          }
+          if (d.organization_id) try { localStorage.setItem("assembly_organization_id", String(d.organization_id)); } catch {}
+          const phName = d.organization_name ?? "tu PH";
+          const welcome =
+            d.type === "apoderado"
+              ? `Bienvenido como apoderado del PH ${phName}. Tienes ${(d.powers as unknown[])?.length ?? 0} poder(es) para votar. Soy Lex, tu asistente. ¿En qué puedo ayudarte?`
+              : `Bienvenido al chatbot de residentes del PH ${phName}. Soy Lex, tu asistente para votaciones, asambleas y gestión de tu PH en Assembly 2.0. ¿En qué puedo ayudarte?`;
+          setChatMessages((prev) => [...prev, { from: "bot", text: welcome }]);
+        }
       })
       .catch(() => {});
   }, [chatRole, residentEmailValidated]);
@@ -245,6 +320,21 @@ export default function ChatPage() {
         }
         const votacionAbierta = temaActivo?.status === "Abierto";
         if (votacionAbierta) {
+          const assemblyId = temaActivo?.id ?? "demo";
+          const unitCodes: string[] = [];
+          if (residentProfile?.type === "resident" && residentProfile.unit_code) unitCodes.push(residentProfile.unit_code);
+          else if (residentProfile?.type === "apoderado" && residentProfile.powers?.length) unitCodes.push(...residentProfile.powers.map((p) => p.unit_code).filter(Boolean));
+          if (unitCodes.length > 0) {
+            Promise.all(
+              unitCodes.map((unitCode) =>
+                fetch("/api/monitor/order-of-day-vote", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ assemblyId, unitCode, value: null }),
+                })
+              )
+            ).catch(() => {});
+          }
           setResidentVoteSent(false);
           setResidentLastVote(null);
           setResidentVoteModifyCount((c) => c + 1);
@@ -326,11 +416,11 @@ export default function ChatPage() {
                 if (data.user.id) localStorage.setItem("assembly_user_id", data.user.id);
                 if (data.user.organization_id) localStorage.setItem("assembly_organization_id", data.user.organization_id);
               } catch {}
-              const prefix = residentEmailPending.split("@")[0] || "";
-              const displayName = /^residente\d*$/i.test(prefix) ? `Residente ${prefix.replace(/^residente/i, "") || "1"}` : prefix || "residente";
-              pushBotMessage(`Hola ${displayName}. Soy Lex, tu asistente para votaciones, asambleas y gestión de tu PH en Assembly 2.0.`);
+              pushBotMessage("Validando…");
+            } else if (res.ok && data?.user && data.user.role !== "RESIDENTE") {
+              pushBotMessage("Este correo está registrado en Assembly 2.0 pero no como residente de un PH. Para usar el chatbot de residentes, el administrador de tu PH debe darte de alta como residente (Propietarios/Residentes → agregar o editar y asignar rol Residente). Si ya te agregaron, usa el correo que registraron.");
             } else {
-              pushBotMessage("PIN incorrecto o vencido. ¿Reenviar PIN? Escribe el nuevo código o «Reenviar PIN».");
+              pushBotMessage(data?.error || "Código inválido o expirado. Escribe el código de nuevo o «Reenviar PIN».");
             }
           })
           .catch(() => pushBotMessage("Error al verificar. Intenta de nuevo o escribe «Reenviar PIN»."));
@@ -380,13 +470,22 @@ export default function ChatPage() {
         proceedToOtp();
         return;
       }
-      fetch(`/api/resident-profile?email=${encodeURIComponent(emailLower)}`)
+      try {
+        const demoResidents = getDemoResidents();
+        if (Array.isArray(demoResidents) && demoResidents.some((r) => (r.email || "").toLowerCase() === emailLower)) {
+          proceedToOtp();
+          return;
+        }
+      } catch {
+        // ignore
+      }
+      fetch(`/api/chat-identity?email=${encodeURIComponent(emailLower)}`)
         .then((res) => {
           if (res.ok) {
             proceedToOtp();
             return;
           }
-          pushBotMessage("No encuentro ese correo. Contacta al administrador de tu PH para validar. Puedes escribir otro correo para reintentar.");
+          pushBotMessage("No encuentro ese correo como residente ni como apoderado. Contacta al administrador de tu PH. Puedes escribir otro correo para reintentar.");
           setChatInput("");
         })
         .catch(() => {
@@ -480,7 +579,13 @@ export default function ChatPage() {
         </div>
         {residentEmailValidated && chatRole === "residente" && (
           <div className="chat-user-bar">
-            {residentProfile ? (
+            {residentProfile && residentProfile.type === "apoderado" ? (
+                <div className="chat-ios chat-user-bar" style={{ marginTop: "10px" }}>
+                  <div style={{ color: "#e2e8f0", fontWeight: 600, marginBottom: "6px" }}>{residentProfile.organization_name}</div>
+                  <span style={{ fontSize: "12px", color: "#94a3b8" }}>Apoderado · {residentProfile.powers?.length ?? 0} poder(es) para votar</span>
+                  <span style={{ display: "block", marginTop: "4px", fontSize: "12px" }}>Correo <strong style={{ color: "#cbd5e1" }}>{residentProfile.email}</strong></span>
+                </div>
+              ) : residentProfile ? (
               <>
                 <div style={{ color: "#64748b", marginBottom: "4px" }}>Nombre del PH</div>
                 <div style={{ color: "#e2e8f0", fontWeight: 600, marginBottom: "6px" }}>{residentProfile.organization_name}</div>
@@ -578,11 +683,38 @@ export default function ChatPage() {
                                   key={op}
                                   className="btn btn-primary btn-demo"
                                   style={{ borderRadius: "999px", padding: "8px 14px" }}
-                                  onClick={() => {
+                                  onClick={async () => {
+                                    const valueApi = op === "Sí" ? "SI" : op === "No" ? "NO" : "ABSTENCION";
+                                    const assemblyId = temaActivo?.id ?? "demo";
+                                    const unitCodes: string[] = [];
+                                    if (residentProfile?.type === "resident" && residentProfile.unit_code) {
+                                      unitCodes.push(residentProfile.unit_code);
+                                    } else if (residentProfile?.type === "apoderado" && residentProfile.powers?.length) {
+                                      unitCodes.push(...residentProfile.powers.map((p) => p.unit_code).filter(Boolean));
+                                    }
+                                    if (unitCodes.length > 0) {
+                                      try {
+                                        await Promise.all(
+                                          unitCodes.map((unitCode) =>
+                                            fetch("/api/monitor/order-of-day-vote", {
+                                              method: "POST",
+                                              headers: { "Content-Type": "application/json" },
+                                              body: JSON.stringify({ assemblyId, unitCode, value: valueApi }),
+                                            })
+                                          )
+                                        );
+                                      } catch {
+                                        // ignorar error de red
+                                      }
+                                    }
                                     setResidentVoteSent(true);
                                     setResidentLastVote(op);
                                     pushUserMessage(`Voto: ${op}`);
-                                    pushBotMessage(`Tu voto ya fue aplicado. Voto aplicado: ${op}.`);
+                                    const aplicado =
+                                      unitCodes.length > 1
+                                        ? `Tu voto (${op}) se aplicó a las ${unitCodes.length} unidades en las que tienes poder.`
+                                        : `Tu voto ya fue aplicado. Voto aplicado: ${op}.`;
+                                    pushBotMessage(aplicado);
                                     pushBotMessage('Para revertir tu voto escribe «modificar». Solo puedes modificar mientras la votación esté abierta. Máximo 2 correcciones permitidas.');
                                   }}
                                 >
@@ -769,7 +901,9 @@ export default function ChatPage() {
                                 .then((data) => {
                                   if (data?.success) {
                                     setPoderSubmitted(true);
+                                    setPowerStatus("PENDING");
                                     setHasPendingPowerRequest(true);
+                                    fetchPowerStatus();
                                     pushUserMessage(`Solicitud de poder para ${email}`);
                                     pushBotMessage("Solicitud enviada. Está pendiente por aprobar por el administrador de tu PH. Te confirmamos en minutos.");
                                   } else {
@@ -858,31 +992,44 @@ export default function ChatPage() {
                 { label: "Asambleas", msg: "Te muestro el listado de asambleas activas.", card: "asambleas" as ChatCard, primary: false, onlyWhenActive: false },
                 { label: "Calendario", msg: "Aquí tienes el calendario de tu PH.", card: "calendario" as ChatCard, primary: false, onlyWhenActive: false },
                 { label: "Tema del día", msg: "Tema activo: aprobación de presupuesto.", card: "tema" as ChatCard, primary: false, onlyWhenActive: true },
-                {
-                  label: hasPendingPowerRequest ? "Poder en proceso de validación y aprobación" : "Ceder poder",
-                  msg: "Completa los datos de la persona que acepta el poder (puede ser un residente de tu PH o un titular mayor de edad).",
-                  card: "poder" as ChatCard,
-                  primary: false,
-                  onlyWhenActive: false,
-                  isPoder: true,
-                },
+                ...(powersEnabled && residentProfile?.type !== "apoderado"
+                  ? [{
+                      label: powerStatus === "APPROVED" ? "Poder aprobado" : powerStatus === "PENDING" ? "Poder en proceso de validación y aprobación" : "Ceder poder",
+                      msg: "Completa los datos de la persona que acepta el poder (puede ser un residente de tu PH o un titular mayor de edad).",
+                      card: "poder" as ChatCard,
+                      primary: false,
+                      onlyWhenActive: false,
+                      isPoder: true,
+                    }]
+                  : []),
               ].map(({ label, msg, card, primary, onlyWhenActive, isPoder }) => {
                 const active = assemblyContext === "activa";
                 const disabled = onlyWhenActive && !active;
-                const poderDisabled = isPoder && hasPendingPowerRequest;
+                const poderDisabled = isPoder && powerStatus === "PENDING";
                 const isDisabled = disabled || poderDisabled;
                 return (
                   <button
                     key={card}
                     className={`chat-pill ${primary && !isDisabled ? "chat-pill-primary" : ""}`}
                     style={isDisabled ? { background: "rgba(71,85,105,0.35)", opacity: 0.8 } : undefined}
-                    title={disabled ? "No hay votación activa" : poderDisabled ? "Pendiente por aprobar" : undefined}
+                    title={disabled ? "No hay votación activa" : poderDisabled ? "Pendiente por aprobar" : powerStatus === "APPROVED" ? "Ver estatus" : undefined}
                     disabled={isDisabled}
-                    onClick={() => {
+                    onClick={async () => {
                       if (disabled) return;
-                      if (isPoder && hasPendingPowerRequest) {
-                        pushUserMessage("Ceder poder");
-                        pushBotMessage("Ya tienes una solicitud de poder pendiente por aprobar. Te confirmamos cuando el administrador la revise.");
+                      if (isPoder && powerStatus !== null) {
+                        pushUserMessage("Poder");
+                        const status = await fetchPowerStatus();
+                        if (status === "PENDING") {
+                          pushBotMessage("Tu solicitud de poder está pendiente de aprobación. Te confirmaremos por correo cuando el administrador la revise.");
+                        } else if (status === "APPROVED") {
+                          pushBotMessage("Tu solicitud de poder fue aprobada. Ya puedes ejercer el poder según lo acordado.");
+                        } else if (status === "REJECTED") {
+                          pushBotMessage("Tu solicitud de poder fue rechazada. Si deseas, puedes enviar una nueva solicitud haciendo clic de nuevo en «Ceder poder».");
+                          setPowerStatus(null);
+                          setHasPendingPowerRequest(false);
+                        } else {
+                          handleQuickActionInChat(label, msg, card);
+                        }
                         return;
                       }
                       handleQuickActionInChat(label, msg, card);

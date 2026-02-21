@@ -1,6 +1,12 @@
 /**
  * Perfil del residente para mostrar en chat (§C Marketing: tipo PH, unidad, usuario).
  * GET ?email= → { user_id, organization_id, organization_name, unit, resident_name, email }
+ *
+ * Lógica: El chatbot usa la misma BD que todos los PH (demo y reales). Cualquier residente
+ * agregado por cualquier Admin PH (en cualquier organización) está en la tabla users con
+ * role = 'RESIDENTE' y organization_id = su PH. No hay proceso de sincronización aparte:
+ * una sola fuente de verdad (la BD). Al crear un PH o agregar residentes, el chatbot
+ * los reconoce automáticamente porque consulta la misma tabla users.
  */
 
 import { NextResponse } from "next/server";
@@ -46,12 +52,14 @@ export async function GET(req: Request) {
     const residentName =
       /^residente\d*$/i.test(prefix) ? `Residente ${numPart}` : prefix || row.email;
     const unit = /^residente\d*$/i.test(prefix) ? `Unidad ${numPart}` : null;
+    const unit_code = /^residente\d*$/i.test(prefix) ? numPart : null;
 
     return NextResponse.json({
       user_id: row.user_id,
       organization_id: row.organization_id,
       organization_name: row.organization_name || "PH",
       unit: unit,
+      unit_code,
       resident_name: residentName,
       email: row.email,
       face_id_enabled: faceIdEnabled,

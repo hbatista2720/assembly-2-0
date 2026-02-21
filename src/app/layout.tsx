@@ -18,8 +18,8 @@ const themeScript = `
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="es">
-      <body>
+    <html lang="es" suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <ThemeInit />
         {children}
@@ -519,6 +519,39 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           html[data-theme="light"] .admin-ph-shell .admin-ph-content .owners-list-item:hover {
             background: #f8fafc !important;
           }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .resident-status--al-dia {
+            background: rgba(34, 197, 94, 0.2) !important;
+            border: 1px solid #22c55e !important;
+            color: #15803d !important;
+            padding: 4px 8px !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .resident-status--al-dia span {
+            color: #15803d !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .resident-status--al-dia option {
+            background: #fff;
+            color: #0f172a;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .resident-status--mora {
+            background: rgba(239, 68, 68, 0.2) !important;
+            border: 1px solid #ef4444 !important;
+            color: #b91c1c !important;
+            padding: 4px 8px !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .resident-status--mora span {
+            color: #b91c1c !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .resident-status--mora span[style*="background"] {
+            background: #dc2626 !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .resident-status--mora option {
+            background: #fff;
+            color: #0f172a;
+          }
           html[data-theme="light"] .admin-ph-shell .admin-ph-content .owners-list-email {
             color: #1e293b !important;
           }
@@ -528,6 +561,63 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             color: #4338ca !important;
           }
           html[data-theme="light"] .admin-ph-shell .admin-ph-content .owners-list-meta {
+            color: #64748b !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .owners-list-wrap {
+            border-color: #e2e8f0 !important;
+            background: #ffffff !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .owners-list-header {
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
+            border-bottom-color: #e2e8f0 !important;
+            color: #475569 !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .owners-list-item {
+            background: #ffffff !important;
+            color: #334155 !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .card input[type="text"],
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .card input[type="email"],
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .card input[type="search"] {
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #0f172a !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .card input::placeholder {
+            color: #94a3b8 !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .card select {
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #0f172a !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .card [role="tablist"] {
+            border-color: #e2e8f0 !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .card [role="tab"][aria-selected="false"] {
+            color: #64748b !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .card [role="tab"][aria-selected="true"] {
+            color: #4338ca !important;
+            background: #eef2ff !important;
+            border-bottom-color: #6366f1 !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .owners-toolbar .btn-ghost {
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #334155 !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .owners-toolbar .btn-ghost:hover {
+            background: #f1f5f9 !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .owners-powers-card {
+            background: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #334155 !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .owners-powers-card .muted {
             color: #64748b !important;
           }
 
@@ -560,6 +650,16 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           html[data-theme="light"] .admin-ph-shell .admin-ph-content .btn-primary:hover {
             background: linear-gradient(135deg, #4338ca, #4f46e5) !important;
             box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4) !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .pricing-card .btn-primary {
+            background: linear-gradient(135deg, #5b21b6, #7c3aed) !important;
+            color: #fff !important;
+            border: none !important;
+            box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35) !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .pricing-card .btn-primary:hover {
+            background: linear-gradient(135deg, #4c1d95, #6d28d9) !important;
+            box-shadow: 0 4px 14px rgba(124, 58, 237, 0.45) !important;
           }
           html[data-theme="light"] .admin-ph-shell .admin-ph-content .create-ph-form {
             background: linear-gradient(160deg, rgba(248, 250, 252, 0.95), #ffffff);
@@ -775,18 +875,38 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           }
 
           html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-container {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
             border: 1px solid #e2e8f0 !important;
             color: #0f172a !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-container .unit-cell {
+            color: #0f172a !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-page-title {
+            color: #0f172a !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-header .zoom-controls-label,
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-topic-filter .muted {
+            color: #475569 !important;
+          }
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .units-grid-container {
+            background: transparent !important;
           }
 
-          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-actions .btn-ghost {
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-container .btn-ghost,
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-actions .btn-ghost,
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-export .btn-ghost,
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-header .btn-ghost {
             background: #f1f5f9 !important;
             border: 1px solid #e2e8f0 !important;
             color: #334155 !important;
           }
 
-          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-actions .btn-ghost:hover {
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-container .btn-ghost:hover,
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-actions .btn-ghost:hover,
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-export .btn-ghost:hover,
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-header .btn-ghost:hover {
             background: #e2e8f0 !important;
             color: #0f172a !important;
           }
@@ -841,7 +961,63 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             color: #64748b !important;
           }
 
-          html[data-theme="light"] .admin-ph-shell .admin-ph-content .units-grid-container .legend {
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .units-grid-container .legend,
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .legend-modern,
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .legend-modern .legend-item span:not(.legend-icon-wrap) {
+            color: #334155 !important;
+          }
+
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .legend-note {
+            color: #64748b !important;
+          }
+
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .legend-cta {
+            background: #eef2ff !important;
+            border-color: rgba(99, 102, 241, 0.4) !important;
+            color: #4338ca !important;
+          }
+
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-detail-counts {
+            background: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+          }
+
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-detail-counts-title {
+            color: #475569 !important;
+          }
+
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-detail-stat {
+            background: #ffffff !important;
+            color: #334155 !important;
+          }
+
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-detail-stat strong {
+            color: #0f172a !important;
+          }
+
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .monitor-detail-stat-label {
+            color: #64748b !important;
+          }
+
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .summary-detail-card {
+            background: #ffffff !important;
+            color: #334155 !important;
+          }
+
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .summary-detail-card strong {
+            color: #0f172a !important;
+          }
+
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .summary-detail-label {
+            color: #64748b !important;
+          }
+
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .summary-detail-row {
+            background: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+          }
+
+          html[data-theme="light"] .admin-ph-shell .admin-ph-content .summary-detail-title {
             color: #475569 !important;
           }
 
@@ -924,6 +1100,20 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             max-width: 1100px;
             margin: 0 auto;
             padding: 48px 24px;
+          }
+          .container:has(.admin-ph-shell) {
+            max-width: 100%;
+            padding-left: 24px;
+            padding-right: 24px;
+          }
+          .container.landing-root {
+            max-width: 100%;
+            width: 100%;
+            padding-left: clamp(16px, 5vw, 48px);
+            padding-right: clamp(16px, 5vw, 48px);
+            padding-top: 24px;
+            padding-bottom: 48px;
+            box-sizing: border-box;
           }
 
           .card {
@@ -1128,6 +1318,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             align-items: center;
           }
+          .landing-root .hero-grid {
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+          }
+          @media (min-width: 900px) {
+            .landing-root .hero-grid {
+              grid-template-columns: 1fr minmax(320px, 0.45fr);
+            }
+          }
 
           .mockup {
             background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.8));
@@ -1249,6 +1447,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             display: grid;
             gap: 24px;
             grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+          }
+          .pricing-grid--pago-unico {
+            grid-template-columns: repeat(2, minmax(280px, 400px));
+            justify-content: center;
+            max-width: 880px;
+          }
+          @media (max-width: 720px) {
+            .pricing-grid--pago-unico {
+              grid-template-columns: 1fr;
+              max-width: none;
+            }
           }
 
           .pricing-card {
@@ -1388,7 +1597,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           }
 
           .admin-ph-shell:not(.sidebar-collapsed) {
-            grid-template-columns: 120px 1fr;
+            grid-template-columns: 260px 1fr;
           }
 
           .sidebar {
@@ -1446,8 +1655,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           }
 
           .admin-ph-sidebar:not(.collapsed) {
-            width: 120px;
-            min-width: 120px;
+            width: 260px;
+            min-width: 260px;
           }
 
           .admin-ph-sidebar .sidebar-header {
@@ -1462,6 +1671,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           }
 
           .admin-ph-sidebar .sidebar-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
             width: 100%;
             padding: 10px 12px;
             border: 1px solid rgba(148, 163, 184, 0.25);
@@ -1472,6 +1685,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             font-size: 13px;
             font-weight: 500;
             transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+          }
+
+          .admin-ph-sidebar.collapsed .sidebar-toggle {
+            padding: 10px;
+            min-width: 44px;
+          }
+
+          .admin-ph-sidebar.collapsed .sidebar-toggle .sidebar-toggle-text {
+            display: none;
           }
 
           .admin-ph-sidebar .sidebar-toggle:hover {
@@ -1539,18 +1761,20 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           .admin-ph-sidebar .sidebar-link {
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             flex-shrink: 0;
             height: 48px;
             min-height: 48px;
-            max-height: 48px;
             padding: 0 12px;
+            gap: 12px;
             position: relative;
             border-radius: 14px;
             box-sizing: border-box;
+            text-decoration: none;
           }
 
           .admin-ph-sidebar.collapsed .sidebar-link {
+            justify-content: center;
             padding: 0 10px;
           }
 
@@ -1592,6 +1816,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             pointer-events: none;
           }
 
+          .admin-ph-sidebar .sidebar-label {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 14px;
+            font-weight: 500;
+            color: inherit;
+          }
+
+          .admin-ph-sidebar.collapsed .sidebar-label {
+            display: none;
+          }
+
           .admin-ph-sidebar .sidebar-cursor-tooltip {
             position: fixed;
             transform: translate(14px, -50%);
@@ -1607,23 +1844,33 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             z-index: 10001;
           }
 
-          .admin-ph-sidebar .sidebar-label {
-            display: none;
-          }
-
           .admin-ph-sidebar .sidebar-footer {
             margin-top: auto;
           }
 
           .admin-ph-sidebar .sidebar-cta {
             width: 100%;
-            justify-content: center;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 12px;
+            height: 48px;
+            min-height: 48px;
+            padding: 0 12px;
+            border-radius: 14px;
             position: relative;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
           }
 
           .admin-ph-sidebar.collapsed .sidebar-cta {
-            padding: 10px;
-            font-size: 1.2rem;
+            justify-content: center;
+            padding: 0 10px;
+          }
+
+          .admin-ph-sidebar.collapsed .sidebar-cta .sidebar-label {
+            display: none;
           }
 
           .admin-ph-sidebar.collapsed .sidebar-cta .sidebar-icon-wrap {
@@ -2699,6 +2946,78 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             margin-top: 24px;
           }
 
+          .profile-modal-overlay.profile-modal--light .profile-modal-card {
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 14px rgba(0, 0, 0, 0.06) !important;
+            color: #1e293b !important;
+          }
+          .profile-modal-overlay.profile-modal--light .profile-modal-header h2 {
+            color: #0f172a !important;
+          }
+          .profile-modal-overlay.profile-modal--light .profile-modal-desc {
+            color: #374151 !important;
+          }
+          .profile-modal-overlay.profile-modal--light .profile-modal-section-label {
+            color: #475569 !important;
+          }
+          .profile-modal-overlay.profile-modal--light .profile-modal-field-value,
+          .profile-modal-overlay.profile-modal--light .profile-modal-input {
+            background: #f8fafc !important;
+            border-color: rgba(0, 0, 0, 0.15) !important;
+            color: #0f172a !important;
+          }
+          .profile-modal-overlay.profile-modal--light {
+            background: rgba(0, 0, 0, 0.45) !important;
+          }
+          .profile-modal-overlay.profile-modal--light .profile-modal-avatar-option {
+            background: #f1f5f9 !important;
+            border-color: rgba(0, 0, 0, 0.15) !important;
+          }
+          .profile-modal-overlay.profile-modal--light .profile-modal-avatar-option.selected {
+            border-color: #6366f1 !important;
+            background: rgba(99, 102, 241, 0.15) !important;
+          }
+          .profile-modal-overlay.profile-modal--light .profile-modal-theme-option {
+            background: #f1f5f9 !important;
+            border-color: rgba(0, 0, 0, 0.15) !important;
+            color: #1e293b !important;
+          }
+          .profile-modal-overlay.profile-modal--light .profile-modal-theme-option.selected {
+            border-color: #6366f1 !important;
+            background: rgba(99, 102, 241, 0.15) !important;
+          }
+          .profile-modal-overlay.profile-modal--light .profile-modal-close {
+            background: #f1f5f9 !important;
+            border: 1px solid #e2e8f0 !important;
+            color: #475569 !important;
+          }
+          .profile-modal-overlay.profile-modal--light .profile-modal-close:hover {
+            background: #e2e8f0 !important;
+            color: #0f172a !important;
+          }
+          .profile-modal-overlay.profile-modal--light .profile-modal-photo-preview {
+            background: #f8fafc !important;
+            border-color: #e2e8f0 !important;
+          }
+          .profile-modal-overlay.profile-modal--light .profile-modal-readonly-badge,
+          .profile-modal-overlay.profile-modal--light .profile-modal-optional {
+            color: #64748b !important;
+            background: #f1f5f9 !important;
+          }
+          .profile-modal-overlay.profile-modal--light .profile-modal-field-label {
+            color: #64748b !important;
+          }
+          .profile-modal-overlay.profile-modal--light .btn-ghost.profile-modal-photo-btn {
+            background: #f1f5f9 !important;
+            border-color: #cbd5e1 !important;
+            color: #334155 !important;
+          }
+          .profile-modal-overlay.profile-modal--light .btn-ghost.profile-modal-photo-btn:hover {
+            background: #e2e8f0 !important;
+            color: #0f172a !important;
+          }
+
           .content-area {
             display: grid;
             gap: 24px;
@@ -2709,6 +3028,30 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             flex-direction: column;
             align-items: center;
             gap: 24px;
+          }
+          .admin-ph-page-title-block {
+            width: 100%;
+            margin-bottom: 6px;
+          }
+          .admin-ph-page-title {
+            margin: 0 0 4px;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #1e293b;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+          }
+          .admin-ph-page-subtitle {
+            margin: 0;
+            font-size: 0.9375rem;
+            color: #64748b;
+            line-height: 1.4;
+          }
+          html:not([data-theme="light"]) .admin-ph-page-title {
+            color: #f1f5f9;
+          }
+          html:not([data-theme="light"]) .admin-ph-page-subtitle {
+            color: #94a3b8;
           }
 
           .admin-ph-shell .admin-ph-content > * {
@@ -2779,11 +3122,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             .container {
               max-width: 1000px;
             }
+            .container.landing-root {
+              max-width: 100%;
+            }
           }
 
           @media (max-width: 960px) {
             .container {
               padding: 36px 20px;
+            }
+            .container.landing-root {
+              padding-left: clamp(16px, 4vw, 24px);
+              padding-right: clamp(16px, 4vw, 24px);
             }
 
             .hero-title {
@@ -2818,6 +3168,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             .container {
               padding: 28px 18px;
             }
+            .container.landing-root {
+              padding-left: 16px;
+              padding-right: 16px;
+            }
 
             .hero-title {
               font-size: 34px;
@@ -2842,6 +3196,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           @media (max-width: 520px) {
             .container {
               padding: 22px 16px;
+            }
+            .container.landing-root {
+              padding-left: 12px;
+              padding-right: 12px;
             }
 
             .hero-title {

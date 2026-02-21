@@ -38,13 +38,23 @@ export async function GET(req: Request) {
         ORDER BY CASE status WHEN 'active' THEN 0 ELSE 1 END, scheduled_at DESC NULLS LAST
         LIMIT 1
       `;
-      if (row?.status === "active") {
-        return NextResponse.json({ context: "activa" as AssemblyContext });
+      let powersEnabled = false;
+      try {
+        const [orgRow] = await sql<{ powers_enabled: boolean | null }[]>`
+          SELECT powers_enabled FROM organizations WHERE id = ${organizationId}::uuid LIMIT 1
+        `;
+        powersEnabled = orgRow?.powers_enabled === true;
+      } catch {
+        // Columna powers_enabled puede no existir aún (ejecutar sql_snippets/107_powers_enabled_organizations.sql)
       }
-      if (row?.status === "scheduled") {
-        return NextResponse.json({ context: "programada" as AssemblyContext });
-      }
-      return NextResponse.json({ context: "sin_asambleas" as AssemblyContext });
+      let context: AssemblyContext = "activa";
+      if (row?.status === "active") context = "activa";
+      else if (row?.status === "scheduled") context = "programada";
+      else context = "sin_asambleas";
+      return NextResponse.json({
+        context,
+        powers_enabled: powersEnabled,
+      });
     }
 
     return NextResponse.json({ context: "activa" as AssemblyContext });

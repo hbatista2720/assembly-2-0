@@ -7,6 +7,7 @@ import DemoBanner from "../../../components/DemoBanner";
 import useUpgradeBanner from "../../../hooks/useUpgradeBanner";
 import AssemblyCreditsDisplay from "../../../components/AssemblyCreditsDisplay";
 import { getAssemblies } from "../../../lib/assembliesStore";
+import { getDemoResidents, isDemoResidentsContext } from "../../../lib/demoResidentsStore";
 import { PLANS } from "../../../lib/types/pricing";
 
 const DEMO_ORG_ID = "11111111-1111-1111-1111-111111111111";
@@ -70,7 +71,13 @@ export default function AdminPhDashboard() {
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [selectedPhId, setSelectedPhId] = useState<string | null>(null);
+  const [showResetDemoModal, setShowResetDemoModal] = useState(false);
   const { showBanner, limits } = useUpgradeBanner(subscriptionId);
+
+  const handleConfirmResetDemo = () => {
+    // Solo restablece contadores/métricas mostrados; no borra residentes ni asambleas (diseño/datos se mantienen).
+    if (typeof window !== "undefined") window.location.reload();
+  };
 
   useEffect(() => {
     const stored = localStorage.getItem("assembly_subscription_id");
@@ -88,7 +95,8 @@ export default function AdminPhDashboard() {
   };
 
   const showPhList = selectedPhId === null;
-  const [isDemo, setIsDemo] = useState(false);
+  const [isDemo, setIsDemo] = useState(() => typeof window !== "undefined" && isDemoResidentsContext());
+  const [contextReady, setContextReady] = useState(() => typeof window !== "undefined");
   const [customPhList, setCustomPhList] = useState<PhItem[]>([]);
   const [showCreatePh, setShowCreatePh] = useState(false);
   const [newPhForm, setNewPhForm] = useState({
@@ -99,14 +107,9 @@ export default function AdminPhDashboard() {
   });
 
   useEffect(() => {
-    const sub = localStorage.getItem("assembly_subscription_id");
-    const org = localStorage.getItem("assembly_organization_id");
-    const demo =
-      sub === "demo-subscription" ||
-      org === DEMO_ORG_ID ||
-      org === "demo-organization" ||
-      (typeof window !== "undefined" && window.location.search.includes("mode=demo"));
+    const demo = typeof window !== "undefined" && isDemoResidentsContext();
     setIsDemo(!!demo);
+    setContextReady(true);
   }, []);
 
   useEffect(() => {
@@ -145,28 +148,131 @@ export default function AdminPhDashboard() {
     setNewPhForm({ name: "", direccion: "", cantidadResidentes: "", tipoPh: "Edificio" });
     setShowCreatePh(false);
   };
-  const KPIS = isDemo ? KPIS_DEMO : KPIS_FULL;
-  const ALERTS = isDemo ? ALERTS_DEMO : ALERTS_FULL;
-  const nextAssemblyElectors = isDemo ? DEMO_RESIDENTS : 170;
-  const nextAssemblyFaceId = isDemo ? Math.round(DEMO_RESIDENTS * 0.65) : 130;
-
-  const [assemblies, setAssemblies] = useState<{ id: string; title: string; date: string; status: string }[]>([]);
+  const [assemblies, setAssemblies] = useState<{ id: string; title: string; date: string; status: string; location?: string }[]>([]);
+  const [residents, setResidents] = useState<{ payment_status?: string; face_id_enabled?: boolean }[]>([]);
+  const [abandonEvents, setAbandonEvents] = useState<{ abandoned_at: string }[]>([]);
+  const now = useMemo(() => new Date(), []);
+  const [filterYear, setFilterYear] = useState(now.getFullYear());
+  const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1);
+  const todayLabel = useMemo(() => {
+    const s = now.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }, [now]);
+  const refreshAssemblies = () => setAssemblies(getAssemblies());
+  const refreshResidents = () => {
+    if (typeof window !== "undefined" && isDemoResidentsContext()) {
+      try {
+        setResidents(getDemoResidents());
+      } catch {
+        setResidents([]);
+      }
+    }
+  };
   useEffect(() => {
-    setAssemblies(getAssemblies());
+    refreshAssemblies();
+  }, []);
+  useEffect(() => {
+    refreshResidents();
+  }, []);
+  useEffect(() => {
+    if (!selectedPhId || !organizationId) return;
+    const orgId = organizationId === "demo-organization" ? DEMO_ORG_ID : organizationId;
+    let active = true;
+    fetch(`/api/resident-abandon?organizationId=${encodeURIComponent(orgId)}`)
+      .then((res) => (res.ok ? res.json() : { events: [] }))
+      .then((data) => {
+        if (active && Array.isArray(data?.events)) setAbandonEvents(data.events);
+      })
+      .catch(() => {
+        if (active) setAbandonEvents([]);
+      });
+    return () => { active = false; };
+  }, [selectedPhId, organizationId]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onVisibility = () => {
+      refreshAssemblies();
+      refreshResidents();
+    };
+    const onResidentsChanged = () => {
+      refreshResidents();
+      refreshAssemblies();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("admin-ph-residents-changed", onResidentsChanged);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("admin-ph-residents-changed", onResidentsChanged);
+    };
   }, []);
   const nextAssembly = useMemo(
-    () => assemblies.find((a) => a.status !== "Completada") ?? assemblies[0] ?? null,
+    () => assemblies.find((a) => a.status !== "Completada") ?? null,
     [assemblies],
   );
+  const completedCount = useMemo(() => assemblies.filter((a) => a.status === "Completada").length, [assemblies]);
+  const scheduledOrLiveCount = useMemo(() => assemblies.filter((a) => a.status === "Programada" || a.status === "En vivo").length, [assemblies]);
+  const totalResidents = residents.length;
+  const residentsAlDia = useMemo(() => residents.filter((r) => r.payment_status !== "mora").length, [residents]);
+  const residentsFaceId = useMemo(() => residents.filter((r) => r.face_id_enabled).length, [residents]);
+  const morososCount = useMemo(() => totalResidents - residentsAlDia, [totalResidents, residentsAlDia]);
+  const sinFaceIdCount = useMemo(() => totalResidents - residentsFaceId, [totalResidents, residentsFaceId]);
   const assemblyIdForLinks = nextAssembly?.id ?? "demo";
   const hrefVerDetalle = nextAssembly ? `/dashboard/admin-ph/assemblies/${nextAssembly.id}` : "/dashboard/admin-ph/assemblies";
   const hrefIniciar = nextAssembly ? `/dashboard/admin-ph/assembly/${nextAssembly.id}/live` : "/dashboard/admin-ph/assemblies";
-  const hrefMonitor = `/dashboard/admin-ph/monitor/${encodeURIComponent(assemblyIdForLinks)}`;
+  const hrefMonitor = nextAssembly ? `/dashboard/admin-ph/monitor/votacion/${encodeURIComponent(nextAssembly.id)}` : "/dashboard/admin-ph/monitor/votacion";
+  const kpisFromData = isDemo && residents.length > 0 ? [
+    { label: "Propietarios activos", value: String(totalResidents), note: `${residentsAlDia} al día` },
+    { label: "Asambleas 2026", value: String(assemblies.length), note: scheduledOrLiveCount > 0 ? `${scheduledOrLiveCount} programada(s)` : completedCount > 0 ? `${completedCount} completada(s)` : "sin asambleas" },
+    { label: "Face ID activo", value: String(residentsFaceId), note: totalResidents ? `${Math.round((residentsFaceId / totalResidents) * 100)}% configurado` : "—" },
+    { label: "En mora", value: String(morososCount), note: morososCount > 0 ? "no votan (solo asistencia)" : "al día" },
+  ] : null;
+  const KPIS = kpisFromData ?? (isDemo ? KPIS_DEMO : KPIS_FULL);
+  const alertsFromData = useMemo(() => {
+    if (!isDemo || residents.length === 0) return null;
+    const list: string[] = [];
+    if (morososCount > 0) list.push(`${morososCount} propietario(s) en mora (no votan, solo asistencia)`);
+    if (sinFaceIdCount > 0) list.push(`${sinFaceIdCount} propietario(s) sin Face ID configurado`);
+    if (nextAssembly && nextAssembly.date) {
+      const days = Math.ceil((new Date(nextAssembly.date).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+      if (days >= 0 && days <= 7) list.push(`Recordatorio: asamblea en ${days === 0 ? "hoy" : days === 1 ? "1 día" : `${days} días`}`);
+    }
+    return list.length > 0 ? list : null;
+  }, [isDemo, residents.length, morososCount, sinFaceIdCount, nextAssembly]);
+  const ALERTS = alertsFromData ?? (isDemo ? ALERTS_DEMO : ALERTS_FULL);
+  const nextAssemblyElectors = isDemo && residents.length > 0 ? residentsAlDia : (isDemo ? DEMO_RESIDENTS : 170);
+  const nextAssemblyFaceId = isDemo && residents.length > 0 ? residentsFaceId : (isDemo ? Math.round(DEMO_RESIDENTS * 0.65) : 130);
+
+  const assembliesInFilter = useMemo(() => {
+    return assemblies.filter((a) => {
+      const d = new Date(a.date);
+      return d.getFullYear() === filterYear && d.getMonth() + 1 === filterMonth;
+    });
+  }, [assemblies, filterYear, filterMonth]);
+  const celebradas = useMemo(() => assembliesInFilter.filter((a) => a.status === "Completada"), [assembliesInFilter]);
+  const canceladas = useMemo(() => assembliesInFilter.filter((a) => (a as { canceled?: boolean }).canceled), [assembliesInFilter]);
+  const abandonosInPeriod = useMemo(() => {
+    return abandonEvents.filter((e) => {
+      const d = new Date(e.abandoned_at);
+      return d.getFullYear() === filterYear && d.getMonth() + 1 === filterMonth;
+    });
+  }, [abandonEvents, filterYear, filterMonth]);
+  const promedioAbandonoPorAsamblea = celebradas.length > 0
+    ? (abandonosInPeriod.length / celebradas.length).toFixed(1)
+    : "—";
+  const yearsForFilter = useMemo(() => {
+    const y = now.getFullYear();
+    return [y - 1, y, y + 1];
+  }, [now]);
+  const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
   return (
     <>
-      {showPhList && <DemoBanner />}
-      {showPhList ? (
+      {contextReady && showPhList && <DemoBanner />}
+      {!contextReady ? (
+        <div className="card dashboard-widget">
+          <p className="muted" style={{ margin: 0 }}>Cargando panel…</p>
+        </div>
+      ) : showPhList ? (
         <div className="card dashboard-widget">
           <h2>Tus propiedades horizontales</h2>
           <p className="muted" style={{ margin: "0 0 20px" }}>
@@ -329,7 +435,79 @@ export default function AdminPhDashboard() {
           </div>
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
             <Link className="btn btn-ghost" href="/dashboard/admin-ph/assemblies" scroll={true}>Ver asambleas</Link>
+            {isDemo && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ border: "1px solid rgba(239, 68, 68, 0.35)", color: "#fca5a5", fontSize: "13px" }}
+                onClick={() => setShowResetDemoModal(true)}
+                title="Borra residentes y asambleas demo para que QA empiece desde cero"
+              >
+                Restablecer todo (demo)
+              </button>
+            )}
           </div>
+        </div>
+      </div>
+
+      {showResetDemoModal && (
+        <div
+          className="profile-modal-overlay"
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10000 }}
+          onClick={() => setShowResetDemoModal(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reset-demo-title"
+        >
+          <div
+            className="profile-modal-card"
+            style={{ maxWidth: "420px", margin: 16, padding: "24px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="reset-demo-title" style={{ margin: "0 0 12px", fontSize: "1.2rem" }}>Restablecer data demo</h2>
+            <p className="muted" style={{ margin: "0 0 20px", fontSize: "14px", lineHeight: 1.5 }}>
+              ¿Restablecer contadores y métricas del demo? Los datos (residentes, asambleas) se mantienen. La página se recargará.
+            </p>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+              <button type="button" className="btn btn-ghost" onClick={() => setShowResetDemoModal(false)}>
+                Cancelar
+              </button>
+              <button type="button" className="btn btn-primary" style={{ background: "linear-gradient(135deg, #dc2626, #b91c1c)", border: "none" }} onClick={handleConfirmResetDemo}>
+                Restablecer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="card dashboard-widget" style={{ marginBottom: "16px" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "16px" }}>
+          <span className="muted" style={{ fontSize: "14px" }}>
+            <strong style={{ color: "var(--color-text, #e2e8f0)" }}>Hoy:</strong> {todayLabel}
+          </span>
+          <span className="muted" style={{ fontSize: "13px" }}>Filtro por periodo:</span>
+          <select
+            value={filterYear}
+            onChange={(e) => setFilterYear(Number(e.target.value))}
+            className="create-ph-input create-ph-select"
+            style={{ width: "auto", minWidth: "100px" }}
+            aria-label="Año"
+          >
+            {yearsForFilter.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+          <select
+            value={filterMonth}
+            onChange={(e) => setFilterMonth(Number(e.target.value))}
+            className="create-ph-input create-ph-select"
+            style={{ width: "auto", minWidth: "140px" }}
+            aria-label="Mes"
+          >
+            {MONTHS.map((m, i) => (
+              <option key={m} value={i + 1}>{m}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -345,31 +523,79 @@ export default function AdminPhDashboard() {
 
       <AssemblyCreditsDisplay organizationId={organizationId} />
 
+      {(isDemo && totalResidents > 0) && (
+        <div className="card" style={{ borderLeft: "4px solid #6366f1", marginBottom: "16px" }}>
+          <h3 style={{ marginTop: 0, fontSize: "15px" }}>Para coordinar la asamblea</h3>
+          <p className="muted" style={{ margin: "0 0 12px", fontSize: "13px" }}>
+            Resumen por nivel de importancia: quiénes pueden votar y quiénes solo asistencia.
+          </p>
+          <div style={{ display: "grid", gap: "14px" }}>
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "4px" }}>
+                <span>Al día (pueden votar)</span>
+                <strong style={{ color: "#34d399" }}>{residentsAlDia}</strong>
+              </div>
+              <div style={{ height: "10px", borderRadius: "8px", background: "rgba(30, 41, 59, 0.8)", overflow: "hidden", display: "flex" }}>
+                <span style={{ width: `${totalResidents ? (residentsAlDia / totalResidents) * 100 : 0}%`, background: "#34d399", borderRadius: "8px 0 0 8px" }} />
+                <span style={{ width: `${totalResidents ? (morososCount / totalResidents) * 100 : 0}%`, background: "#64748b", borderRadius: residentsAlDia === 0 ? "8px" : "0 8px 8px 0" }} />
+              </div>
+            </div>
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "4px" }}>
+                <span>En mora (solo asistencia)</span>
+                <strong style={{ color: "#94a3b8" }}>{morososCount}</strong>
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", paddingTop: "4px", borderTop: "1px solid rgba(148,163,184,0.2)" }}>
+              <span>Face ID listos para voto</span>
+              <strong>{residentsFaceId}</strong>
+            </div>
+          </div>
+          <Link className="btn btn-ghost" style={{ marginTop: "12px", fontSize: "13px" }} href="/dashboard/admin-ph/owners">Ver listado de residentes</Link>
+        </div>
+      )}
+
       <div className="two-col">
         <div className="card">
           <h3>Próxima Asamblea</h3>
-          <p className="muted" style={{ marginTop: 0 }}>
-            {nextAssembly ? `${nextAssembly.title} · ${nextAssembly.date.replace("T", " ")}` : "Ordinaria 2026 · 15 Feb 2026 · 6:00 PM"}
-          </p>
-          <div className="card-list">
-            <div className="list-item">
-              <span>👥</span>
-              <span>{nextAssemblyElectors} electores (solo al día)</span>
-            </div>
-            <div className="list-item">
-              <span>✅</span>
-              <span>{nextAssemblyFaceId} con Face ID configurado</span>
-            </div>
-            <div className="list-item">
-              <span>📍</span>
-              <span>Salón de eventos - Piso 1</span>
-            </div>
-          </div>
-          <div style={{ marginTop: "16px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <Link className="btn btn-ghost" href={hrefVerDetalle} scroll={true}>Ver detalles</Link>
-            <Link className="btn btn-primary" href={hrefIniciar} scroll={true}>Iniciar asamblea</Link>
-            <Link className="btn btn-ghost" href={hrefMonitor} scroll={true}>Monitor</Link>
-          </div>
+          {nextAssembly ? (
+            <>
+              <p className="muted" style={{ marginTop: 0 }}>
+                {nextAssembly.title} · {nextAssembly.date.replace("T", " ")}
+              </p>
+              <div className="card-list">
+                <div className="list-item">
+                  <span>👥</span>
+                  <span>{nextAssemblyElectors} electores (solo al día)</span>
+                </div>
+                <div className="list-item">
+                  <span>✅</span>
+                  <span>{nextAssemblyFaceId} con Face ID configurado</span>
+                </div>
+                <div className="list-item">
+                  <span>📍</span>
+                  <span>{nextAssembly.location || "Salón de eventos - Piso 1"}</span>
+                </div>
+              </div>
+              <div style={{ marginTop: "16px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <Link className="btn btn-ghost" href={hrefVerDetalle} scroll={true}>Ver detalles</Link>
+                <Link className="btn btn-primary" href={hrefIniciar} scroll={true}>Iniciar asamblea</Link>
+                <Link className="btn btn-ghost" href={hrefMonitor} scroll={true}>Monitor</Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="muted" style={{ marginTop: 0 }}>
+                {assemblies.length === 0
+                  ? "No hay asambleas. Cree una desde el módulo Asambleas."
+                  : "No hay asamblea programada. Todas las asambleas están completadas."}
+              </p>
+              <div style={{ marginTop: "16px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <Link className="btn btn-primary" href="/dashboard/admin-ph/assemblies" scroll={true}>Ver asambleas</Link>
+                <Link className="btn btn-ghost" href="/dashboard/admin-ph/monitor/votacion" scroll={true}>Monitor</Link>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="card">
@@ -436,6 +662,97 @@ export default function AdminPhDashboard() {
           </a>
         </div>
       </div>
+
+      <div className="two-col" style={{ marginTop: "16px" }}>
+        <div className="card">
+          <h3>Abandono de sala (chatbot)</h3>
+          <p className="muted" style={{ marginTop: 0 }}>
+            Residentes que se salieron de la sesión antes de finalizar la asamblea.
+          </p>
+          <div style={{ display: "grid", gap: "12px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: "rgba(99, 102, 241, 0.12)", borderRadius: "10px" }}>
+              <span>Abandonos {MONTHS[filterMonth - 1]} {filterYear}</span>
+              <strong>{abandonosInPeriod.length}</strong>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px" }}>
+              <span className="muted">Total abandonos (chatbot)</span>
+              <span>{abandonEvents.length}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px" }}>
+              <span className="muted">Promedio por asamblea celebrada</span>
+              <span>{promedioAbandonoPorAsamblea}</span>
+            </div>
+          </div>
+          <p className="muted" style={{ marginTop: "12px", fontSize: "12px" }}>
+            Residentes que cerraron sesión en el chatbot antes de finalizar la asamblea (abandono de sala).
+          </p>
+          <Link className="btn btn-ghost" style={{ marginTop: "12px" }} href={nextAssembly ? `/dashboard/admin-ph/monitor/${encodeURIComponent(nextAssembly.id)}/abandonos` : "/dashboard/admin-ph/monitor/demo/abandonos"}>
+            Ver histórico de abandonos
+          </Link>
+        </div>
+        <div className="card">
+          <h3>Historial de asambleas</h3>
+          <p className="muted" style={{ marginTop: 0 }}>
+            Celebradas y canceladas · {MONTHS[filterMonth - 1]} {filterYear}
+          </p>
+          <div style={{ display: "grid", gap: "16px" }}>
+            <div>
+              <h4 style={{ fontSize: "14px", margin: "0 0 8px", color: "var(--color-text, #e2e8f0)" }}>Celebradas</h4>
+              {celebradas.length === 0 ? (
+                <p className="muted" style={{ margin: 0, fontSize: "13px" }}>No hay asambleas celebradas en este periodo.</p>
+              ) : (
+                <ul style={{ margin: 0, paddingLeft: "20px" }}>
+                  {celebradas.map((a) => (
+                    <li key={a.id} style={{ marginBottom: "4px" }}>
+                      <strong>{a.title}</strong>
+                      <span className="muted" style={{ marginLeft: "8px", fontSize: "13px" }}>
+                        {new Date(a.date).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <h4 style={{ fontSize: "14px", margin: "0 0 8px", color: "var(--color-text, #e2e8f0)" }}>Canceladas</h4>
+              {canceladas.length === 0 ? (
+                <p className="muted" style={{ margin: 0, fontSize: "13px" }}>No hay asambleas canceladas en este periodo.</p>
+              ) : (
+                <ul style={{ margin: 0, paddingLeft: "20px" }}>
+                  {canceladas.map((a) => (
+                    <li key={a.id} style={{ marginBottom: "4px" }}>
+                      <strong>{a.title}</strong>
+                      <span className="muted" style={{ marginLeft: "8px", fontSize: "13px" }}>
+                        {new Date(a.date).toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+          <Link className="btn btn-ghost" style={{ marginTop: "16px" }} href="/dashboard/admin-ph/assemblies">
+            Ver todas las asambleas
+          </Link>
+        </div>
+      </div>
+
+      {isDemo && selectedPhId && (
+        <div className="card" style={{ marginTop: "16px", borderColor: "rgba(148, 163, 184, 0.3)", background: "rgba(15, 23, 42, 0.35)" }}>
+          <h3 style={{ marginTop: 0, fontSize: "15px" }}>Para QA: estado limpio</h3>
+          <p className="muted" style={{ margin: "0 0 12px", fontSize: "13px" }}>
+            Borra toda la data de residentes y asambleas (demo) para empezar la prueba desde cero: registrar usuarios, crear 2 asambleas y ejecutar el ciclo completo. Ver <strong>QA/MANUAL_QA_CICLO_COMPLETO_DEMO.md</strong>.
+          </p>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ border: "1px solid rgba(239, 68, 68, 0.4)", color: "#fca5a5" }}
+            onClick={() => setShowResetDemoModal(true)}
+          >
+            Restablecer todo (demo)
+          </button>
+        </div>
+      )}
         </>
       )}
     </>

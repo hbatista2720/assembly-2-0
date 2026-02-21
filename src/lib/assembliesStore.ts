@@ -1,16 +1,22 @@
+/** Tipo de aprobación por tema (Ley 284). Mayoría reglamento = según Reglamento de Copropiedad. */
+export type TopicApprovalType = "informativo" | "votacion_simple" | "votacion_calificada" | "votacion_reglamento";
+
 type AssemblyTopic = {
   id: string;
   title: string;
   description?: string;
-  type: "informativo" | "votacion_simple" | "votacion_calificada";
+  type: TopicApprovalType;
   /** Si true, la votación de este tema está abierta para que los residentes voten (chatbot/sistema). El admin no vota aquí; activa/desactiva. */
   votingOpen?: boolean;
 };
 
+/** Ordinaria/Extraordinaria según Ley 284; Por derecho propio = por los residentes (3-5 días); Especial = tipo escrito manualmente (sin plazo legal). */
+export type AssemblyType = "Ordinaria" | "Extraordinaria" | "Por derecho propio" | "Especial";
+
 type Assembly = {
   id: string;
   title: string;
-  type: "Ordinaria" | "Extraordinaria";
+  type: AssemblyType;
   date: string;
   location: string;
   status: "Programada" | "En vivo" | "Completada";
@@ -25,6 +31,8 @@ type Assembly = {
   mode?: "Presencial" | "Virtual" | "Mixta";
   /** Enlace de reunión si Virtual o Mixta. */
   meetingLink?: string;
+  /** Si type es "Especial", tipo de asamblea escrito manualmente (ej. "Por derecho propio", "20% de propietarios al día"). */
+  typeCustom?: string;
 };
 
 const STORAGE_KEY = "assembly_admin_ph_assemblies";
@@ -85,43 +93,42 @@ const seedAssemblies = (): Assembly[] => [
   },
 ];
 
-/** Versión del seed demo: al aumentar, se reemplazan asambleas demo antiguas por 2 ejemplos con todos los campos Ley 284. */
-const DEMO_SEED_VERSION = 2;
+/** Versión del seed demo: al aumentar, se reemplazan asambleas demo antiguas por las de Urban Tower (orden día, presupuesto, remodelación garita). */
+const DEMO_SEED_VERSION = 3;
 
-/** Seed para usuario demo: 2 asambleas de ejemplo con todos los campos sugeridos por Marketing (Ley 284). */
+/** Seed para usuario demo (PH Urban Tower): 1 Ordinaria (orden día + presupuesto 2026) y 1 Extraordinaria (remodelación garita). */
 const seedDemoAssemblies = (): Assembly[] => [
   {
     id: createId(),
     title: "Asamblea Ordinaria 2026",
     type: "Ordinaria",
     date: "2026-02-15T18:00",
-    location: "Salón de eventos - Piso 1",
+    location: "Urban Tower · Salón de eventos - Piso 1",
     status: "Programada",
     attendeesCount: 50,
     faceIdCount: 35,
-    orderOfDay: "1. Aprobación del acta anterior.\n2. Informe de gestión y estados financieros.\n3. Aprobación de presupuesto 2026.\n4. Temas varios.",
+    orderOfDay: "1. Aprobar el orden del día.\n2. Aprobación del presupuesto 2026.\n3. Temas varios.",
     secondCallWarning: true,
     mode: "Presencial",
     topics: [
-      { id: createId(), title: "Aprobación del acta anterior", description: "Revisión y aprobación del acta 2025.", type: "informativo" },
-      { id: createId(), title: "Aprobación de presupuesto 2026", description: "Votación por mayoría simple.", type: "votacion_simple" },
+      { id: createId(), title: "Aprobar el orden del día", description: "Aprobación del orden del día de la asamblea.", type: "informativo" },
+      { id: createId(), title: "Aprobación del presupuesto 2026", description: "Votación por mayoría simple.", type: "votacion_simple" },
     ],
   },
   {
     id: createId(),
-    title: "Asamblea Extraordinaria - Piscina",
+    title: "Asamblea Extraordinaria - Remodelación garita",
     type: "Extraordinaria",
     date: "2026-02-28T19:00",
-    location: "Sala principal",
+    location: "Urban Tower · Sala principal",
     status: "Programada",
     attendeesCount: 50,
     faceIdCount: 35,
-    orderOfDay: "1. Convocatoria y verificación de quórum.\n2. Mantenimiento de piscina – aprobación de presupuesto extraordinario.",
+    orderOfDay: "1. Convocatoria y verificación de quórum.\n2. Aprobación de remodelación de garita.",
     secondCallWarning: true,
-    mode: "Mixta",
-    meetingLink: "https://meet.example.com/asamblea-piscina",
+    mode: "Presencial",
     topics: [
-      { id: createId(), title: "Mantenimiento de piscina", description: "Aprobación de presupuesto extraordinario.", type: "votacion_calificada" },
+      { id: createId(), title: "Aprobación de remodelación de garita", description: "Aprobación de presupuesto para remodelación de garita.", type: "votacion_calificada" },
     ],
   },
 ];
@@ -149,7 +156,9 @@ export const getAssemblies = (): Assembly[] => {
     return seeded;
   }
   try {
-    return JSON.parse(raw) as Assembly[];
+    const list = JSON.parse(raw) as Assembly[];
+    // Compatibilidad: tipo "Manual" antiguo → "Especial"
+    return list.map((a) => (a.type === "Manual" ? { ...a, type: "Especial" as const } : a));
   } catch {
     const seeded = isDemoUser() ? seedDemoAssemblies() : seedAssemblies();
     localStorage.setItem(key, JSON.stringify(seeded));
@@ -163,15 +172,16 @@ export const saveAssemblies = (assemblies: Assembly[]) => {
   localStorage.setItem(getStorageKey(), JSON.stringify(assemblies));
 };
 
-export const createAssembly = (assembly: Omit<Assembly, "id" | "topics" | "status">) => {
+export const createAssembly = (assembly: Omit<Assembly, "id" | "status"> & { topics?: AssemblyTopic[] }) => {
   const current = getAssemblies();
+  const normalizedTopics = (assembly.topics ?? []).map((t) => ({ ...t, id: t.id || createId() }));
   const newAssembly: Assembly = {
     id: createId(),
     status: "Programada",
-    topics: [],
     secondCallWarning: true,
     mode: "Presencial",
     ...assembly,
+    topics: normalizedTopics,
     attendeesCount: isDemoUser() ? 50 : (assembly.attendeesCount ?? 200),
     faceIdCount: isDemoUser() ? 35 : (assembly.faceIdCount ?? 130),
   };
@@ -200,5 +210,18 @@ export const deleteAssembly = (id: string): boolean => {
 export const isAssemblyCelebrated = (assembly: Assembly): boolean => assembly.status === "Completada";
 
 export const findAssembly = (id: string) => getAssemblies().find((assembly) => assembly.id === id) || null;
+
+/** Restablece asambleas demo: borra las guardadas y deja las 2 por defecto (seed). Solo aplica para usuario demo. */
+export const resetDemoAssemblies = (): void => {
+  if (typeof window === "undefined" || !isDemoUser()) return;
+  try {
+    localStorage.removeItem(STORAGE_KEY_DEMO);
+    localStorage.removeItem(STORAGE_KEY_DEMO + "_v");
+  } catch {
+    // ignore
+  }
+};
+
+export const isDemoUserExport = isDemoUser;
 
 export type { Assembly, AssemblyTopic };

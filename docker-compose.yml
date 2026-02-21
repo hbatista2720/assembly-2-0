@@ -33,6 +33,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   # === PgBouncer ===
   pgbouncer:
@@ -51,6 +52,7 @@ services:
         condition: service_healthy
     networks:
       - assembly-network
+    restart: unless-stopped
 
   # === Redis 7 ===
   redis:
@@ -68,6 +70,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   # === Next.js App ===
   app:
@@ -105,6 +108,7 @@ services:
       - /app/.next
     networks:
       - assembly-network
+    restart: unless-stopped
 
   # === Telegram Bot ===
   telegram-bot:

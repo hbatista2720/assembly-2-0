@@ -39,6 +39,8 @@ export type DemoResident = {
   titular_orden?: 1 | 2;
   /** Si este titular está habilitado para votar en asamblea. */
   habilitado_para_asamblea?: boolean;
+  /** Estatus de la unidad: Ocupada, Alquilada, Sin inquilino. */
+  estatus_unidad?: "Ocupada" | "Alquilada" | "Sin inquilino";
 };
 
 const createId = () => `demo_res_${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -59,28 +61,24 @@ function setStored(list: DemoResident[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
 }
 
-/** Genera los 50 residentes demo por defecto (unidades 101–150, cuota 2 %, estatus variados). Algunas unidades tienen 2 titulares. */
+/** Genera los 50 residentes demo por defecto: unidades 1 a 50 (una por unidad) para sincronizar con Monitor Back Office. */
 function seedDefaultDemoResidents(): DemoResident[] {
   const list: DemoResident[] = [];
   const cuotaPct = 100 / DEMO_RESIDENTS_LIMIT;
   const now = new Date().toISOString();
   const recent = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-  let id = 0;
-  // Unidades 101-140: un residente cada una (40). Unidades 141-145: dos residentes cada una (10). Total 50.
-  for (let u = 101; u <= 140; u++) {
-    id++;
-    const unit = String(u);
-    const i = id;
+  for (let i = 1; i <= DEMO_RESIDENTS_LIMIT; i++) {
+    const unit = String(i);
     const payment_status: PaymentStatus = i <= 45 ? "al_dia" : "mora";
     const chatbot_registered = i % 5 !== 0;
     const chatbot_login_status: ChatbotLoginStatus = !chatbot_registered ? "never" : i % 4 === 0 ? "logged_in" : "registered";
     const chatbot_session_active = chatbot_login_status === "logged_in" && i % 2 === 0;
     list.push({
-      user_id: `demo_res_seed_${id}`,
-      email: `residente.Urban${id}@demo.assembly2.com`,
-      nombre: `Residente Urban ${id}`,
-      numero_finca: String(96000 + id),
-      cedula_identidad: String(1000000000 + id).slice(0, 10),
+      user_id: `demo_res_seed_${i}`,
+      email: `residente${i}@demo.assembly2.com`,
+      nombre: `Residente ${i}`,
+      numero_finca: String(96000 + i),
+      cedula_identidad: String(1000000000 + i).slice(0, 10),
       face_id_enabled: i % 3 !== 0,
       unit,
       cuota_pct: Math.round(cuotaPct * 100) / 100,
@@ -91,38 +89,9 @@ function seedDefaultDemoResidents(): DemoResident[] {
       last_activity_at: chatbot_registered ? (i % 3 === 0 ? recent : now) : undefined,
       assembly_activity: i % 2 === 0 ? "Votó en Asamblea 2026-01" : i % 3 === 0 ? "Ingresó a sala en vivo" : undefined,
       titular_orden: 1,
-      habilitado_para_asamblea: i % 2 === 1,
+      habilitado_para_asamblea: payment_status === "al_dia",
+      estatus_unidad: i <= 25 ? "Ocupada" : i <= 40 ? "Alquilada" : "Sin inquilino",
     });
-  }
-  for (let u = 141; u <= 145; u++) {
-    const unit = String(u);
-    const base = (u - 141) * 2;
-    for (let t = 1; t <= 2; t++) {
-      id++;
-      const i = id;
-      const payment_status: PaymentStatus = "al_dia";
-      const chatbot_registered = i % 5 !== 0;
-      const chatbot_login_status: ChatbotLoginStatus = !chatbot_registered ? "never" : i % 4 === 0 ? "logged_in" : "registered";
-      const chatbot_session_active = chatbot_login_status === "logged_in" && t === 1;
-      list.push({
-        user_id: `demo_res_seed_${id}`,
-        email: `residente.Urban${id}@demo.assembly2.com`,
-        nombre: `Titular ${t} Unidad ${unit}`,
-        numero_finca: String(96000 + id),
-        cedula_identidad: String(1000000000 + id).slice(0, 10),
-        face_id_enabled: t === 1,
-        unit,
-        cuota_pct: Math.round(cuotaPct * 100) / 100,
-        payment_status,
-        chatbot_registered,
-        chatbot_login_status,
-        chatbot_session_active,
-        last_activity_at: chatbot_registered ? (t === 1 ? recent : now) : undefined,
-        assembly_activity: t === 1 ? "Votó en Asamblea 2026-01" : undefined,
-        titular_orden: t as 1 | 2,
-        habilitado_para_asamblea: t === 1,
-      });
-    }
   }
   setStored(list);
   return list;
@@ -148,8 +117,12 @@ function fillSimulatedFields(r: DemoResident, index: number): DemoResident {
     last_activity_at: r.last_activity_at ?? (chatbot_registered ? new Date(Date.now() - (hash % 3) * 20 * 60 * 1000).toISOString() : undefined),
     assembly_activity: r.assembly_activity ?? (hash % 2 === 0 ? "Votó en Asamblea 2026-01" : hash % 3 === 0 ? "Ingresó a sala en vivo" : undefined),
     titular_orden: r.titular_orden ?? 1,
-    // En mora nunca vota; si no está en mora, usar valor guardado o default por hash
-    habilitado_para_asamblea: r.payment_status === "mora" ? false : (r.habilitado_para_asamblea ?? (hash % 2 === 1)),
+    estatus_unidad: r.estatus_unidad ?? "Ocupada",
+    // En mora nunca vota. Al día: por defecto Sí para titular 1 (un solo habilitado por unidad).
+    habilitado_para_asamblea:
+      r.payment_status === "mora"
+        ? false
+        : (r.habilitado_para_asamblea ?? (r.titular_orden === 2 ? false : true)),
   };
 }
 
@@ -176,14 +149,13 @@ export function resetDemoResidents(): void {
   }
 }
 
-/** Obtiene la siguiente unidad disponible (101–150) según la lista actual. */
+/** Obtiene la siguiente unidad disponible (1–50) según la lista actual. */
 function nextUnit(list: DemoResident[]): string {
   const used = new Set((list.map((r) => r.unit).filter(Boolean) as string[]).map((u) => parseInt(u, 10)));
   for (let i = 1; i <= DEMO_RESIDENTS_LIMIT; i++) {
-    const u = String(100 + i);
-    if (!used.has(100 + i)) return u;
+    if (!used.has(i)) return String(i);
   }
-  return String(100 + list.length + 1);
+  return String(list.length + 1);
 }
 
 /** Agregar residente. Devuelve el creado o error si ya existe el correo o se supera el límite. */
@@ -211,6 +183,25 @@ export function addDemoResident(email: string): { ok: true; resident: DemoReside
   return { ok: true, resident };
 }
 
+/** Asegura que un residente exista en el store por correo (para residentes que vienen de la API y aún no están en el store). Si no existe, lo agrega con valores por defecto. Así el estatus se puede actualizar en demo. */
+export function ensureDemoResident(email: string): boolean {
+  const list = getStored();
+  const normalized = (email ?? "").trim().toLowerCase();
+  if (!normalized || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return false;
+  if (list.some((r) => (r.email ?? "").trim().toLowerCase() === normalized)) return true;
+  const cuotaPct = Math.round((100 / DEMO_RESIDENTS_LIMIT) * 100) / 100;
+  const resident: DemoResident = {
+    user_id: createId(),
+    email: normalized,
+    face_id_enabled: true,
+    unit: nextUnit(list),
+    cuota_pct: cuotaPct,
+    payment_status: "al_dia",
+  };
+  setStored([...list, resident]);
+  return true;
+}
+
 /** Eliminar residente por user_id. */
 export function removeDemoResident(userId: string): boolean {
   const list = getStored().filter((r) => r.user_id !== userId);
@@ -229,19 +220,40 @@ export function updateDemoResidentFaceId(userId: string, faceIdEnabled: boolean)
   return true;
 }
 
+/** Actualizar Face ID por correo (para uso cuando la lista viene de la API con user_id distinto). */
+export function updateDemoResidentFaceIdByEmail(email: string, faceIdEnabled: boolean): boolean {
+  const list = getStored();
+  const normalized = (email ?? "").trim().toLowerCase();
+  const idx = list.findIndex((r) => (r.email ?? "").trim().toLowerCase() === normalized);
+  if (idx === -1) return false;
+  return updateDemoResidentFaceId(list[idx].user_id, faceIdEnabled);
+}
+
 /** Actualizar campos de un residente (demo). En mora no puede votar: si payment_status es mora, se fuerza habilitado_para_asamblea a false. */
 export function updateDemoResident(
   userId: string,
-  partial: Partial<Pick<DemoResident, "email" | "nombre" | "numero_finca" | "cedula_identidad" | "unit" | "cuota_pct" | "face_id_enabled" | "payment_status" | "titular_orden" | "habilitado_para_asamblea">>
+  partial: Partial<Pick<DemoResident, "email" | "nombre" | "numero_finca" | "cedula_identidad" | "unit" | "cuota_pct" | "face_id_enabled" | "payment_status" | "titular_orden" | "habilitado_para_asamblea" | "estatus_unidad">>
 ): boolean {
   const list = getStored();
   const idx = list.findIndex((r) => r.user_id === userId);
   if (idx === -1) return false;
   const normalized = partial.email?.trim().toLowerCase();
-  if (normalized && list.some((r) => r.user_id !== userId && r.email === normalized)) return false;
+  const currentEmail = (list[idx].email ?? "").trim().toLowerCase();
+  if (normalized && normalized !== currentEmail && list.some((r) => r.user_id !== userId && (r.email ?? "").trim().toLowerCase() === normalized)) return false;
   const applied = { ...partial, ...(normalized ? { email: normalized } : {}) };
   if (applied.payment_status === "mora") applied.habilitado_para_asamblea = false;
+  // Al pasar a Al día, por defecto habilitar para votar (sincronizar columna con estatus)
+  if (applied.payment_status === "al_dia" && list[idx].payment_status === "mora")
+    applied.habilitado_para_asamblea = list[idx].titular_orden !== 2;
   list[idx] = { ...list[idx], ...applied };
+  // Si quedó habilitado, desmarcar al otro titular de la misma unidad (solo uno por unidad)
+  if (list[idx].habilitado_para_asamblea) {
+    const unit = (list[idx].unit ?? "").trim();
+    for (let i = 0; i < list.length; i++) {
+      if (i !== idx && (list[i].unit ?? "").trim() === unit)
+        list[i] = { ...list[i], habilitado_para_asamblea: false };
+    }
+  }
   setStored(list);
   return true;
 }
@@ -269,6 +281,27 @@ export function setDemoResidentHabilitadoParaAsamblea(userId: string, value: boo
   }
   setStored(list);
   return true;
+}
+
+/** Actualizar residente demo por correo (útil cuando la lista viene de la API con user_id distinto al del store). */
+export function updateDemoResidentByEmail(
+  email: string,
+  partial: Partial<Pick<DemoResident, "email" | "nombre" | "numero_finca" | "cedula_identidad" | "unit" | "cuota_pct" | "face_id_enabled" | "payment_status" | "titular_orden" | "habilitado_para_asamblea" | "estatus_unidad">>
+): boolean {
+  const list = getStored();
+  const normalized = (email ?? "").trim().toLowerCase();
+  const idx = list.findIndex((r) => (r.email ?? "").trim().toLowerCase() === normalized);
+  if (idx === -1) return false;
+  return updateDemoResident(list[idx].user_id, partial);
+}
+
+/** Marca residente como habilitado para asamblea por correo; desmarca a los demás de la misma unidad. */
+export function setDemoResidentHabilitadoParaAsambleaByEmail(email: string, value: boolean): boolean {
+  const list = getStored();
+  const normalized = (email ?? "").trim().toLowerCase();
+  const idx = list.findIndex((r) => (r.email ?? "").trim().toLowerCase() === normalized);
+  if (idx === -1) return false;
+  return setDemoResidentHabilitadoParaAsamblea(list[idx].user_id, value);
 }
 
 /** Actualizar plantilla de unidad: Titular 1, Titular 2, quién está habilitado para asamblea. */
@@ -430,11 +463,14 @@ export function importDemoResidentsFromCsv(csv: string): { ok: true; count: numb
   return { ok: true, count };
 }
 
-/** Comprueba si el contexto actual es demo (para usar este store). */
+/**
+ * Comprueba si el contexto actual es el admin demo (PH Urban Tower).
+ * Solo el correo demo@assembly2.com se considera administrador del demo, para evitar confusión
+ * cuando hay otros usuarios (p. ej. residentes) con la misma organización en BD.
+ * Si un no administrador tiene organization_id = demo org, no verá el panel demo (es residente y va al chat).
+ */
 export function isDemoResidentsContext(): boolean {
   if (typeof window === "undefined") return false;
   const email = (localStorage.getItem("assembly_email") || "").toLowerCase();
-  const orgId = localStorage.getItem("assembly_organization_id") || "";
-  const DEMO_ORG_ID = "11111111-1111-1111-1111-111111111111";
-  return email === "demo@assembly2.com" || orgId === "demo-organization" || orgId === DEMO_ORG_ID;
+  return email === "demo@assembly2.com";
 }

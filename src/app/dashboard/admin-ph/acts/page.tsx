@@ -162,7 +162,7 @@ export default function ActsPage() {
           {preview ? `${preview.assemblyTitle} · Generada automáticamente.` : "Genera una acta para ver la vista previa."}
         </p>
         <div className="surface" style={{ marginTop: "12px" }}>
-          <strong>Urban Tower - P.H.</strong>
+          <strong>Urban Tower PH</strong>
           <p className="muted" style={{ margin: "8px 0 0" }}>
             {preview
               ? `Participación ${preview.participationPct}% · Quórum ${preview.quorumAchieved ? "alcanzado" : "pendiente"}.`

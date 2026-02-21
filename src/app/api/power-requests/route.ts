@@ -4,6 +4,7 @@
  */
 import { NextResponse } from "next/server";
 import { sql } from "../../../lib/db";
+import { notifyPowerStatus } from "../../../lib/notifyPowerEmail";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const APODERADO_TIPO = ["residente_ph", "titular_mayor_edad"] as const;
@@ -95,6 +96,15 @@ export async function POST(req: Request) {
         ${apoderadoCedula}, ${apoderadoTelefono}, ${vigencia}, 'PENDING', 'CHATBOT'
       )
     `;
+
+    const [resident] = await sql<{ email: string }[]>`
+      SELECT email FROM users WHERE id = ${residentUserId}::uuid LIMIT 1
+    `;
+    if (resident?.email) {
+      notifyPowerStatus(resident.email, "PENDING").catch((err) =>
+        console.error("[power-requests POST] notifyPowerStatus:", err)
+      );
+    }
 
     return NextResponse.json({
       success: true,

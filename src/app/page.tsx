@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PLANS } from "../lib/types/pricing";
+import { getDemoResidents } from "../lib/demoResidentsStore";
 
 function HomeContent() {
   const router = useRouter();
@@ -27,6 +28,7 @@ function HomeContent() {
   const [poderApoderadoNombre, setPoderApoderadoNombre] = useState("");
   type AssemblyContext = "activa" | "programada" | "sin_asambleas";
   const [assemblyContext, setAssemblyContext] = useState<AssemblyContext>("activa");
+  const [powersEnabled, setPowersEnabled] = useState(false);
   const [webPrompt, setWebPrompt] = useState("Hola, soy Lex. Antes de continuar, ¿que perfil tienes?");
   /** Saludo visible al abrir el chatbot en landing. El prompt real (config) se usa en backend; no se muestra al usuario. */
   const LANDING_CHAT_GREETING =
@@ -194,6 +196,7 @@ function HomeContent() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.context) setAssemblyContext(data.context);
+        setPowersEnabled(data?.powers_enabled === true);
       })
       .catch(() => {});
   }, [chatRole, residentEmailValidated, searchParams]);
@@ -433,6 +436,15 @@ function HomeContent() {
         if (DEMO_RESIDENT_EMAILS.includes(emailLower)) {
           proceedToOtp();
           return;
+        }
+        try {
+          const demoResidents = getDemoResidents();
+          if (Array.isArray(demoResidents) && demoResidents.some((r) => (r.email || "").toLowerCase() === emailLower)) {
+            proceedToOtp();
+            return;
+          }
+        } catch {
+          // ignore
         }
         fetch(`/api/resident-profile?email=${encodeURIComponent(emailLower)}`)
           .then((res) => {
@@ -1583,14 +1595,16 @@ function HomeContent() {
                     { label: "Asambleas", msg: "Te muestro el listado de asambleas activas.", card: "asambleas" as ChatCard, primary: false, onlyWhenActive: false },
                     { label: "Calendario", msg: "Aquí tienes el calendario de tu PH.", card: "calendario" as ChatCard, primary: false, onlyWhenActive: false },
                     { label: "Tema del día", msg: "Tema activo: aprobación de presupuesto.", card: "tema" as ChatCard, primary: false, onlyWhenActive: true },
-                    {
-                      label: hasPendingPowerRequest ? "Poder en proceso de validación y aprobación" : "Ceder poder",
-                      msg: "Completa los datos de la persona que acepta el poder.",
-                      card: "poder" as ChatCard,
-                      primary: false,
-                      onlyWhenActive: false,
-                      isPoder: true,
-                    },
+                    ...(powersEnabled
+                      ? [{
+                          label: hasPendingPowerRequest ? "Poder en proceso de validación y aprobación" : "Ceder poder",
+                          msg: "Completa los datos de la persona que acepta el poder.",
+                          card: "poder" as ChatCard,
+                          primary: false,
+                          onlyWhenActive: false,
+                          isPoder: true,
+                        }]
+                      : []),
                   ].map(({ label, msg, card, primary, onlyWhenActive, isPoder }) => {
                     const active = assemblyContext === "activa";
                     const disabled = onlyWhenActive && !active;

@@ -25,7 +25,7 @@ export async function GET() {
   } catch (e: any) {
     if (e?.code === "42P01") {
       return NextResponse.json([
-        { id: "ph-001", name: "PH Urban Tower", plan: "Pro Multi-PH", status: "Activo", expiresAt: "2026-03-15", buildings: 3 },
+        { id: "ph-001", name: "Urban Tower PH", plan: "Pro Multi-PH", status: "Activo", expiresAt: "2026-03-15", buildings: 3 },
         { id: "ph-002", name: "PH Costa Azul", plan: "Standard", status: "Suspendido", expiresAt: "2026-02-10", buildings: 1 },
         { id: "ph-003", name: "PH Vista Mar", plan: "Enterprise", status: "Activo", expiresAt: "2026-04-01", buildings: 8 },
       ]);

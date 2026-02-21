@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { getDemoResidents, isDemoResidentsContext } from "../../../../../../lib/demoResidentsStore";
 
 type EstatusUnidad = "Ocupada" | "Alquilada" | "Sin inquilino";
 type TipoRegistro = "Face ID" | "Manual" | "Pendiente";
@@ -20,21 +21,89 @@ type ResidentRow = {
   politica: string;
 };
 
-const MOCK_RESIDENTS: ResidentRow[] = [
-  { id: "1", unidad: "A-101", tipoRegistro: "Face ID", correo: "residente1@demo.assembly2.com", cuotaMantenimiento: 85, porcentaje: 2.1, titularPrincipal: "Juan Pérez", titularSecundario: "María Pérez", estatusUnidad: "Ocupada", politica: "Propietario residente" },
-  { id: "2", unidad: "A-102", tipoRegistro: "Manual", correo: "residente2@demo.assembly2.com", cuotaMantenimiento: 85, porcentaje: 2.1, titularPrincipal: "Laura Gómez", titularSecundario: "—", estatusUnidad: "Ocupada", politica: "Propietario residente" },
-  { id: "3", unidad: "A-201", tipoRegistro: "Face ID", correo: "residente3@demo.assembly2.com", cuotaMantenimiento: 90, porcentaje: 2.2, titularPrincipal: "Carlos Ruiz", titularSecundario: "Ana Ruiz", estatusUnidad: "Alquilada", politica: "Arrendador; vota el titular" },
-  { id: "4", unidad: "B-105", tipoRegistro: "Pendiente", correo: "residente4@demo.assembly2.com", cuotaMantenimiento: 85, porcentaje: 2.1, titularPrincipal: "Pedro Soto", titularSecundario: "—", estatusUnidad: "Sin inquilino", politica: "Sin ocupante; poder si aplica" },
-];
+type ApiUnit = {
+  id: string;
+  code: string;
+  tower: string;
+  owner: string;
+  paymentStatus: "AL_DIA" | "MORA";
+  isPresent: boolean;
+  hasFaceId: boolean;
+  voteValue: "SI" | "NO" | "ABSTENCION" | null;
+  voteMethod: "FACE_ID" | "MANUAL" | null;
+};
+
+function unitsToResidentRows(units: ApiUnit[], demoResidents: { unit?: string; email?: string; nombre?: string; cuota_pct?: number; estatus_unidad?: EstatusUnidad }[]): ResidentRow[] {
+  return units.map((u) => {
+    const inUnit = demoResidents.filter((r) => (r.unit ?? "").trim() === (u.code ?? "").trim());
+    const resident = inUnit[0];
+    const tipoRegistro: TipoRegistro = u.hasFaceId ? "Face ID" : u.voteMethod === "MANUAL" ? "Manual" : "Pendiente";
+    const estatusUnidad: EstatusUnidad = resident?.estatus_unidad ?? "Ocupada";
+    const porcentaje = resident?.cuota_pct ?? 100 / Math.max(units.length, 1);
+    const cuotaBase = 85;
+    const cuotaMantenimiento = Math.round(cuotaBase * (porcentaje / 2));
+    const politica = estatusUnidad === "Ocupada" ? "Propietario residente" : estatusUnidad === "Alquilada" ? "Arrendador; vota el titular" : "Sin ocupante; poder si aplica";
+    return {
+      id: u.id,
+      unidad: u.tower && u.tower !== "A" ? `${u.tower}-${u.code}` : u.code,
+      tipoRegistro,
+      correo: resident?.email ?? `${u.owner?.toLowerCase().replace(/\s/g, ".") ?? "residente"}@demo.assembly2.com`,
+      cuotaMantenimiento,
+      porcentaje: Math.round(porcentaje * 100) / 100,
+      titularPrincipal: resident?.nombre ?? u.owner ?? "—",
+      titularSecundario: inUnit[1]?.nombre ?? "—",
+      estatusUnidad,
+      politica,
+    };
+  });
+}
 
 export default function AdminPhLiveAssembly() {
   const params = useParams();
   const assemblyId = typeof params?.id === "string" ? params.id : "demo";
-  const [residents] = useState<ResidentRow[]>(MOCK_RESIDENTS);
+  const isDemo = typeof window !== "undefined" && isDemoResidentsContext();
+  const demoParam = isDemo ? "&demo=1" : "";
+
+  const [units, setUnits] = useState<ApiUnit[]>([]);
   const [presenterUrl, setPresenterUrl] = useState<string | null>(null);
   const [loadingPresenter, setLoadingPresenter] = useState(false);
   const [filterEstatus, setFilterEstatus] = useState<EstatusUnidad | "all">("all");
   const [showInfoModal, setShowInfoModal] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      const res = await fetch(`/api/monitor/units?assemblyId=${encodeURIComponent(assemblyId)}${demoParam}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      let list: ApiUnit[] = data.units ?? [];
+      if (active && isDemo && typeof window !== "undefined") {
+        const residents = getDemoResidents();
+        list = list.filter((u) => residents.some((r) => (r.unit ?? "").trim() === (u.code ?? "").trim()));
+        list = list.map((u) => {
+          const unitCode = (u.code ?? "").trim();
+          const inUnit = residents.filter((r) => (r.unit ?? "").trim() === unitCode);
+          const resident = inUnit.find((r) => r.habilitado_para_asamblea) ?? inUnit[0];
+          const paymentStatus = resident?.payment_status === "mora" ? "MORA" : "AL_DIA";
+          const owner = resident?.nombre ?? resident?.email ?? u.owner;
+          return { ...u, paymentStatus, owner };
+        });
+      }
+      if (active) setUnits(list);
+    };
+    load();
+    const interval = setInterval(load, 12_000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [assemblyId, demoParam, isDemo]);
+
+  const demoResidents = typeof window !== "undefined" && isDemo ? getDemoResidents() : [];
+  const residents = useMemo(
+    () => unitsToResidentRows(units, demoResidents),
+    [units, demoResidents]
+  );
 
   const handlePresenterToken = async () => {
     setLoadingPresenter(true);

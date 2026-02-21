@@ -2,10 +2,37 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { createAssembly, getAssemblies, updateAssembly, deleteAssembly, isAssemblyCelebrated, findAssembly } from "../../../../lib/assembliesStore";
+import { createAssembly, getAssemblies, updateAssembly, deleteAssembly, isAssemblyCelebrated, findAssembly, resetDemoAssemblies, isDemoUserExport } from "../../../../lib/assembliesStore";
+import type { TopicApprovalType, AssemblyType } from "../../../../lib/assembliesStore";
 
 type FilterStatus = "" | "Programada" | "En vivo" | "Completada";
-type FilterType = "" | "Ordinaria" | "Extraordinaria";
+type FilterType = "" | AssemblyType;
+
+/** Opciones de tipo de aprobación por tema (Ley 284 – Marketing). */
+const APPROVAL_TYPE_OPTIONS: { value: TopicApprovalType; label: string }[] = [
+  { value: "informativo", label: "Informativo (sin votación)" },
+  { value: "votacion_simple", label: "Mayoría simple (51%)" },
+  { value: "votacion_calificada", label: "Mayoría calificada (66%)" },
+  { value: "votacion_reglamento", label: "Mayoría reglamento (según Reglamento)" },
+];
+
+/** Sugiere tipo de aprobación según el título del tema (Marketing). */
+function suggestApprovalType(title: string): TopicApprovalType {
+  const t = title.trim().toLowerCase();
+  if (!t) return "votacion_simple";
+  if (/\b(acta|informe|informativ)\b/.test(t)) return "informativo";
+  if (/\b(presupuesto|cuota extraordinaria|elección|junta|proyecto|mejora|mantenimiento|obras?)\b/.test(t)) return "votacion_simple";
+  if (/\b(estructura|cálculo|modificación de cuotas|cuotas de gastos)\b/.test(t)) return "votacion_calificada";
+  if (/\b(reglamento|copropiedad)\b/.test(t)) return "votacion_reglamento";
+  return "votacion_simple";
+}
+
+/** Etiqueta de tipo de asamblea para mostrar (Especial + texto manual o solo tipo). */
+function getAssemblyTypeLabel(assembly: { type: AssemblyType; typeCustom?: string }): string {
+  if (assembly.type === "Especial" && assembly.typeCustom?.trim()) return assembly.typeCustom.trim();
+  if (assembly.type === "Especial") return "Especial";
+  return assembly.type;
+}
 
 const KANBAN_COLUMNS = [
   { id: "Programada", label: "Programadas", icon: "📋" },
@@ -14,6 +41,7 @@ const KANBAN_COLUMNS = [
 ] as const;
 
 const CONFIRM_DELETE_WORD = "eliminar";
+const CONFIRM_RESET_DEMO_WORD = "restablecer";
 
 type ViewMode = "list" | "kanban";
 
@@ -21,21 +49,36 @@ export default function AssembliesPage() {
   const [assemblies, setAssemblies] = useState(() => []);
   const [showForm, setShowForm] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    title: string;
+    type: AssemblyType;
+    typeCustom: string;
+    date: string;
+    location: string;
+    orderOfDay: string;
+    secondCallWarning: boolean;
+    mode: "Presencial" | "Virtual" | "Mixta";
+    meetingLink: string;
+    topics: { id: string; title: string; approvalType: TopicApprovalType }[];
+  }>({
     title: "",
     type: "Ordinaria",
+    typeCustom: "",
     date: "",
     location: "",
     orderOfDay: "",
     secondCallWarning: true,
-    mode: "Presencial" as "Presencial" | "Virtual" | "Mixta",
+    mode: "Presencial",
     meetingLink: "",
+    topics: [],
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [actaInmediataModal, setActaInmediataModal] = useState<{ assemblyId: string; title: string } | null>(null);
   const [detailModalId, setDetailModalId] = useState<string | null>(null);
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [showResetDemoModal, setShowResetDemoModal] = useState(false);
+  const [resetDemoConfirmText, setResetDemoConfirmText] = useState("");
   const [detailModalTab, setDetailModalTab] = useState<"resumen" | "reprogramar" | "editar">("resumen");
   const [quickEdit, setQuickEdit] = useState({ title: "", date: "", location: "" });
   const [rescheduleDate, setRescheduleDate] = useState("");
@@ -96,26 +139,41 @@ export default function AssembliesPage() {
     setFilterSearch("");
   };
 
-  const getMinDateForType = (type: string) => {
+  /** Días mínimos de anticipación por tipo (Ley 284). Por derecho propio = residentes, 3-5 días. */
+  const getMinDaysForType = (type: AssemblyType): number => {
+    if (type === "Especial") return 0;
+    if (type === "Extraordinaria") return 3;
+    if (type === "Por derecho propio") return 3; // Por los residentes (3-5 días)
+    return 10; // Ordinaria
+  };
+
+  const getMinDateForType = (type: AssemblyType) => {
+    if (type === "Especial") return "";
     const now = new Date();
-    const days = type === "Extraordinaria" ? 3 : 10;
+    const days = getMinDaysForType(type);
     const d = new Date(now);
     d.setDate(d.getDate() + days);
     d.setHours(0, 0, 0, 0);
     return d.toISOString().slice(0, 16);
   };
 
-  const getSuggestedDates = (type: string): string[] => {
-    const minDays = type === "Extraordinaria" ? 3 : 10;
-    const dates: string[] = [];
+  const getSuggestedDates = (type: AssemblyType): string[] => {
     const base = new Date();
-    for (let offset of [0, 2, 4, 7, 10]) {
+    if (type === "Especial") {
+      return [0, 1, 3, 7, 14].map((offset) => {
+        const d = new Date(base);
+        d.setDate(d.getDate() + offset);
+        d.setHours(18, 0, 0, 0);
+        return d.toISOString().slice(0, 16);
+      });
+    }
+    const minDays = getMinDaysForType(type);
+    return [0, 2, 4, 7, 10].map((offset) => {
       const d = new Date(base);
       d.setDate(d.getDate() + minDays + offset);
       d.setHours(18, 0, 0, 0);
-      dates.push(d.toISOString().slice(0, 16));
-    }
-    return dates;
+      return d.toISOString().slice(0, 16);
+    });
   };
 
   const suggestedDates = useMemo(() => getSuggestedDates(form.type), [form.type]);
@@ -134,21 +192,27 @@ export default function AssembliesPage() {
       setFormError("El orden del día (agenda) es obligatorio (Ley 284).");
       return;
     }
-    const assemblyDate = new Date(form.date);
-    const now = new Date();
-    const minDays = form.type === "Extraordinaria" ? 3 : 10;
-    const minDate = new Date(now);
-    minDate.setDate(minDate.getDate() + minDays);
-    minDate.setHours(0, 0, 0, 0);
-    if (assemblyDate < minDate) {
-      setFormError(
-        `Para asamblea ${form.type}, la convocatoria debe realizarse con al menos ${minDays} días de anticipación (Ley 284). Fecha mínima: ${minDate.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })}.`
-      );
-      return;
+    if (form.type !== "Especial") {
+      const minDays = getMinDaysForType(form.type);
+      const assemblyDate = new Date(form.date);
+      const now = new Date();
+      const minDate = new Date(now);
+      minDate.setDate(minDate.getDate() + minDays);
+      minDate.setHours(0, 0, 0, 0);
+      if (assemblyDate < minDate) {
+        setFormError(
+          `Para asamblea ${form.type}, la convocatoria debe realizarse con al menos ${minDays} días de anticipación. Fecha mínima: ${minDate.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" })}.`
+        );
+        return;
+      }
     }
+    const topics = form.topics
+      .filter((t) => t.title.trim())
+      .map((t) => ({ id: t.id, title: t.title.trim(), type: t.approvalType as TopicApprovalType }));
     const newAssembly = createAssembly({
       title: form.title.trim(),
-      type: form.type as "Ordinaria" | "Extraordinaria",
+      type: form.type,
+      typeCustom: form.type === "Especial" ? form.typeCustom?.trim() || undefined : undefined,
       date: form.date,
       location: form.location?.trim() || "Salón principal",
       orderOfDay: form.orderOfDay.trim(),
@@ -157,17 +221,20 @@ export default function AssembliesPage() {
       meetingLink: form.meetingLink?.trim() || undefined,
       attendeesCount: 200,
       faceIdCount: 130,
+      topics,
     });
     setAssemblies((prev) => [newAssembly, ...prev]);
     setForm({
       title: "",
       type: "Ordinaria",
+      typeCustom: "",
       date: "",
       location: "",
       orderOfDay: "",
       secondCallWarning: true,
       mode: "Presencial",
       meetingLink: "",
+      topics: [],
     });
     setShowForm(false);
   };
@@ -326,6 +393,8 @@ export default function AssembliesPage() {
                     <option value="">Todos</option>
                     <option value="Ordinaria">Ordinaria</option>
                     <option value="Extraordinaria">Extraordinaria</option>
+                    <option value="Por derecho propio">Por derecho propio</option>
+                    <option value="Especial">Especial</option>
                   </select>
                 </label>
                 <label style={{ display: "block", marginBottom: "12px" }}>
@@ -346,6 +415,16 @@ export default function AssembliesPage() {
               </div>
             )}
           </div>
+          {isDemoUserExport() && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setShowResetDemoModal(true)}
+              title="Borrar asambleas guardadas y volver a las 2 por defecto"
+            >
+              Restablecer asambleas demo
+            </button>
+          )}
           <button className="btn btn-primary" onClick={() => setShowForm(true)}>
             Crear asamblea
           </button>
@@ -353,131 +432,246 @@ export default function AssembliesPage() {
       </div>
 
       {showForm && (
-        <div className="card" style={{ marginTop: "16px" }}>
-          <h3 style={{ marginTop: 0 }}>Nueva asamblea</h3>
-          <p className="muted" style={{ fontSize: "13px", margin: "0 0 12px" }}>
-            Campos conforme Ley 284 (Panamá). Fecha en formato dd/mm/aaaa, hora 24h.
-          </p>
+        <div className="create-ph-form card" style={{ marginTop: "16px" }}>
+          <div className="create-ph-form-header">
+            <h3 className="create-ph-form-title">Nueva asamblea</h3>
+            <p className="create-ph-form-desc muted">
+              Campos conforme Ley 284 (Panamá). Fecha en formato dd/mm/aaaa, hora 24h.
+            </p>
+          </div>
           {formError && (
-            <p style={{ color: "var(--color-error, #ef4444)", fontSize: "13px", margin: "0 0 12px" }}>{formError}</p>
+            <p style={{ color: "var(--color-error, #ef4444)", fontSize: "13px", margin: "0 0 16px" }}>{formError}</p>
           )}
-          <div className="card-list">
-            <label className="list-item" style={{ alignItems: "center" }}>
-              <span>Título</span>
+          <div className="create-ph-form-fields">
+            <label className="create-ph-field">
+              <span className="create-ph-label">Título</span>
               <input
+                type="text"
+                className="create-ph-input"
                 value={form.title}
                 onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
                 placeholder="Ej. Asamblea Ordinaria 2026"
-                style={{ marginLeft: "auto", padding: "8px 12px", borderRadius: "10px", minWidth: "200px" }}
               />
             </label>
-            <label className="list-item" style={{ alignItems: "center" }}>
-              <span>Tipo</span>
-              <select
-                value={form.type}
-                onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value }))}
-                style={{ marginLeft: "auto", padding: "8px 12px", borderRadius: "10px" }}
-              >
-                <option value="Ordinaria">Ordinaria (mín. 10 días anticipación)</option>
-                <option value="Extraordinaria">Extraordinaria (mín. 3 días anticipación)</option>
-              </select>
-            </label>
-            <label className="list-item" style={{ alignItems: "flex-start" }}>
-              <span>Fecha y hora</span>
-              <div style={{ marginLeft: "auto", display: "flex", flexDirection: "column", gap: "8px", minWidth: "260px" }}>
+            <div className="create-ph-field-row">
+              <label className="create-ph-field create-ph-field--narrow">
+                <span className="create-ph-label">Tipo de asamblea</span>
+                <select
+                  className="create-ph-input create-ph-select"
+                  value={form.type}
+                  onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value as AssemblyType }))}
+                >
+                  <option value="Ordinaria">Ordinaria (Ley 284, mín. 10 días)</option>
+                  <option value="Extraordinaria">Extraordinaria (Ley 284, mín. 3 días)</option>
+                  <option value="Por derecho propio">Por derecho propio (3-5 días)</option>
+                  <option value="Especial">Especial</option>
+                </select>
+              </label>
+              <label className="create-ph-field create-ph-field--narrow">
+                <span className="create-ph-label">Fecha y hora</span>
                 <input
                   type="datetime-local"
+                  className="create-ph-input"
                   value={form.date}
                   min={getMinDateForType(form.type)}
                   onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
-                  style={{ padding: "8px 12px", borderRadius: "10px", width: "100%" }}
                 />
-                <div>
-                  <span className="muted" style={{ fontSize: "12px", display: "block", marginBottom: "4px" }}>
-                    Fechas sugeridas (Ley 284, rango según tipo):
-                  </span>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                    {suggestedDates.map((iso) => {
-                      const d = new Date(iso);
-                      const label = d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-                      return (
-                        <button
-                          key={iso}
-                          type="button"
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => setForm((prev) => ({ ...prev, date: iso }))}
-                          style={{ fontSize: "12px" }}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                <span className="muted" style={{ fontSize: "12px", display: "block", marginTop: "6px" }}>
+                  {form.type === "Especial" ? "Fechas sugeridas (sin plazo legal):" : "Fechas sugeridas (Ley 284):"}
+                </span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
+                  {suggestedDates.map((iso) => {
+                    const d = new Date(iso);
+                    const label = d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+                    return (
+                      <button
+                        key={iso}
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => setForm((prev) => ({ ...prev, date: iso }))}
+                        style={{ fontSize: "11px" }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
-            </label>
-            <label className="list-item" style={{ alignItems: "flex-start" }}>
-              <span>Orden del día (agenda) <span style={{ color: "var(--color-error, #ef4444)" }}>*</span></span>
+              </label>
+            </div>
+            {form.type === "Especial" && (
+              <label className="create-ph-field">
+                <span className="create-ph-label">Tipo de asamblea (escribir manualmente)</span>
+                <input
+                  type="text"
+                  className="create-ph-input"
+                  value={form.typeCustom}
+                  onChange={(e) => setForm((prev) => ({ ...prev, typeCustom: e.target.value }))}
+                  placeholder="Ej. Por derecho propio, 20% de propietarios al día (Ley 284)"
+                />
+                <span className="muted" style={{ fontSize: "12px", display: "block", marginTop: "6px" }}>
+                  Agregar con un clic:
+                </span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "6px" }}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setForm((prev) => ({ ...prev, typeCustom: "Por derecho propio" }))}
+                  >
+                    Por derecho propio
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setForm((prev) => ({ ...prev, typeCustom: "20% de propietarios al día" }))}
+                  >
+                    20% de propietarios al día
+                  </button>
+                </div>
+              </label>
+            )}
+            <label className="create-ph-field">
+              <span className="create-ph-label">Orden del día (agenda) <span className="create-ph-required">*</span></span>
               <textarea
+                className="create-ph-input"
                 value={form.orderOfDay}
                 onChange={(e) => setForm((prev) => ({ ...prev, orderOfDay: e.target.value }))}
                 placeholder="Temas específicos de la asamblea. Solo pueden votarse temas incluidos aquí (Ley 284)."
                 rows={3}
-                style={{ marginLeft: "auto", padding: "8px 12px", borderRadius: "10px", minWidth: "260px" }}
+                style={{ resize: "vertical", minHeight: "80px" }}
               />
             </label>
-            <label className="list-item" style={{ alignItems: "center" }}>
-              <span>Ubicación</span>
-              <input
-                value={form.location}
-                onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
-                placeholder="Salón principal o enlace si virtual"
-                style={{ marginLeft: "auto", padding: "8px 12px", borderRadius: "10px" }}
-              />
-            </label>
-            <label className="list-item" style={{ alignItems: "center" }}>
-              <span>Modo</span>
-              <select
-                value={form.mode}
-                onChange={(e) => setForm((prev) => ({ ...prev, mode: e.target.value as "Presencial" | "Virtual" | "Mixta" }))}
-                style={{ marginLeft: "auto", padding: "8px 12px", borderRadius: "10px" }}
+            <div className="create-ph-field">
+              <span className="create-ph-label">Temas para votación (tipo de aprobación por tema)</span>
+              <p className="muted" style={{ fontSize: "12px", margin: "0 0 10px" }}>
+                Opcional. Defina cada tema y el % requerido (Ley 284). Se sugiere automáticamente según el nombre.
+              </p>
+              {form.topics.map((topic) => (
+                <div
+                  key={topic.id}
+                  style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "10px", flexWrap: "wrap" }}
+                >
+                  <input
+                    type="text"
+                    className="create-ph-input"
+                    placeholder="Ej. Aprobación presupuesto 2026"
+                    value={topic.title}
+                    onChange={(e) => {
+                      const title = e.target.value;
+                      setForm((prev) => ({
+                        ...prev,
+                        topics: prev.topics.map((t) =>
+                          t.id === topic.id ? { ...t, title } : t
+                        ),
+                      }));
+                    }}
+                    onBlur={() => {
+                      const suggested = suggestApprovalType(topic.title);
+                      if (topic.approvalType !== suggested) {
+                        setForm((prev) => ({
+                          ...prev,
+                          topics: prev.topics.map((t) =>
+                            t.id === topic.id ? { ...t, approvalType: suggested } : t
+                          ),
+                        }));
+                      }
+                    }}
+                    style={{ flex: "1 1 200px", minWidth: "140px", boxSizing: "border-box" }}
+                  />
+                  <select
+                    className="create-ph-input create-ph-select"
+                    value={topic.approvalType}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        topics: prev.topics.map((t) =>
+                          t.id === topic.id ? { ...t, approvalType: e.target.value as TopicApprovalType } : t
+                        ),
+                      }))
+                    }
+                    style={{ width: "220px" }}
+                  >
+                    {APPROVAL_TYPE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => setForm((prev) => ({ ...prev, topics: prev.topics.filter((t) => t.id !== topic.id) }))}
+                    aria-label="Quitar tema"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() =>
+                  setForm((prev) => ({
+                    ...prev,
+                    topics: [...prev.topics, { id: `topic_${Date.now()}_${Math.random().toString(16).slice(2)}`, title: "", approvalType: "votacion_simple" }],
+                  }))
+                }
               >
-                <option value="Presencial">Presencial</option>
-                <option value="Virtual">Virtual</option>
-                <option value="Mixta">Mixta</option>
-              </select>
-            </label>
+                + Añadir tema
+              </button>
+            </div>
+            <div className="create-ph-field-row">
+              <label className="create-ph-field create-ph-field--narrow">
+                <span className="create-ph-label">Ubicación</span>
+                <input
+                  type="text"
+                  className="create-ph-input"
+                  value={form.location}
+                  onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
+                  placeholder="Salón principal o enlace"
+                />
+              </label>
+              <label className="create-ph-field create-ph-field--narrow">
+                <span className="create-ph-label">Modo</span>
+                <select
+                  className="create-ph-input create-ph-select"
+                  value={form.mode}
+                  onChange={(e) => setForm((prev) => ({ ...prev, mode: e.target.value as "Presencial" | "Virtual" | "Mixta" }))}
+                >
+                  <option value="Presencial">Presencial</option>
+                  <option value="Virtual">Virtual</option>
+                  <option value="Mixta">Mixta</option>
+                </select>
+              </label>
+            </div>
             {(form.mode === "Virtual" || form.mode === "Mixta") && (
-              <label className="list-item" style={{ alignItems: "center" }}>
-                <span>Enlace reunión</span>
+              <label className="create-ph-field">
+                <span className="create-ph-label">Enlace de reunión</span>
                 <input
                   type="url"
+                  className="create-ph-input"
                   value={form.meetingLink}
                   onChange={(e) => setForm((prev) => ({ ...prev, meetingLink: e.target.value }))}
-                  placeholder="https://zoom.us/... o Meet, etc."
-                  style={{ marginLeft: "auto", padding: "8px 12px", borderRadius: "10px", minWidth: "260px" }}
+                  placeholder="https://meet.example.com/..."
                 />
               </label>
             )}
-            <label className="list-item" style={{ alignItems: "center" }}>
-              <span>Advertencia segundo llamado</span>
-              <label style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "8px" }}>
-                <input
-                  type="checkbox"
-                  checked={form.secondCallWarning}
-                  onChange={(e) => setForm((prev) => ({ ...prev, secondCallWarning: e.target.checked }))}
-                />
-                <span className="muted" style={{ fontSize: "12px" }}>
-                  Si no hay quórum, segundo llamado 1h después (Ley 284)
-                </span>
-              </label>
+            <label className="create-ph-field" style={{ flexDirection: "row", alignItems: "center", gap: "10px" }}>
+              <input
+                type="checkbox"
+                checked={form.secondCallWarning}
+                onChange={(e) => setForm((prev) => ({ ...prev, secondCallWarning: e.target.checked }))}
+                style={{ width: "18px", height: "18px", accentColor: "var(--color-primary, #6366f1)" }}
+              />
+              <span className="create-ph-label" style={{ marginBottom: 0 }}>
+                Advertencia segundo llamado: si no hay quórum, segundo llamado 1h después (Ley 284)
+              </span>
             </label>
           </div>
-          <div style={{ marginTop: "12px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <button className="btn btn-ghost" onClick={() => { setShowForm(false); setFormError(null); }}>
+          <div className="create-ph-form-actions">
+            <button type="button" className="btn btn-ghost" onClick={() => { setShowForm(false); setFormError(null); }}>
               Cancelar
             </button>
-            <button className="btn btn-primary" onClick={handleCreate}>
+            <button type="button" className="btn btn-primary" onClick={handleCreate}>
               Guardar asamblea
             </button>
           </div>
@@ -531,7 +725,7 @@ export default function AssembliesPage() {
               <div className="kanban-column-cards">
                 {(byColumn[col.id] || []).map((item) => (
                   <div key={item.id} className="kanban-card">
-                    <span className="kanban-card-pill">{item.type}</span>
+                    <span className="kanban-card-pill">{getAssemblyTypeLabel(item)}</span>
                     <h4 className="kanban-card-title">{item.title}</h4>
                     <div className="kanban-card-calendar" title={formatCalendarDate(item.date)}>
                       <span className="kanban-calendar-icon">📅</span>
@@ -696,7 +890,7 @@ export default function AssembliesPage() {
                       <div className="muted" style={{ fontSize: "12px" }}>Fecha de la asamblea</div>
                     </div>
                   </div>
-                  <p><span className="pill">{a.type}</span> <strong>{a.title}</strong></p>
+                  <p><span className="pill">{getAssemblyTypeLabel(a)}</span> <strong>{a.title}</strong></p>
                   <p className="muted">{a.location} · {a.attendeesCount} electores · {a.faceIdCount} Face ID</p>
                   <p className="muted">Estado: {a.status}</p>
                   {a.topics.length > 0 && (
@@ -752,6 +946,48 @@ export default function AssembliesPage() {
           </div>
         );
       })()}
+
+      {showResetDemoModal && (
+        <div className="kanban-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="reset-demo-title" onClick={() => { setShowResetDemoModal(false); setResetDemoConfirmText(""); }}>
+          <div className="kanban-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="kanban-modal-header">
+              <h3 id="reset-demo-title">Restablecer asambleas demo</h3>
+              <button type="button" className="kanban-modal-close" onClick={() => { setShowResetDemoModal(false); setResetDemoConfirmText(""); }} aria-label="Cerrar">×</button>
+            </div>
+            <div className="kanban-modal-body">
+              <p style={{ marginBottom: "12px" }}>
+                Se eliminarán todas las asambleas guardadas y se cargarán de nuevo las <strong>2 asambleas de ejemplo</strong> (Ordinaria 2026 y Extraordinaria Piscina). Esta acción no se puede deshacer.
+              </p>
+              <p className="muted" style={{ marginBottom: "12px" }}>Escriba <strong>restablecer</strong> para confirmar.</p>
+              <input
+                type="text"
+                value={resetDemoConfirmText}
+                onChange={(e) => setResetDemoConfirmText(e.target.value)}
+                placeholder="escriba restablecer"
+                style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", marginBottom: "12px" }}
+                autoComplete="off"
+              />
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button type="button" className="btn btn-ghost" onClick={() => { setShowResetDemoModal(false); setResetDemoConfirmText(""); }}>Cancelar</button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={resetDemoConfirmText.trim().toLowerCase() !== CONFIRM_RESET_DEMO_WORD}
+                  onClick={() => {
+                    if (resetDemoConfirmText.trim().toLowerCase() !== CONFIRM_RESET_DEMO_WORD) return;
+                    resetDemoAssemblies();
+                    setAssemblies(getAssemblies());
+                    setShowResetDemoModal(false);
+                    setResetDemoConfirmText("");
+                  }}
+                >
+                  Restablecer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {deleteModalId && (() => {
         const a = assemblies.find((x) => x.id === deleteModalId);
