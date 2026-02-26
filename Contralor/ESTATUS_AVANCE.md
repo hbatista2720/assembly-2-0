@@ -51,10 +51,10 @@ FORMATO DE COMMIT:
 | FASE 9, 10, 11 | ✅ Aprobado QA | ✅ dc1f9c7 | ⏳ Push (Henry si falla) |
 | Plan navegación + Chatbot residente (Opción B) + Usuarios demo | ✅ Aprobado QA | ✅ a76fb32 | ✅ Push OK |
 
-**Último backup:** **Completado.** Push ejecutado por Henry: **650fecd..1e24347** main → main (20 Feb 2026). Incluye: Sincronización residentes-Monitor, unidades 1-50, tarea QA, plan de pruebas, mejoras PH y suscripciones.
+**Último backup:** **Commit ejecutado.** Commit **7c12536** (Backup Feb 2026: Créditos asambleas, carrito Fase 1, demo por correo, wizard proceso, terminología comunidad, propuesta Marketing). ⏳ **Henry:** ejecutar `git push origin main` para completar el backup.
 **Repositorio:** https://github.com/hbatista2720/assembly-2-0
 
-**¿Backup requerido ahora?** No. Backup completo (1e24347). **Validación redirección por rol:** ✅ QA aprobó. Ver QA_FEEDBACK.md § "QA Validación · Redirección por rol". **Usuarios demo por plan:** ✅ Ejecutado. Ver REPORTE_USUARIOS_DEMO_POR_PLAN.md. **Siguiente:** Más pruebas (plan § "Próximas pruebas"), QA validar Dashboard Admin PH con los 5 usuarios por plan.
+**¿Backup requerido ahora?** Commit listo. Falta push (Henry). **Validación redirección por rol:** ✅ QA aprobó. Ver QA_FEEDBACK.md § "QA Validación · Redirección por rol". **Usuarios demo por plan:** ✅ Ejecutado. Ver REPORTE_USUARIOS_DEMO_POR_PLAN.md. **Siguiente:** Más pruebas (plan § "Próximas pruebas"), QA validar Dashboard Admin PH con los 5 usuarios por plan.
 
 **Reporte Coder al Contralor (últimos cambios – tema, perfil, demo, contadores):**
 - Botón **"Subir a plan real"** validado: redirige a `/pricing?from=demo` (trazabilidad).
