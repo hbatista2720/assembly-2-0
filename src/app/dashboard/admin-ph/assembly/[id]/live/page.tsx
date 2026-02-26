@@ -65,8 +65,6 @@ export default function AdminPhLiveAssembly() {
   const demoParam = isDemo ? "&demo=1" : "";
 
   const [units, setUnits] = useState<ApiUnit[]>([]);
-  const [presenterUrl, setPresenterUrl] = useState<string | null>(null);
-  const [loadingPresenter, setLoadingPresenter] = useState(false);
   const [filterEstatus, setFilterEstatus] = useState<EstatusUnidad | "all">("all");
   const [showInfoModal, setShowInfoModal] = useState(false);
 
@@ -105,24 +103,6 @@ export default function AdminPhLiveAssembly() {
     [units, demoResidents]
   );
 
-  const handlePresenterToken = async () => {
-    setLoadingPresenter(true);
-    try {
-      const res = await fetch("/api/presenter/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assemblyId }),
-      });
-      const data = await res.json();
-      if (data?.presenter_url) {
-        setPresenterUrl(data.presenter_url);
-        window.open(data.presenter_url, "_blank");
-      }
-    } finally {
-      setLoadingPresenter(false);
-    }
-  };
-
   const filteredResidents = useMemo(() => {
     if (filterEstatus === "all") return residents;
     return residents.filter((r) => r.estatusUnidad === filterEstatus);
@@ -157,16 +137,16 @@ export default function AdminPhLiveAssembly() {
             <span className="pill">Fase: Asamblea en vivo</span>
             <h1 style={{ margin: "10px 0 0", fontSize: "1.35rem" }}>Iniciar asamblea</h1>
             <p className="muted" style={{ margin: "8px 0 0", fontSize: "14px" }}>
-              Directorio de residentes e indicadores abajo. Use Monitor Back Office o Vista de presentación según necesite.
+              Directorio de residentes e indicadores abajo. Use Monitor Back Office para operar durante la asamblea.
             </p>
             <button
               type="button"
               className="btn btn-ghost"
               onClick={() => setShowInfoModal(true)}
               style={{ marginTop: "10px", fontSize: "13px", padding: "6px 12px" }}
-              title="Explicación de tipos de monitor"
+              title="Explicación del Monitor"
             >
-              ℹ️ ¿Qué es Monitor Back Office y Vista de presentación?
+              ℹ️ ¿Qué es Monitor Back Office?
             </button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-end" }}>
@@ -175,17 +155,8 @@ export default function AdminPhLiveAssembly() {
               <Link className="btn btn-primary" href={`/dashboard/admin-ph/monitor/${encodeURIComponent(assemblyId)}`}>
                 Monitor Back Office
               </Link>
-              <span className="muted" style={{ fontSize: "11px" }}>Panel de control</span>
+              <span className="muted" style={{ fontSize: "11px" }}>Panel de control · Use Vista presentación desde Monitor</span>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
-              <button className="btn btn-ghost" onClick={handlePresenterToken} disabled={loadingPresenter} title="Vista solo lectura para proyección">
-                {loadingPresenter ? "Generando…" : "Vista de presentación (solo lectura)"}
-              </button>
-              <span className="muted" style={{ fontSize: "11px" }}>Proyección</span>
-            </div>
-            {presenterUrl && (
-              <span className="muted" style={{ fontSize: "11px" }}>Abierta en nueva pestaña</span>
-            )}
           </div>
         </div>
       </div>
@@ -219,16 +190,12 @@ export default function AdminPhLiveAssembly() {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
-              <h3 id="info-modal-title" style={{ margin: 0, fontSize: "1.1rem" }}>Monitor Back Office y Vista de presentación</h3>
+              <h3 id="info-modal-title" style={{ margin: 0, fontSize: "1.1rem" }}>Monitor Back Office</h3>
               <button type="button" onClick={() => setShowInfoModal(false)} aria-label="Cerrar" style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", color: "inherit", lineHeight: 1 }}>×</button>
             </div>
             <p style={{ margin: "0 0 14px", fontSize: "14px" }}>
-              Todo lo que cambie en el <strong>Monitor Back Office</strong> se sincroniza con la <strong>Vista de presentación (solo lectura)</strong>. Si abre la vista de presentación en otra pestaña o pantalla para proyección, verá los mismos datos actualizados.
+              El <strong>Monitor Back Office</strong> es el panel de control para operar durante la asamblea: voto manual, asistencia, correcciones. Desde el módulo Monitor puede abrir también la <strong>Vista presentación</strong> para proyección (quórum, resultados, unidades) seleccionando la asamblea.
             </p>
-            <ul style={{ margin: 0, paddingLeft: "20px", fontSize: "14px", lineHeight: 1.65 }}>
-              <li style={{ marginBottom: "10px" }}><strong>Monitor Back Office</strong>: panel de control del dashboard para operar durante la asamblea (voto manual, asistencia, correcciones). Redirige al módulo Monitor.</li>
-              <li style={{ marginBottom: "10px" }}><strong>Vista de presentación (solo lectura)</strong>: vista para proyección (quórum, resultados, unidades). Sin botones de edición. Los cambios del Back Office se reflejan aquí de forma automática.</li>
-            </ul>
             <button type="button" className="btn btn-primary" style={{ marginTop: "16px" }} onClick={() => setShowInfoModal(false)}>
               Entendido
             </button>
@@ -273,9 +240,10 @@ export default function AdminPhLiveAssembly() {
             <div className="muted" style={{ fontSize: "12px", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.03em" }}>Pendiente registro</div>
             <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#f59e0b" }}>{summary.pendiente}</div>
           </div>
-          <div className="assembly-indicator-card" style={{ padding: "14px 16px", background: "rgba(99, 102, 241, 0.08)", border: "1px solid rgba(99, 102, 241, 0.2)", borderRadius: "12px", textAlign: "center", gridColumn: "span 1" }}>
+          <div className="assembly-indicator-card" style={{ padding: "14px 16px", background: "rgba(99, 102, 241, 0.08)", border: "1px solid rgba(99, 102, 241, 0.2)", borderRadius: "12px", textAlign: "center", gridColumn: "span 1" }} title="Suma de las cuotas de mantenimiento de todas las unidades (las 50 unidades).">
             <div className="muted" style={{ fontSize: "12px", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.03em" }}>Cuota total</div>
             <div style={{ fontSize: "1.35rem", fontWeight: 700, color: "var(--color-primary, #6366f1)" }}>${summary.cuotaTotal}</div>
+            <div className="muted" style={{ fontSize: "10px", marginTop: "2px" }}>suma cuotas mant.</div>
           </div>
         </div>
       </div>

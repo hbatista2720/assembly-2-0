@@ -426,7 +426,7 @@ export default function MonitorPage() {
   useEffect(() => {
     let active = true;
     const loadUnits = async () => {
-      const res = await fetch(`/api/monitor/units?assemblyId=${encodeURIComponent(assemblyId)}${demoParam}`);
+      const res = await fetch(`/api/monitor/units?assemblyId=${encodeURIComponent(assemblyId)}${demoParam}${topicParams}`);
       if (!res.ok) return;
       const data = await res.json();
       let list: Unit[] = data.units || [];
@@ -455,7 +455,7 @@ export default function MonitorPage() {
       active = false;
       clearInterval(interval);
     };
-  }, [assemblyId, demoParam]);
+  }, [assemblyId, demoParam, topicParams]);
 
   useEffect(() => {
     let active = true;

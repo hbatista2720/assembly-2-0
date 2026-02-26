@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   getDemoResidents,
+  DEMO_RESIDENTS_STORAGE_KEY,
   updateDemoResidentFaceId,
   updateDemoResident,
   setDemoResidentHabilitadoParaAsamblea,
@@ -17,6 +19,8 @@ import {
   getResidentsByUnit,
   updateUnitTemplate,
   isDemoResidentsContext,
+  getDemoResidentSessionHistoryByEmail,
+  type SessionLogEntry,
   DEMO_RESIDENTS_LIMIT,
   DEMO_PH_NAME,
 } from "../../../../lib/demoResidentsStore";
@@ -69,10 +73,120 @@ const DEMO_POWER_REQUESTS: PowerRequestItem[] = [
   { id: "demo-power-5", resident_email: "residente3@demo.assembly2.com", apoderado_tipo: "titular_mayor_edad", apoderado_email: "lucia.mendoza@email.com", apoderado_nombre: "Lucía Mendoza Fernández", apoderado_cedula: "11.222.333-4", apoderado_telefono: "+56 9 7777 8888", vigencia: "Asamblea ordinaria 2026", status: "PENDING", created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString() },
 ];
 
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds} s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m < 60) return s > 0 ? `${m} min ${s} s` : `${m} min`;
+  const h = Math.floor(m / 60);
+  const min = m % 60;
+  return min > 0 ? `${h} h ${min} min` : `${h} h`;
+}
+
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleString("es-CL", { dateStyle: "short", timeStyle: "medium" });
+}
+
+function SessionHistoryList({ email }: { email: string }) {
+  const [history, setHistory] = useState<(SessionLogEntry & { is_current?: boolean })[]>([]);
+  useEffect(() => {
+    const load = () => setHistory(getDemoResidentSessionHistoryByEmail(email));
+    load();
+    const onChanged = () => load();
+    window.addEventListener("admin-ph-residents-changed", onChanged);
+    const interval = setInterval(load, 5000); // Actualizar cada 5 s si está online
+    return () => {
+      window.removeEventListener("admin-ph-residents-changed", onChanged);
+      clearInterval(interval);
+    };
+  }, [email]);
+  if (history.length === 0) {
+    return <p className="muted" style={{ fontSize: "13px" }}>Sin historial de sesiones todavía.</p>;
+  }
+  const totalSeconds = history.reduce((acc, e) => acc + (e.duration_seconds ?? 0), 0);
+  return (
+    <div>
+      <p style={{ fontSize: "13px", marginBottom: "12px", fontWeight: 600 }}>
+        Tiempo total en chatbot: {formatDuration(totalSeconds)}
+      </p>
+      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        {history.map((e, i) => {
+          const isCurrent = (e as { is_current?: boolean }).is_current;
+          return (
+            <li
+              key={i}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "8px",
+                padding: "10px 12px",
+                background: isCurrent ? "rgba(74, 222, 128, 0.12)" : "rgba(255,255,255,0.04)",
+                borderRadius: "8px",
+                marginBottom: "8px",
+                borderLeft: isCurrent ? "3px solid #4ade80" : "3px solid transparent",
+              }}
+            >
+              <span style={{ fontSize: "13px", flex: 1, minWidth: 0 }}>
+                {formatDateTime(e.started_at)}
+                {isCurrent ? (
+                  <span style={{ color: "#4ade80", fontWeight: 600, marginLeft: "8px" }}>• En curso</span>
+                ) : (
+                  <> → {formatDateTime(e.ended_at)}</>
+                )}
+              </span>
+              <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600, fontSize: "13px" }}>
+                {formatDuration(e.duration_seconds)}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 const iconBtn = { width: 16, height: 16, flexShrink: 0 };
 const IconEdit = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={iconBtn} aria-hidden><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>;
 const IconTemplate = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={iconBtn} aria-hidden><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M16 13H8" /><path d="M16 17H8" /><path d="M10 9H8" /></svg>;
 const IconTrash = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={iconBtn} aria-hidden><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg>;
+const IconHistory = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={iconBtn} aria-hidden><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>;
+const IconCheck = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, flexShrink: 0 }} aria-hidden><polyline points="20 6 9 17 4 12" /></svg>;
+
+function FromWizardBanner() {
+  const sp = useSearchParams();
+  const from = sp.get("from");
+  const assemblyId = sp.get("assemblyId");
+  if (from !== "proceso-asamblea") return null;
+  const href = assemblyId
+    ? `/dashboard/admin-ph/proceso-asamblea?assemblyId=${assemblyId}`
+    : "/dashboard/admin-ph/proceso-asamblea";
+  return (
+    <div
+      style={{
+        marginBottom: "16px",
+        padding: "12px 16px",
+        background: "rgba(99,102,241,0.12)",
+        border: "1px solid rgba(99,102,241,0.3)",
+        borderRadius: "10px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: "12px",
+      }}
+    >
+      <span style={{ fontSize: "14px", color: "#c7d2fe" }}>
+        Paso 1 del Proceso de Asamblea. Registra residentes y vuelve al wizard cuando termines.
+      </span>
+      <Link href={href} className="btn btn-primary" style={{ borderRadius: "999px", fontSize: "13px", padding: "8px 16px" }}>
+        ← Volver al Proceso de Asamblea
+      </Link>
+    </div>
+  );
+}
 
 export default function OwnersPage() {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
@@ -95,6 +209,7 @@ export default function OwnersPage() {
   const [filterEstado, setFilterEstado] = useState<"all" | "al_dia" | "mora">("all");
   const [filterFaceId, setFilterFaceId] = useState<boolean | "all">("all");
   const [filterHabAsamblea, setFilterHabAsamblea] = useState<boolean | "all">("all");
+  const [filterChatbot, setFilterChatbot] = useState<"all" | "online" | "inactive">("all");
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
   const [unitModalUnit, setUnitModalUnit] = useState<string | null>(null);
   const [unitForm, setUnitForm] = useState({ titular_1_email: "", titular_2_email: "", habilitado_titular_1: true, habilitado_titular_2: false });
@@ -111,15 +226,18 @@ export default function OwnersPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [guideOpen, setGuideOpen] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
+  const [sessionHistoryResident, setSessionHistoryResident] = useState<Resident | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { limits } = useUpgradeBanner(subscriptionId);
 
+  const [authChecked, setAuthChecked] = useState(false);
   useEffect(() => {
     const orgId = typeof window !== "undefined" ? localStorage.getItem("assembly_organization_id") : null;
     const subId = typeof window !== "undefined" ? localStorage.getItem("assembly_subscription_id") : null;
     setOrganizationId(orgId);
     setSubscriptionId(subId);
     setIsDemo(isDemoResidentsContext());
+    setAuthChecked(true);
   }, []);
 
   const orgIdForResidents = isDemo ? DEMO_ORG_ID : organizationId;
@@ -153,6 +271,9 @@ export default function OwnersPage() {
         payment_status: stored?.payment_status ?? "al_dia",
         habilitado_para_asamblea: stored?.habilitado_para_asamblea,
         estatus_unidad: stored?.estatus_unidad,
+        chatbot_registered: stored?.chatbot_registered,
+        chatbot_login_status: stored?.chatbot_login_status,
+        chatbot_session_active: stored?.chatbot_session_active,
       };
     });
   };
@@ -172,6 +293,9 @@ export default function OwnersPage() {
       payment_status: (d.payment_status ?? "al_dia") as "al_dia" | "mora",
       habilitado_para_asamblea: d.habilitado_para_asamblea,
       estatus_unidad: d.estatus_unidad,
+      chatbot_registered: d.chatbot_registered,
+      chatbot_login_status: d.chatbot_login_status,
+      chatbot_session_active: d.chatbot_session_active,
     }));
   };
 
@@ -193,9 +317,12 @@ export default function OwnersPage() {
       return;
     }
     setError("");
-    setLoading(true);
-    if (orgIdForResidents === DEMO_ORG_ID && typeof window !== "undefined") {
+    const isDemoOrg = orgIdForResidents === DEMO_ORG_ID && typeof window !== "undefined";
+    if (isDemoOrg) {
       setResidents(getDemoResidentsAsResidentList());
+      setLoading(false);
+    } else {
+      setLoading(true);
     }
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -283,6 +410,34 @@ export default function OwnersPage() {
       window.addEventListener("admin-ph-residents-changed", onResidentsChanged);
       return () => window.removeEventListener("admin-ph-residents-changed", onResidentsChanged);
     }
+  }, [orgIdForResidents]);
+
+  /** En demo: sincronizar Online/Inactivo cuando cambia el store en otra pestaña (storage event + visibility + poll). */
+  useEffect(() => {
+    if (orgIdForResidents !== DEMO_ORG_ID || typeof window === "undefined") return;
+    const refreshFromStore = () => {
+      setResidents((prev) => {
+        if (prev.length === 0) return prev;
+        const merged = mergeResidentsWithDemoStore(
+          prev.map((r) => ({ user_id: r.user_id, email: r.email, face_id_enabled: r.face_id_enabled }))
+        );
+        return capDemoResidents(merged);
+      });
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === DEMO_RESIDENTS_STORAGE_KEY) refreshFromStore();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") refreshFromStore();
+    };
+    window.addEventListener("storage", onStorage);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    const interval = setInterval(refreshFromStore, 4000);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      clearInterval(interval);
+    };
   }, [orgIdForResidents]);
 
   const orgIdForPowers = isDemo ? DEMO_ORG_ID : organizationId;
@@ -567,6 +722,11 @@ export default function OwnersPage() {
     if (filterEstado !== "all" && r.payment_status !== filterEstado) return false;
     if (filterFaceId !== "all" && r.face_id_enabled !== filterFaceId) return false;
     if (filterHabAsamblea !== "all" && !!r.habilitado_para_asamblea !== filterHabAsamblea) return false;
+    if (filterChatbot === "online" && !r.chatbot_session_active) return false;
+    if (filterChatbot === "inactive") {
+      if (r.chatbot_session_active) return false;
+      if (!r.chatbot_registered && !r.chatbot_login_status) return false;
+    }
     return true;
   });
   const countHabilitados = residents.filter((r) => r.habilitado_para_asamblea).length;
@@ -712,8 +872,62 @@ export default function OwnersPage() {
   };
 
   return (
-    <div className="card">
+    <div className="card owners-page-modern">
+      <Suspense fallback={null}>
+        <FromWizardBanner />
+      </Suspense>
       <style>{`
+        .owners-page-modern { padding: 0; overflow: hidden; }
+        .owners-page-modern .owners-header-modern { padding: 24px 28px; background: linear-gradient(135deg, rgba(99,102,241,0.06) 0%, transparent 50%); border-bottom: 1px solid rgba(148,163,184,0.12); }
+        .owners-page-modern .owners-stats-row { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 16px; }
+        .owners-page-modern .owners-stat-card { min-width: 120px; padding: 12px 18px; background: rgba(15,23,42,0.4); border-radius: 12px; border: 1px solid rgba(148,163,184,0.1); }
+        .owners-page-modern .owners-stat-card--limit { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.05); }
+        .owners-page-modern .owners-action-bar { padding: 20px 28px; display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; background: rgba(15,23,42,0.25); border-bottom: 1px solid rgba(148,163,184,0.1); }
+        .owners-page-modern .owners-action-form-group { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
+        .owners-page-modern .owners-action-form-group .owners-action-label { font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
+        .owners-page-modern .owners-action-form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .owners-page-modern .owners-action-bar input[type="email"] {
+          min-width: 280px; max-width: 360px; padding: 10px 14px; border-radius: 10px; font-size: 14px;
+          border: 1px solid rgba(148,163,184,0.4); background: rgba(30,41,59,0.9); color: #f1f5f9; caret-color: var(--color-primary);
+        }
+        .owners-page-modern .owners-action-bar input[type="email"]::placeholder { color: #94a3b8; }
+        .owners-page-modern .owners-action-bar input[type="email"]:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+        .owners-page-modern .owners-tools-group { display: flex; flex-direction: column; gap: 8px; }
+        .owners-page-modern .owners-tools-group .owners-action-label { font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
+        .owners-page-modern .owners-toolbar-compact { display: flex; gap: 6px; flex-wrap: wrap; }
+        .owners-page-modern .owners-toolbar-compact .btn { padding: 8px 12px; font-size: 12px; border-radius: 8px; }
+        .owners-page-modern .owners-filters-bar { padding: 16px 28px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: rgba(30,41,59,0.6); border-bottom: 1px solid rgba(148,163,184,0.25); }
+        .owners-page-modern .owners-filters-bar .owners-filters-label { font-size: 12px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; margin-right: 4px; }
+        .owners-page-modern .owners-filters-bar input[type="search"] {
+          padding: 10px 14px; border-radius: 10px; width: 260px; max-width: 100%; font-size: 14px;
+          border: 2px solid rgba(148,163,184,0.45); background: rgba(51,65,85,0.95) !important;
+          color: #f1f5f9 !important; caret-color: var(--color-primary);
+          font-weight: 500; -webkit-appearance: none; appearance: none;
+        }
+        .owners-page-modern .owners-filters-bar input[type="search"]::placeholder { color: #94a3b8; opacity: 1; }
+        .owners-page-modern .owners-filters-bar input[type="search"]:focus {
+          outline: none; border-color: var(--color-primary, #818cf8); box-shadow: 0 0 0 2px rgba(99,102,241,0.25);
+        }
+        .owners-page-modern .owners-filters-bar select {
+          padding: 10px 36px 10px 12px; border-radius: 10px; font-size: 13px;
+          border: 2px solid rgba(148,163,184,0.45); background: rgba(51,65,85,0.95) !important;
+          color: #f1f5f9 !important; min-width: 140px; cursor: pointer;
+          font-weight: 500; -webkit-appearance: none; appearance: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+          background-repeat: no-repeat !important;
+          background-position: right 10px center !important;
+        }
+        .owners-page-modern .owners-filters-bar select option { background: #1e293b !important; color: #f1f5f9 !important; }
+        .owners-page-modern .owners-filters-bar .owners-filter-count { font-size: 13px; font-weight: 600; color: #cbd5e1; margin-left: auto; }
+        .owners-page-modern .owners-filters-bar .owners-filter-count .muted { font-weight: 500; color: #94a3b8; }
+        html[data-theme="light"] .owners-page-modern .owners-filters-bar input[type="search"],
+        html[data-theme="light"] .owners-page-modern .owners-filters-bar select { background: #fff; color: #1e293b; border-color: #cbd5e1; }
+        html[data-theme="light"] .owners-page-modern .owners-filters-bar input[type="search"]::placeholder { color: #64748b; }
+        html[data-theme="light"] .owners-page-modern .owners-filters-bar select option { background: #fff; color: #1e293b; }
+        html[data-theme="light"] .owners-page-modern .owners-action-bar input[type="email"] { background: #fff; color: #1e293b; border-color: #cbd5e1; }
+        html[data-theme="light"] .owners-page-modern .owners-action-bar input[type="email"]::placeholder { color: #64748b; }
+        .owners-page-modern .owners-content-area { padding: 20px 28px 28px; }
+        .owners-page-modern .owners-list-wrap { border-radius: 12px; }
         .owners-list-wrap .owners-list-item:hover { background: rgba(148,163,184,0.06); }
         html[data-theme="light"] .resident-status--al-dia {
           background: rgba(34, 197, 94, 0.22) !important;
@@ -741,96 +955,69 @@ export default function OwnersPage() {
           background: #dc2626 !important;
         }
       `}</style>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center" }}>
-        <div style={{ flex: 1 }}>
-          <h2 style={{ marginTop: 0 }}>Propietarios / Residentes</h2>
-          <p className="muted" style={{ marginTop: "6px" }}>
-            {isDemo
-              ? `${DEMO_PH_NAME} · ${residentLimit} espacios (demo). Gestión de residentes y Face ID (opcional).`
-              : "Gestión de residentes y configuración de Face ID (opcional). OTP siempre disponible como respaldo."}
-          </p>
-          <p className="muted" style={{ marginTop: "4px", fontSize: "13px" }}>
-            <strong>{residents.length} / {residentLimit}</strong> residentes.
-            {atLimit && (
-              <span style={{ color: "var(--color-error, #ef4444)", marginLeft: "8px" }}>
-                Límite del plan alcanzado. <Link href="/dashboard/admin-ph/subscription" className="muted" style={{ textDecoration: "underline" }}>Actualizar plan</Link>
-              </span>
-            )}
-            {isDemo && !atLimit && " Puede usar correos como "}
-            {isDemo && !atLimit && <code>residente1@demo.assembly2.com</code>}
-          </p>
-          <p className="muted" style={{ marginTop: "2px", fontSize: "12px" }}>
-            Puede agregar hasta <strong>{residentLimit}</strong> residentes (plan actual).
+      <div className="owners-header-modern">
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: "16px" }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: "22px", fontWeight: 700, letterSpacing: "-0.02em" }}>Propietarios / Residentes</h2>
+            <p className="muted" style={{ marginTop: "6px", fontSize: "14px" }}>
+              {isDemo
+                ? `${DEMO_PH_NAME} · Demo`
+                : "Gestión de residentes y Face ID. OTP siempre disponible como respaldo."}
+            </p>
+          </div>
+          <div className="owners-stats-row">
+            <div className={`owners-stat-card ${atLimit ? "owners-stat-card--limit" : ""}`}>
+              <div className="muted" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>Residentes</div>
+              <div style={{ fontSize: "20px", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{residents.length} <span className="muted" style={{ fontSize: "14px", fontWeight: 500 }}>/ {residentLimit}</span></div>
+              {atLimit && (
+                <Link href="/dashboard/admin-ph/subscription" style={{ fontSize: "11px", color: "var(--color-primary)", textDecoration: "underline", marginTop: "4px", display: "inline-block" }}>Actualizar plan</Link>
+              )}
+            </div>
             {countHabilitados > 0 && activeTab === "residents" && (
-              <span style={{ marginLeft: "12px" }}>· <strong>{countHabilitados}</strong> habilitados para asamblea</span>
+              <div className="owners-stat-card">
+                <div className="muted" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>Habilitados asamblea</div>
+                <div style={{ fontSize: "20px", fontWeight: 700, color: "#4ade80" }}>{countHabilitados}</div>
+              </div>
             )}
-          </p>
+          </div>
         </div>
       </div>
 
       {(organizationId || isDemo) && (
-        <>
-          <form onSubmit={handleAddResident} style={{ marginTop: "8px", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-            <input
-              type="email"
-              placeholder="Correo del residente (ej. residente1@demo.assembly2.com)"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              style={{ padding: "8px 12px", borderRadius: "8px", flex: "1 1 200px", minWidth: "180px" }}
-            />
-            <button type="submit" disabled={!newEmail.trim() || adding || !canAdd} style={{ padding: "8px 16px" }} title={atLimit ? "Límite alcanzado. Actualice su plan para agregar más residentes." : undefined}>
-              {adding ? "Agregando…" : atLimit ? "Límite alcanzado" : "Agregar residente"}
-            </button>
-            {atLimit && (
-              <span className="muted" style={{ fontSize: "13px" }}>Límite alcanzado. <Link href="/dashboard/admin-ph/subscription" style={{ textDecoration: "underline" }}>Actualice su plan</Link> para agregar más residentes.</span>
-            )}
-          </form>
-
-          {isDemo && (
-            <div className="owners-toolbar" style={{ marginTop: "12px", display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
-              <button type="button" className="btn btn-ghost" onClick={handleExport} disabled={residents.length === 0} style={{ fontSize: "13px" }} title="Descargar lista actual en CSV">
-                Exportar CSV
-              </button>
-              <button type="button" className="btn btn-ghost" onClick={handleDownloadTemplate} style={{ fontSize: "13px" }} title="Descargar plantilla: correo, unidad, nombre, estado (Al Día/Mora), Face ID, Hab. asamblea">
-                Plantilla para importar
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() => {
-                  refetchResidents();
-                }}
-                style={{ fontSize: "13px" }}
-                title="Actualizar el listado desde la base de datos (sincronizado con el chatbot)"
-              >
-                Actualizar listado
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={atLimit}
-                style={{ fontSize: "13px" }}
-                title="Importar residentes desde un CSV con el formato de la plantilla"
-              >
-                Importar CSV
-              </button>
+        <div className="owners-action-bar">
+          <div className="owners-action-form-group">
+            <span className="owners-action-label">Agregar residente</span>
+            <form onSubmit={handleAddResident} className="owners-action-form-row">
               <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                onChange={handleImport}
-                style={{ display: "none" }}
+                type="email"
+                placeholder={isDemo && !atLimit ? "Ej: residente1@demo.assembly2.com" : "Correo del residente"}
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
               />
-              {importSuccess && <span className="muted" style={{ fontSize: "13px" }}>{importSuccess}</span>}
+              <button type="submit" disabled={!newEmail.trim() || adding || !canAdd} className="btn btn-primary" style={{ padding: "10px 18px", borderRadius: "10px", fontWeight: 600 }} title={atLimit ? "Límite alcanzado" : undefined}>
+                {adding ? "…" : atLimit ? "Límite alcanzado" : "Agregar"}
+              </button>
+            </form>
+          </div>
+          {isDemo && (
+            <div className="owners-tools-group">
+              <span className="owners-action-label">Herramientas CSV</span>
+              <div className="owners-toolbar-compact">
+                <button type="button" className="btn btn-ghost" onClick={handleExport} disabled={residents.length === 0} title="Exportar CSV">Exportar</button>
+                <button type="button" className="btn btn-ghost" onClick={handleDownloadTemplate} title="Plantilla para importar">Plantilla</button>
+                <button type="button" className="btn btn-ghost" onClick={() => refetchResidents()} title="Actualizar listado">Actualizar</button>
+                <button type="button" className="btn btn-ghost" onClick={() => fileInputRef.current?.click()} disabled={atLimit} title="Importar CSV">Importar</button>
+                <input ref={fileInputRef} type="file" accept=".csv" onChange={handleImport} style={{ display: "none" }} />
+              </div>
             </div>
           )}
-        </>
+          {importSuccess && <span className="muted" style={{ fontSize: "12px", alignSelf: "center" }}>{importSuccess}</span>}
+        </div>
       )}
 
-      {!organizationId && !isDemo && (
+      {authChecked && !organizationId && !isDemo && (
         <p className="muted" style={{ marginTop: "18px" }}>
-          No hay organización seleccionada. Inicia sesión como Admin PH.
+          No hay organización seleccionada. Inicia sesión como Admin de Comunidad.
         </p>
       )}
 
@@ -838,27 +1025,28 @@ export default function OwnersPage() {
       {(organizationId || isDemo) && error && <p style={{ marginTop: "18px", color: "var(--color-error, #ef4444)" }}>{error}</p>}
 
       {(organizationId || isDemo) && !loading && !error && residents.length === 0 && activeTab === "residents" && (
-        <p className="muted" style={{ marginTop: "18px" }}>No hay residentes. Agregue correos para esta {isDemo ? "demo (Urban Tower PH)" : "organización"}.</p>
+        <p className="muted" style={{ marginTop: "18px" }}>No hay residentes. Agregue correos para esta {isDemo ? "demo (Urban Tower)" : "organización"}.</p>
       )}
 
       {(organizationId || isDemo) && !loading && (
-        <div style={{ marginTop: "18px" }}>
-          <div role="tablist" style={{ display: "flex", gap: "4px", borderBottom: "1px solid rgba(148,163,184,0.2)", marginBottom: "0" }}>
+        <div className="owners-content-area">
+          <div role="tablist" style={{ display: "flex", gap: "2px", marginBottom: "1px" }}>
             <button
               type="button"
               role="tab"
               aria-selected={activeTab === "residents"}
               onClick={() => setActiveTab("residents")}
               style={{
-                padding: "10px 16px",
+                padding: "12px 20px",
                 fontSize: "14px",
                 fontWeight: 600,
-                background: activeTab === "residents" ? "rgba(148,163,184,0.15)" : "transparent",
+                background: activeTab === "residents" ? "rgba(99,102,241,0.15)" : "transparent",
                 border: "none",
                 borderBottom: activeTab === "residents" ? "2px solid var(--color-primary, #6366f1)" : "2px solid transparent",
                 color: activeTab === "residents" ? "var(--color-text, #f1f5f9)" : "#94a3b8",
                 cursor: "pointer",
-                borderRadius: "8px 8px 0 0",
+                borderRadius: "10px 10px 0 0",
+                transition: "background 0.15s, color 0.15s",
               }}
             >
               Residentes
@@ -869,15 +1057,16 @@ export default function OwnersPage() {
               aria-selected={activeTab === "powers"}
               onClick={() => setActiveTab("powers")}
               style={{
-                padding: "10px 16px",
+                padding: "12px 20px",
                 fontSize: "14px",
                 fontWeight: 600,
-                background: activeTab === "powers" ? "rgba(148,163,184,0.15)" : "transparent",
+                background: activeTab === "powers" ? "rgba(99,102,241,0.15)" : "transparent",
                 border: "none",
                 borderBottom: activeTab === "powers" ? "2px solid var(--color-primary, #6366f1)" : "2px solid transparent",
                 color: activeTab === "powers" ? "var(--color-text, #f1f5f9)" : "#94a3b8",
                 cursor: "pointer",
-                borderRadius: "8px 8px 0 0",
+                borderRadius: "10px 10px 0 0",
+                transition: "background 0.15s, color 0.15s",
               }}
             >
               Poderes de asamblea
@@ -953,39 +1142,41 @@ export default function OwnersPage() {
 
           {activeTab === "residents" && residents.length > 0 && (
             <>
-              <div style={{ marginBottom: "12px", display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+              <div className="owners-filters-bar">
+                <span className="owners-filters-label">Buscar</span>
                 <input
                   type="search"
-                  placeholder="Buscar por correo, unidad, nombre, Nº finca o ID identidad..."
+                  placeholder="Correo, unidad, nombre..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ padding: "8px 12px", borderRadius: "8px", width: "260px", maxWidth: "100%", fontSize: "14px" }}
+                  aria-label="Buscar residentes"
                 />
-                <select value={filterEstado} onChange={(e) => setFilterEstado(e.target.value as "all" | "al_dia" | "mora")} style={{ padding: "8px 12px", borderRadius: "8px", fontSize: "13px" }}>
-                  <option value="all">Todos los estatus</option>
+                <span className="owners-filters-label" style={{ marginLeft: "8px" }}>Filtros</span>
+                <select value={filterEstado} onChange={(e) => setFilterEstado(e.target.value as "all" | "al_dia" | "mora")} aria-label="Estatus pago">
+                  <option value="all">Estatus: todos</option>
                   <option value="al_dia">Al Día</option>
                   <option value="mora">En Mora</option>
                 </select>
-                <select value={String(filterFaceId)} onChange={(e) => setFilterFaceId(e.target.value === "all" ? "all" : e.target.value === "true")} style={{ padding: "8px 12px", borderRadius: "8px", fontSize: "13px" }}>
+                <select value={String(filterFaceId)} onChange={(e) => setFilterFaceId(e.target.value === "all" ? "all" : e.target.value === "true")} aria-label="Face ID">
                   <option value="all">Face ID: todos</option>
-                  <option value="true">Face ID activo</option>
-                  <option value="false">Face ID inactivo</option>
+                  <option value="true">Activo</option>
+                  <option value="false">Inactivo</option>
                 </select>
-                <select value={String(filterHabAsamblea)} onChange={(e) => setFilterHabAsamblea(e.target.value === "all" ? "all" : e.target.value === "true")} style={{ padding: "8px 12px", borderRadius: "8px", fontSize: "13px" }}>
+                <select value={String(filterHabAsamblea)} onChange={(e) => setFilterHabAsamblea(e.target.value === "all" ? "all" : e.target.value === "true")} aria-label="Habilitado asamblea">
                   <option value="all">Hab. asamblea: todos</option>
                   <option value="true">Habilitado</option>
                   <option value="false">No habilitado</option>
                 </select>
-                <span className="muted" style={{ fontSize: "13px" }}>Mostrando {filteredResidents.length} de {residents.length}</span>
-                <span className="muted" style={{ fontSize: "11px" }} title="El estatus Al Día/Mora de este listado se usa en el Monitor back office para las votaciones (quién puede votar).">Estatus ↔ Monitor votación</span>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() => setHelpModalOpen(true)}
-                  style={{ marginLeft: "auto", fontSize: "13px", display: "inline-flex", alignItems: "center", gap: "6px" }}
-                  title="Ver guía de uso del módulo"
-                >
-                  <span style={{ width: "18px", height: "18px", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", background: "var(--color-primary, #6366f1)", color: "#fff", fontWeight: 700, fontSize: "12px" }}>?</span>
+                <select value={filterChatbot} onChange={(e) => setFilterChatbot(e.target.value as "all" | "online" | "inactive")} aria-label="Chatbot">
+                  <option value="all">Chatbot: todos</option>
+                  <option value="online">Online</option>
+                  <option value="inactive">Inactivo</option>
+                </select>
+                <span className="owners-filter-count">
+                  Mostrando <strong>{filteredResidents.length}</strong> <span className="muted">de {residents.length}</span>
+                </span>
+                <button type="button" className="btn btn-ghost" onClick={() => setHelpModalOpen(true)} style={{ padding: "6px 10px", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "6px" }} title="Ver guía">
+                  <span style={{ width: "16px", height: "16px", display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "50%", background: "var(--color-primary)", color: "#fff", fontWeight: 700, fontSize: "11px" }}>?</span>
                   Ayuda
                 </button>
               </div>
@@ -1002,6 +1193,9 @@ export default function OwnersPage() {
                   <div className="muted" style={{ marginTop: "8px", padding: "12px 14px", background: "rgba(15,23,42,0.35)", borderRadius: "10px", border: "1px solid rgba(148,163,184,0.15)", maxWidth: "720px", fontSize: "12px" }}>
                     <p style={{ margin: "0 0 8px" }}>
                 <strong>Hab. asamblea</strong> = habilitado para votar en la asamblea (solo uno por unidad puede estar en Sí). <strong>No</strong> = no vota en esta asamblea. El estatus <strong>Al Día / En Mora</strong> se sincroniza con el Monitor de votación.
+                    </p>
+                    <p style={{ margin: "0 0 8px" }}>
+                      <strong>Chatbot</strong>: <strong>Online</strong> = conectado en sesión actual. <strong>Inactivo</strong> = registrado pero desconectado. <strong>—</strong> = no registrado.
                     </p>
                     <p style={{ margin: 0 }}>
                       <strong>¿Cómo se relaciona este listado con las asambleas?</strong> Este es el listado <em>único</em> de residentes/propietarios de su PH. <strong>No se agregan residentes “a una asamblea”</strong>: cuando abre el Monitor de cualquier asamblea (Quórum o Votación), el sistema usa automáticamente este mismo listado. Quien esté aquí con Unidad asignada y (si aplica) Hab. asamblea = Sí y Al Día, podrá votar en esa asamblea. Mantenga el listado al día y el Monitor reflejará los mismos datos.
@@ -1025,29 +1219,29 @@ export default function OwnersPage() {
                   <button type="button" className="btn btn-ghost btn-sm" onClick={clearSelection} style={{ marginLeft: "auto", fontSize: "13px" }}>Deseleccionar todo</button>
                 </div>
               )}
-            <div className="owners-list-wrap" style={{ border: "1px solid rgba(148,163,184,0.15)", borderRadius: "12px", overflow: "hidden", overflowX: "auto" }}>
-              <div className="owners-list-header" style={{ display: "grid", gridTemplateColumns: "44px 80px 1fr 110px 90px 100px 110px 88px 100px 72px 140px", gap: "8px 12px", padding: "12px 14px", background: "rgba(15,23,42,0.4)", borderBottom: "1px solid rgba(148,163,184,0.2)", fontSize: "11px", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em", alignItems: "center", minWidth: "1024px" }}>
-                <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div className="owners-list-wrap" style={{ border: "1px solid rgba(148,163,184,0.12)", overflow: "hidden", overflowX: "auto", marginTop: "16px", marginBottom: "24px", background: "rgba(15,23,42,0.2)", boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+              <div className="owners-list-header" style={{ display: "grid", gridTemplateColumns: "44px 88px 1fr 70px 100px 110px 80px 85px 72px 100px 140px", gap: "8px 12px", padding: "12px 14px", background: "rgba(15,23,42,0.4)", borderBottom: "1px solid rgba(148,163,184,0.2)", fontSize: "11px", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em", alignItems: "center", minWidth: "1100px" }}>
+                <span style={{ display: "flex", alignItems: "center", justifyContent: "center", minWidth: 0 }} aria-hidden>
                   <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll} aria-label="Seleccionar todos los visibles" style={{ width: "18px", height: "18px", accentColor: "var(--color-primary, #6366f1)" }} />
                 </span>
-                <span title="Al día o en mora (solo Al Día pueden votar, Ley 284)">Estatus</span>
-                <span>Correo</span>
-                <span>Nombre</span>
-                <span title="Número de unidad">Unidad</span>
-                <span title="Número de finca (folio real)">Nº finca</span>
-                <span title="Cédula, pasaporte u otro documento de identidad">ID identidad</span>
-                <span title="Cuota de asamblea">Cuota %</span>
-                <span title="Habilitado para votar en la asamblea. Solo un titular por unidad en Sí; No = no vota.">Hab. asamblea (voto)</span>
-                <span>Face ID</span>
-                <span style={{ textAlign: "right" }}>Acciones</span>
+                <span style={{ whiteSpace: "nowrap", minWidth: 0 }} title="Al día o en mora (solo Al Día pueden votar, Ley 284)">Estatus</span>
+                <span style={{ whiteSpace: "nowrap", minWidth: 0 }}>Nombre</span>
+                <span style={{ whiteSpace: "nowrap", minWidth: 0 }} title="Número de unidad">Unidad</span>
+                <span style={{ whiteSpace: "nowrap", minWidth: 0 }} title="Número de finca (folio real)">Nº finca</span>
+                <span style={{ whiteSpace: "nowrap", minWidth: 0 }} title="Cédula, pasaporte u otro documento de identidad">ID identidad</span>
+                <span style={{ whiteSpace: "nowrap", minWidth: 0 }} title="Cuota de asamblea">Cuota %</span>
+                <span style={{ whiteSpace: "nowrap", minWidth: 0 }} title="Habilitado para votar en la asamblea. Solo un titular por unidad en Sí; No = no vota.">Habilitado</span>
+                <span style={{ whiteSpace: "nowrap", minWidth: 0 }}>Face ID</span>
+                <span style={{ whiteSpace: "nowrap", minWidth: 0 }} title="Estado en chatbot: Online = sesión abierta; Inactivo = registrado pero desconectado; — = no registrado">Chatbot</span>
+                <span style={{ display: "flex", justifyContent: "center", minWidth: 0, whiteSpace: "nowrap" }}>Acciones</span>
               </div>
               <ul className="owners-list card-list" style={{ listStyle: "none", padding: 0, margin: 0 }}>
                 {filteredResidents.map((r) => (
-                  <li key={r.user_id} className="owners-list-item list-item" style={{ display: "grid", gridTemplateColumns: "44px 80px 1fr 110px 90px 100px 110px 88px 100px 72px 140px", gap: "8px 12px", alignItems: "center", padding: "12px 14px", borderBottom: "1px solid rgba(148,163,184,0.08)", transition: "background 0.15s", minWidth: "1024px" }}>
-                    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", minWidth: "44px" }}>
+                  <li key={r.user_id} className="owners-list-item list-item" style={{ display: "grid", gridTemplateColumns: "44px 88px 1fr 70px 100px 110px 80px 85px 72px 100px 140px", gap: "8px 12px", alignItems: "center", padding: "12px 14px", borderBottom: "1px solid rgba(148,163,184,0.08)", transition: "background 0.15s", minWidth: "1100px" }}>
+                    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", minWidth: 0 }}>
                       <input type="checkbox" checked={selectedIds.has(r.user_id)} onChange={() => toggleSelect(r.user_id)} aria-label={`Seleccionar ${r.email}`} style={{ width: "18px", height: "18px", accentColor: "var(--color-primary, #6366f1)" }} />
                     </span>
-                    <span style={{ minWidth: "72px" }}>
+                    <span style={{ minWidth: 0 }}>
                       {isDemo ? (
                         <select
                           className={`resident-status resident-status--${r.payment_status === "mora" ? "mora" : "al-dia"}`}
@@ -1080,27 +1274,54 @@ export default function OwnersPage() {
                         <span className="muted" style={{ fontSize: "12px" }}>—</span>
                       )}
                     </span>
-                    <div style={{ minWidth: 0 }}>
-                      <strong style={{ display: "block", fontSize: "14px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.email}>{r.email}</strong>
-                    </div>
-                    <span style={{ minWidth: "110px", fontSize: "13px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.nombre ?? ""}>{r.nombre || "—"}</span>
-                    <span style={{ minWidth: "90px" }}>
+                    <span style={{ minWidth: 0, fontSize: "13px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.nombre ?? r.email ?? ""}>{r.nombre || "—"}</span>
+                    <span style={{ minWidth: 0, fontVariantNumeric: "tabular-nums" }}>
                       {r.unit != null && r.unit !== "" ? (
                         isDemo ? (
-                          <button type="button" onClick={() => openUnitModal(r.unit!)} className="owners-unit-link" style={{ background: "none", border: "none", padding: 0, fontSize: "13px", fontWeight: 600, color: "var(--color-primary, #818cf8)", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "2px" }} title="Abrir plantilla de la unidad">Unidad {r.unit}</button>
+                          <button type="button" onClick={() => openUnitModal(r.unit!)} className="owners-unit-link" style={{ background: "none", border: "none", padding: 0, fontSize: "13px", fontWeight: 600, color: "var(--color-primary, #818cf8)", cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "2px" }} title={`Plantilla unidad ${r.unit}`}>{r.unit}</button>
                         ) : (
-                          <span style={{ fontSize: "13px", fontWeight: 500 }}>Unidad {r.unit}</span>
+                          <span style={{ fontSize: "13px", fontWeight: 500 }}>{r.unit}</span>
                         )
                       ) : (
                         <span className="muted" style={{ fontSize: "12px" }}>—</span>
                       )}
                     </span>
-                    <span style={{ minWidth: "100px", fontVariantNumeric: "tabular-nums", fontSize: "13px" }} title={r.numero_finca ?? ""}>{r.numero_finca ?? "—"}</span>
-                    <span style={{ minWidth: "110px", fontVariantNumeric: "tabular-nums", fontSize: "13px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.cedula_identidad ?? ""}>{r.cedula_identidad ?? "—"}</span>
-                    <span style={{ minWidth: "88px", fontVariantNumeric: "tabular-nums", fontSize: "14px", fontWeight: 600 }}>{r.cuota_pct != null ? `${r.cuota_pct} %` : "—"}</span>
-                    <span style={{ minWidth: "100px", fontSize: "13px" }} title={r.habilitado_para_asamblea ? "Este residente está habilitado para votar en la asamblea." : "No habilitado para votar en esta asamblea (solo uno por unidad puede estar en Sí)."}>{r.habilitado_para_asamblea ? "Sí" : "No"}</span>
-                    <span style={{ minWidth: "72px", fontSize: "13px" }}>{r.face_id_enabled ? "Sí" : "No"}</span>
-                    <span style={{ minWidth: "100px", textAlign: "right", display: "flex", gap: "4px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+                    <span style={{ minWidth: 0, fontVariantNumeric: "tabular-nums", fontSize: "13px" }} title={r.numero_finca ?? ""}>{r.numero_finca ?? "—"}</span>
+                    <span style={{ minWidth: 0, fontVariantNumeric: "tabular-nums", fontSize: "13px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={r.cedula_identidad ?? ""}>{r.cedula_identidad ?? "—"}</span>
+                    <span style={{ minWidth: 0, fontVariantNumeric: "tabular-nums", fontSize: "13px", fontWeight: 600 }}>{r.cuota_pct != null ? `${r.cuota_pct} %` : "—"}</span>
+                    <span style={{ minWidth: 0, fontSize: "13px" }} title={r.habilitado_para_asamblea ? "Este residente está habilitado para votar en la asamblea." : "No habilitado para votar en esta asamblea (solo uno por unidad puede estar en Sí)."}>{r.habilitado_para_asamblea ? "Sí" : "No"}</span>
+                    <span style={{ minWidth: 0, fontSize: "13px" }}>{r.face_id_enabled ? "Sí" : "No"}</span>
+                    <span style={{ minWidth: 0, display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "13px" }}>
+                      <span title={r.chatbot_session_active ? "Conectado al chatbot (online)" : r.chatbot_registered || r.chatbot_login_status ? "Pre-registro ok; inactivo en chatbot" : "No registrado en chatbot"} style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                        {(r.chatbot_registered || r.chatbot_login_status || r.chatbot_session_active) && (
+                          <span style={{ display: "inline-flex", alignItems: "center", color: "#4ade80" }} title="Pre-registro ok">
+                            <IconCheck />
+                          </span>
+                        )}
+                        {r.chatbot_session_active ? (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#4ade80", fontWeight: 600 }}>
+                            <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 6px #4ade80" }} aria-hidden />
+                            Online
+                          </span>
+                        ) : r.chatbot_registered || r.chatbot_login_status ? (
+                          <span className="muted" style={{ fontSize: "12px" }}>Inactivo</span>
+                        ) : (
+                          <span className="muted" style={{ fontSize: "12px" }}>—</span>
+                        )}
+                      </span>
+                      {isDemo && (r.chatbot_registered || r.chatbot_login_status || r.chatbot_session_active) && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          style={{ padding: "4px 6px", minWidth: "28px" }}
+                          onClick={() => setSessionHistoryResident(r)}
+                          title="Ver historial de sesión"
+                        >
+                          <IconHistory />
+                        </button>
+                      )}
+                    </span>
+                    <span style={{ minWidth: 0, display: "flex", gap: "4px", justifyContent: "center", flexWrap: "wrap" }}>
                       {isDemo && (
                         <>
                           <button type="button" className="btn btn-ghost" style={{ padding: "6px 8px", minWidth: "32px" }} onClick={() => openEditModal(r)} title="Edición rápida"><IconEdit /></button>
@@ -1205,6 +1426,49 @@ export default function OwnersPage() {
               <button type="button" className="btn btn-ghost" onClick={closeUnitModal}>Cancelar</button>
               <button type="button" className="btn btn-primary" onClick={saveUnitTemplate} disabled={savingUnit}>
                 {savingUnit ? "Guardando…" : "Guardar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sessionHistoryResident && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="session-history-modal-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={(e) => e.target === e.currentTarget && setSessionHistoryResident(null)}
+        >
+          <div
+            style={{
+              background: "var(--color-surface, #1e293b)",
+              borderRadius: "12px",
+              padding: "20px 24px",
+              minWidth: "400px",
+              maxWidth: "90vw",
+              maxHeight: "80vh",
+              overflow: "auto",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.3)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="session-history-modal-title" style={{ margin: "0 0 8px", fontSize: "18px", fontWeight: 600 }}>
+              Historial de sesión — {sessionHistoryResident.nombre || sessionHistoryResident.email}
+            </h2>
+            <p className="muted" style={{ marginBottom: "16px", fontSize: "13px" }}>{sessionHistoryResident.email}</p>
+            <SessionHistoryList email={sessionHistoryResident.email} />
+            <div style={{ marginTop: "16px", display: "flex", justifyContent: "flex-end" }}>
+              <button type="button" className="btn btn-ghost" onClick={() => setSessionHistoryResident(null)}>
+                Cerrar
               </button>
             </div>
           </div>

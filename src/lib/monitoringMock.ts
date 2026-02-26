@@ -113,9 +113,30 @@ export type BuildSummaryOptions = {
   topicId?: string;
 };
 
+/** Aplica voteValue por tema (determinístico) para que Vista Tablero filtre correctamente. */
+export function applyTopicVotes(
+  units: { id: string; voteValue: "SI" | "NO" | "ABSTENCION" | null; paymentStatus: string; isPresent?: boolean; [k: string]: unknown }[],
+  topicId: string | null,
+  topicTitle: string | null
+): typeof units {
+  if (!topicId && !topicTitle) return units;
+  const seedStr = (topicId ?? "") + "|" + (topicTitle ?? "");
+  if (!seedStr.trim() || seedStr === "|") return units;
+  let seed = 0;
+  for (let i = 0; i < seedStr.length; i++) seed = ((seed << 5) - seed) + seedStr.charCodeAt(i) | 0;
+  seed = Math.abs(seed) || 1;
+  const lcg = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+  return units.map((u) => {
+    const canVote = u.paymentStatus !== "MORA" && u.isPresent !== false;
+    const v = lcg();
+    const voteValue: "SI" | "NO" | "ABSTENCION" | null = !canVote ? null : v < 0.55 ? "SI" : v < 0.85 ? "NO" : "ABSTENCION";
+    return { ...u, voteValue };
+  });
+}
+
 /**
- * Construye el resumen. Si se pasa topicTitle/topicId, el tema mostrado y los
- * resultados porcentuales se derivan de ese tema (reproducibles por tema).
+ * Construye el resumen. Si se pasa topicTitle/topicId, el tema mostrado se usa y
+ * los resultados porcentuales se derivan de los voteValue de las unidades (sincronizado con Vista Tablero).
  */
 export const buildSummary = (units: Unit[], options?: BuildSummaryOptions) => {
   const total = units.length;
@@ -137,25 +158,11 @@ export const buildSummary = (units: Unit[], options?: BuildSummaryOptions) => {
   const totalVotes = Math.max(rawResults.si + rawResults.no + rawResults.abst, 1);
   const quorumPct = total === 0 ? 0 : Math.round((present / total) * 1000) / 10;
 
-  let resultsPct: { si: number; no: number; abst: number };
-  if (options?.topicId != null || (options?.topicTitle != null && options.topicTitle !== "")) {
-    const seed = hashString((options.topicId ?? "") + (options.topicTitle ?? ""));
-    const rnd = mulberry32(seed);
-    const si = Math.floor(rnd() * 40) + 45;
-    const no = Math.floor(rnd() * 25) + 5;
-    const abst = 100 - si - no;
-    resultsPct = {
-      si: Math.max(0, Math.round(si * 10) / 10),
-      no: Math.max(0, Math.round(no * 10) / 10),
-      abst: Math.max(0, Math.round(abst * 10) / 10),
-    };
-  } else {
-    resultsPct = {
-      si: Math.round((rawResults.si / totalVotes) * 1000) / 10,
-      no: Math.round((rawResults.no / totalVotes) * 1000) / 10,
-      abst: Math.round((rawResults.abst / totalVotes) * 1000) / 10,
-    };
-  }
+  const resultsPct = {
+    si: Math.round((rawResults.si / totalVotes) * 1000) / 10,
+    no: Math.round((rawResults.no / totalVotes) * 1000) / 10,
+    abst: Math.round((rawResults.abst / totalVotes) * 1000) / 10,
+  };
 
   const topicTitle = options?.topicTitle && options.topicTitle.trim() !== ""
     ? options.topicTitle.trim()

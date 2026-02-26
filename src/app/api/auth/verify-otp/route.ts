@@ -15,30 +15,53 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email y código requeridos" }, { status: 400 });
     }
 
-    const [{ count }] = await sql`
-      SELECT COUNT(*)::int AS count
-      FROM auth_attempts
-      WHERE email = ${normalized}
-        AND attempt_type = 'otp_verify'
-        AND created_at > NOW() - INTERVAL '1 hour'
-    `;
-    if (count >= effectiveMaxVerify) {
-      return NextResponse.json({ error: "Demasiados intentos. Intenta más tarde." }, { status: 429 });
+    try {
+      const [row] = await sql<{ count: number }[]>`
+        SELECT COUNT(*)::int AS count
+        FROM auth_attempts
+        WHERE email = ${normalized}
+          AND attempt_type = 'otp_verify'
+          AND created_at > NOW() - INTERVAL '1 hour'
+      `;
+      if (row && row.count >= effectiveMaxVerify) {
+        return NextResponse.json({ error: "Demasiados intentos. Intenta más tarde." }, { status: 429 });
+      }
+    } catch {
+      // auth_attempts puede no existir; continuar sin rate limit
     }
 
-    const [user] = await sql`
+    const [userRow] = await sql`
       SELECT u.id, u.email, u.role, u.is_platform_owner, u.organization_id, o.is_demo, o.parent_subscription_id
       FROM users u
       LEFT JOIN organizations o ON o.id = u.organization_id
       WHERE u.email = ${normalized}
     `;
-    if (!user) {
-      await sql`
-        INSERT INTO auth_attempts (email, attempt_type, success)
-        VALUES (${normalized}, 'otp_verify', FALSE)
-      `;
+    if (!userRow) {
+      try {
+        await sql`INSERT INTO auth_attempts (email, attempt_type, success) VALUES (${normalized}, 'otp_verify', FALSE)`;
+      } catch {
+        // auth_attempts puede no existir
+      }
       return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
     }
+
+    let demoExpiresAt: string | null = null;
+    if (userRow.organization_id) {
+      try {
+        const [row] = await sql<{ demo_expires_at: string | null }[]>`
+          SELECT demo_expires_at FROM organizations WHERE id = ${userRow.organization_id}::uuid LIMIT 1
+        `;
+        demoExpiresAt = row?.demo_expires_at ?? null;
+      } catch {
+        // Columna demo_expires_at puede no existir (migración 015)
+      }
+    }
+
+    const user = {
+      ...userRow,
+      demo_expires_at: demoExpiresAt,
+      is_demo: userRow.is_demo ?? false,
+    };
 
     const [pinRecord] = await sql`
       SELECT id
@@ -51,23 +74,29 @@ export async function POST(req: Request) {
       LIMIT 1
     `;
     if (!pinRecord) {
-      await sql`
-        INSERT INTO auth_attempts (email, attempt_type, success)
-        VALUES (${normalized}, 'otp_verify', FALSE)
-      `;
+      try {
+        await sql`INSERT INTO auth_attempts (email, attempt_type, success) VALUES (${normalized}, 'otp_verify', FALSE)`;
+      } catch {
+        // auth_attempts puede no existir
+      }
       return NextResponse.json({ error: "Código inválido o expirado" }, { status: 400 });
     }
 
-    await sql`
-      UPDATE auth_pins
-      SET used = TRUE
-      WHERE id = ${pinRecord.id}
-    `;
+    const isDemoExpired = user.is_demo && user.demo_expires_at && new Date(user.demo_expires_at) < new Date();
+    if (isDemoExpired) {
+      return NextResponse.json(
+        { error: "Tu periodo de demo ha terminado. Contáctanos para activar un plan." },
+        { status: 403 }
+      );
+    }
 
-    await sql`
-      INSERT INTO auth_attempts (email, attempt_type, success)
-      VALUES (${normalized}, 'otp_verify', TRUE)
-    `;
+    await sql`UPDATE auth_pins SET used = TRUE WHERE id = ${pinRecord.id}`;
+
+    try {
+      await sql`INSERT INTO auth_attempts (email, attempt_type, success) VALUES (${normalized}, 'otp_verify', TRUE)`;
+    } catch {
+      // auth_attempts puede no existir; no bloquear login
+    }
 
     return NextResponse.json({
       success: true,
@@ -82,7 +111,8 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
-    console.error("Error verify OTP:", error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.error("[verify-otp]", err.message, err.stack);
     return NextResponse.json({ error: "Error al verificar OTP" }, { status: 500 });
   }
 }

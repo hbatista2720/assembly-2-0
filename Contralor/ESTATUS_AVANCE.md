@@ -51,10 +51,10 @@ FORMATO DE COMMIT:
 | FASE 9, 10, 11 | ✅ Aprobado QA | ✅ dc1f9c7 | ⏳ Push (Henry si falla) |
 | Plan navegación + Chatbot residente (Opción B) + Usuarios demo | ✅ Aprobado QA | ✅ a76fb32 | ✅ Push OK |
 
-**Último backup:** **Commit ejecutado.** Commit **efc7e49** (Backup Feb 2026: Sincronización residentes-Monitor, unidades 1-50, tarea QA, mejoras PH y suscripciones). ⏳ **Henry:** ejecutar `git push origin main` para completar el backup.
+**Último backup:** **Completado.** Push ejecutado por Henry: **650fecd..1e24347** main → main (20 Feb 2026). Incluye: Sincronización residentes-Monitor, unidades 1-50, tarea QA, plan de pruebas, mejoras PH y suscripciones.
 **Repositorio:** https://github.com/hbatista2720/assembly-2-0
 
-**¿Backup requerido ahora?** Commit listo. Falta push (Henry). **Validación redirección por rol:** ✅ QA aprobó. Ver QA_FEEDBACK.md § "QA Validación · Redirección por rol". **Usuarios demo por plan:** ✅ Ejecutado. Ver REPORTE_USUARIOS_DEMO_POR_PLAN.md. **Siguiente:** Más pruebas (plan § "Próximas pruebas"), QA validar Dashboard Admin PH con los 5 usuarios por plan.
+**¿Backup requerido ahora?** No. Backup completo (1e24347). **Validación redirección por rol:** ✅ QA aprobó. Ver QA_FEEDBACK.md § "QA Validación · Redirección por rol". **Usuarios demo por plan:** ✅ Ejecutado. Ver REPORTE_USUARIOS_DEMO_POR_PLAN.md. **Siguiente:** Más pruebas (plan § "Próximas pruebas"), QA validar Dashboard Admin PH con los 5 usuarios por plan.
 
 **Reporte Coder al Contralor (últimos cambios – tema, perfil, demo, contadores):**
 - Botón **"Subir a plan real"** validado: redirige a `/pricing?from=demo` (trazabilidad).
@@ -747,6 +747,26 @@ Referencias adicionales: Marketing/MARKETING_REPORTE_LOGIC_CHATBOT_RESIDENTE.md,
 Al finalizar, informar al Contralor.
 ```
 
+### Para CODER – Demo por correo del cliente (Arquitecto + Marketing)
+**Origen:** Marketing/MARKETING_PROPUESTA_DEMO_POR_CORREO_CLIENTE.md. **Arquitecto revisó y especificó:** Arquitecto/LOGICA_DEMO_POR_CORREO_CLIENTE.md.
+
+```
+🎯 INSTRUCCIÓN: Implementar "demo por correo": cuando un visitante elige "Administrador PH" o "Solo demo" en el chatbot y proporciona su correo, crear (o reutilizar) una cuenta demo ligada a ese correo. El cliente entra al demo con su propio correo (OTP) y ve dashboard demo (50 residentes, 1 crédito, 15 días).
+
+📖 ESPECIFICACIÓN OBLIGATORIA: Arquitecto/LOGICA_DEMO_POR_CORREO_CLIENTE.md
+
+TAREAS RESUMIDAS:
+1) BD: Añadir demo_expires_at en organizations si no existe. Crear función/script para "crear org demo + usuario" (contenido tipo Urban Tower: 50 unidades, 1 crédito, 15 días). Un demo activo por correo; si el mismo correo ya tiene usuario con org is_demo vigente, no duplicar.
+2) API: POST /api/demo/request con body { email }. Crear usuario + organización demo o devolver already_exists; respuesta { success, already_exists, login_url, message }. Rate limit opcional (ej. 5 por IP/hora).
+3) Chatbot (page.tsx, chat/page.tsx): Tras capturar correo para perfil Admin PH o Solo demo, llamar POST /api/demo/request; mostrar "Tu demo está listo. Entra con este correo en [Entrar al demo]" (link /login) o "Ya tienes un demo activo. [Entrar al demo]". Dejar de mostrar el correo demo ficticio (xxx-adminph@demo.assembly.local).
+4) Leads: Al crear/reutilizar demo, crear o actualizar platform_leads (funnel_stage demo_requested o demo_active).
+5) Login: Sin cambios; verify-otp ya devuelve is_demo; el nuevo usuario tiene org is_demo=true.
+
+Orden sugerido: (1) BD y API, (2) Chatbot, (3) Leads, (4) pruebas E2E.
+Priorización: Contralor/Henry definen en qué fase se implementa.
+Al finalizar, informar al Contralor.
+```
+
 ### Para CODER (bug verify-otp chatbot residente)
 ```
 🔴 BLOQUEADOR: El chatbot residente muestra "Error al verificar" al ingresar el PIN correcto.
@@ -955,11 +975,60 @@ Cuando Marketing confirme el flujo, el Arquitecto valida y reporta al Contralor.
 Referencias: Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md, ESTATUS_AVANCE (este bloque).
 ```
 
+### Para CODER – Panel ejecutivo Landing (orden Marketing Feb 2026):
+```
+Reemplazar la lista de 6 PHs con "Quorum: 68%" por funcionalidades de Assembly 2.0.
+Referencia: Marketing/MARKETING_OBSERVACIONES_LANDING.md
+Ubicación: src/app/page.tsx – mockup "Panel ejecutivo" (hero).
+Contenido sugerido: 6 funcionalidades (Quórum en tiempo real, Votación ponderada, Poderes digitales, Monitor por unidad, Chatbot residente, Actas automáticas).
+Prioridad: Media.
+Al finalizar, informar al Contralor.
+```
+
+### Propuesta Henry – Demo por correo del cliente nuevo (Administrador PH)
+```
+Estado actual: En curso. Henry ya informó al Arquitecto.
+Documento: Marketing/MARKETING_PROPUESTA_DEMO_POR_CORREO_CLIENTE.md
+Resumen: Crear demo por correo (usuario + org demo en BD, mismo flujo OTP); lead + demo asociados; límites y flujo exacto a definir.
+Orden de revisión: 1) Arquitecto (revisar, definir flujo técnico y documentar especificación). 2) Coder (implementar cuando el Arquitecto entregue la especificación aprobada).
+⏳ Contralor espera: especificación del Arquitecto para luego asignar al Coder.
+```
+
+### Propuesta Henry – Proceso de asambleas en un solo módulo (Wizard tipo factura)
+```
+Henry solicita: Adaptar la experiencia de creación de factura (stepper multi-paso) al proceso de asambleas, todo en un solo módulo.
+Pasos: registro residentes, crear asambleas, agendar, celebrar, monitor back office, finalización, crear acta.
+Documento: Marketing/MARKETING_RECOMENDACION_WIZARD_ASAMBLEAS_UN_MODULO.md
+Instrucciones Coder: Coder/INSTRUCCIONES_CODER_WIZARD_PROCESO_ASAMBLEA.md (módulos actuales, qué agregar, qué mantener, persistencia fase).
+Resumen: Wizard horizontal (5 pasos), ruta /dashboard/admin-ph/proceso-asamblea, nuevo ítem sidebar "Proceso de Asamblea", lista asambleas pendientes con fase guardada.
+Contralor/Arquitecto: Valorar prioridad. Coder implementa según INSTRUCCIONES_CODER_WIZARD_PROCESO_ASAMBLEA.md. Prioridad sugerida: Media-Alta.
+```
+
+### Para CODER – Terminología unificada Comunidad (orden Marketing Feb 2026):
+```
+Unificar términos en la app para PH residencial + plazas comerciales.
+Documento: Coder/INSTRUCCIONES_CODER_TERMINOLOGIA_UNIFICADA_COMUNIDAD.md
+Término principal: "Comunidad". Campo tipo: PH | PLAZA | COMPLEJO.
+Reemplazar "Panel del PH", "PH actual" por "Panel de la Comunidad", etc.
+Prioridad: Media. Aplicar de forma gradual.
+```
+
+### Para CODER – Créditos asambleas, carrito y pago Fase 1 (orden Henry Feb 2026):
+```
+Requisitos: (1) Visualizar saldo y vigencias de créditos para asambleas; bloquear creación sin crédito.
+(2) Unificar Suscripciones con carrito de compra; consolidar botones duplicados; carrito visible al agregar.
+(3) Fase 1 pago: ACH y Yappy; subir comprobante; Henry aprueba; email al comprador cuando crédito disponible.
+Documento: Coder/INSTRUCCIONES_CODER_CREDITOS_ASAMBLEAS_Y_CARRITO_FASE1.md
+Prioridad: Alta.
+```
+
 ### Para MARKETING:
 ```
 NINGUNA ACCIÓN REQUERIDA
 Landing Page y pricing ya implementados.
 Copy listo para producción.
+Observación Panel ejecutivo documentada en Marketing/MARKETING_OBSERVACIONES_LANDING.md. Contralor asignará al Coder.
+Terminología unificada documentada en Coder/INSTRUCCIONES_CODER_TERMINOLOGIA_UNIFICADA_COMUNIDAD.md.
 ```
 
 ---
@@ -1079,6 +1148,7 @@ TOTAL PROYECTO:    [████████░░░░░░░░░░░░
 | Feb 2026 | **✅ CODER: Chatbot más inteligente con Gemini – Completado** – Implementado POST /api/chat/resident (Gemini), rama en chat/page.tsx y page.tsx para residente validado + texto libre. Reporte y sugerencia QA en ESTATUS_AVANCE. Prueba sugerida en QA/PLAN_PRUEBAS_NAVEGACION_LOGIN_CHATBOT.md § Chatbot Gemini. | Coder |
 | Feb 2026 | **✅ CONTRALOR: Reportes agentes validados – Fase listo. Requisito 2 PH para pruebas** – Contralor valida reportes de esta fase; fase cerrada. Para probar funcionalidades: 2 PH necesarios (uno con asamblea activa para votar, otro agendada no activa). **Responsable datos:** Database. **Responsable pruebas:** QA. | Contralor |
 | Feb 2026 | **✅ CONTRALOR: Validación respuesta Marketing – Instrucción al Coder (chatbot Gemini)** – Marketing indicó: ramificar handleChatSubmit (residente validado + texto libre → no validar email); crear POST /api/chat/resident con Gemini; GEMINI_API_KEY; base conocimiento PERFIL 5, TEMA 4B. Contralor valida. Instrucción en bloque "Para CODER – Chatbot más inteligente con Gemini". Coder informa al Contralor al finalizar. | Contralor |
+| Feb 2026 | **📋 CONTRALOR: Propuesta demo por correo – Henry informó al Arquitecto** – Propuesta Marketing (demo por correo del cliente nuevo) en curso. Orden: Arquitecto primero (definir flujo técnico y especificación), luego Coder. Bloque "Propuesta Henry – Demo por correo" actualizado en ESTATUS_AVANCE. Contralor espera especificación del Arquitecto. | Contralor |
 | Feb 2026 | **✅ CONTRALOR: Validación respuesta Marketing – Mejoras creación asambleas Ley 284 (T6)** – Se actualizaron **Marketing/MARKETING_MEJORAS_CREACION_ASAMBLEAS_LEY284.md** y el bloque **"Para CODER"** en ESTATUS_AVANCE.md. T6 (Acta inmediata al finalizar votaciones + mensaje acta legal en plazo Ley 284) incluida en la instrucción al Coder. Contralor valida. Coder ejecuta según bloque "Para CODER – Mejoras creación asambleas (Ley 284, orden Marketing Feb 2026)". | Contralor |
 | Feb 2026 | **📋 CONTRALOR: Tarea QA – Sincronización Residentes ↔ Monitor Back Office y Chatbot** – Unidades demo unificadas a **1–50** en listado Propietarios y Monitor. Sincronización por `unit`/`code`: mismo nombre y estatus Al Día/Mora en ambos. Creado **QA/PLAN_PRUEBAS_RESIDENTES_MONITOR_SINCRONIZACION.md**. Instrucción QA: verificar numeración 1–50, sincronización estatus, **borrar y crear residentes 1 x 1**, probar chatbot y resto del plan. Bloque "Para QA – Sincronización Residentes ↔ Monitor Back Office y Chatbot" en ESTATUS_AVANCE. Contralor asigna a QA. | Contralor |
 | Feb 2026 | **📋 CONTRALOR: Reporte Coder + Arquitecto – Dashboard Admin PH** – Actualizado docs/RESUMEN_DASHBOARD_ADMIN_PH.md con estado del reporte Coder (R1–R4/R8 aplicados; pendiente bug botones, planes pago único) e instrucción al **Arquitecto** para validar el proceso del dashboard. **Espera respuesta de Marketing primero** para validar el flujo correcto; luego Arquitecto valida y reporta. Bloque "Para ARQUITECTO" actualizado en ESTATUS_AVANCE. | Contralor |
@@ -1644,6 +1714,29 @@ TAREAS (prioridad media):
 - Aclarar HAB. ASAMBLEA con ayuda contextual.
 
 Referencia: Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md. Al finalizar, informar al Contralor.
+```
+
+---
+
+### Para CODER – Crear .cursorignore para estabilidad de Cursor (orden Contralor Feb 2026)
+
+**ESTADO: ✅ COMPLETADO** (Ene 2026)
+
+```
+Eres el Coder. Orden del Contralor: Crear archivo .cursorignore en la raíz del proyecto para reducir la carga de indexación y mejorar estabilidad del editor (tras reporte de crash).
+
+TAREA: Crear .cursorignore con:
+node_modules/
+.next/
+.npm-cache/
+out/
+build/
+*.log
+.DS_Store
+
+📖 ESPECIFICACIÓN: Coder/INSTRUCCIONES_CURSORIGNORE_ESTABILIDAD.md
+
+Al finalizar, informar al Contralor.
 ```
 
 ---

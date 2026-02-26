@@ -1,0 +1,10 @@
+# Reduce carga de Cursor - excluir carpetas pesadas de la indexación
+node_modules/
+.next/
+.npm-cache/
+out/
+build/
+
+# Cache y temporales
+*.log
+.DS_Store

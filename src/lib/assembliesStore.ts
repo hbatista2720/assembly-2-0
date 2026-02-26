@@ -13,6 +13,19 @@ type AssemblyTopic = {
 /** Ordinaria/Extraordinaria según Ley 284; Por derecho propio = por los residentes (3-5 días); Especial = tipo escrito manualmente (sin plazo legal). */
 export type AssemblyType = "Ordinaria" | "Extraordinaria" | "Por derecho propio" | "Especial";
 
+/** Paso del wizard Proceso de Asamblea (1–5). Persistencia de fase según Marketing. */
+export type WizardStep = 1 | 2 | 3 | 4 | 5;
+
+const WIZARD_STEP_LABELS: Record<WizardStep, string> = {
+  1: "Residentes",
+  2: "Crear",
+  3: "Agendar",
+  4: "Monitor",
+  5: "Finalizar",
+};
+
+export const getWizardStepLabel = (step: WizardStep): string => WIZARD_STEP_LABELS[step];
+
 type Assembly = {
   id: string;
   title: string;
@@ -33,6 +46,8 @@ type Assembly = {
   meetingLink?: string;
   /** Si type es "Especial", tipo de asamblea escrito manualmente (ej. "Por derecho propio", "20% de propietarios al día"). */
   typeCustom?: string;
+  /** Fase del wizard Proceso de Asamblea (1–5). Persistencia para retomar donde quedó. */
+  wizard_step?: WizardStep;
 };
 
 const STORAGE_KEY = "assembly_admin_ph_assemblies";
@@ -44,7 +59,24 @@ const isDemoUser = (): boolean => {
   return (localStorage.getItem("assembly_email") || "").toLowerCase() === DEMO_EMAIL.toLowerCase();
 };
 
-const getStorageKey = (): string => (isDemoUser() ? STORAGE_KEY_DEMO : STORAGE_KEY);
+function getCurrentPhId(): string {
+  if (typeof window === "undefined") return "urban-tower";
+  return sessionStorage.getItem("assembly_admin_selected_ph") || "urban-tower";
+}
+
+/** Clave de storage por PH. urban-tower usa la clave legacy; PHs custom tienen la suya. */
+function getStorageKey(phId?: string): string {
+  const pid = phId ?? getCurrentPhId();
+  if (!isDemoUser()) return STORAGE_KEY;
+  return pid === "urban-tower" ? STORAGE_KEY_DEMO : `${STORAGE_KEY_DEMO}_${pid}`;
+}
+
+/** Clave de archivo temporal (asambleas eliminadas en fase 1, recuperables). */
+function getArchiveStorageKey(phId?: string): string {
+  const pid = phId ?? getCurrentPhId();
+  const base = getStorageKey(pid);
+  return `${base}_archive`;
+}
 
 const createId = () => `asm_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 
@@ -133,18 +165,30 @@ const seedDemoAssemblies = (): Assembly[] => [
   },
 ];
 
-export const getAssemblies = (): Assembly[] => {
+export const getAssemblies = (phId?: string): Assembly[] => {
   if (typeof window === "undefined") return [];
-  const key = getStorageKey();
+  const pid = phId ?? getCurrentPhId();
+  const key = getStorageKey(pid);
   const versionKey = key + "_v";
 
   if (isDemoUser()) {
     const storedVersion = parseInt(localStorage.getItem(versionKey) ?? "0", 10);
-    if (storedVersion < DEMO_SEED_VERSION) {
+    if (pid === "urban-tower" && storedVersion < DEMO_SEED_VERSION) {
       const seeded = seedDemoAssemblies();
       localStorage.setItem(key, JSON.stringify(seeded));
       localStorage.setItem(versionKey, String(DEMO_SEED_VERSION));
       return seeded;
+    }
+    if (pid !== "urban-tower") {
+      // PHs custom: sin seed, empiezan vacíos
+      const raw = localStorage.getItem(key);
+      if (!raw) return [];
+      try {
+        const list = JSON.parse(raw) as Assembly[];
+        return list.map((a) => (a.type === "Manual" ? { ...a, type: "Especial" as const } : a));
+      } catch {
+        return [];
+      }
     }
   }
 
@@ -157,7 +201,6 @@ export const getAssemblies = (): Assembly[] => {
   }
   try {
     const list = JSON.parse(raw) as Assembly[];
-    // Compatibilidad: tipo "Manual" antiguo → "Especial"
     return list.map((a) => (a.type === "Manual" ? { ...a, type: "Especial" as const } : a));
   } catch {
     const seeded = isDemoUser() ? seedDemoAssemblies() : seedAssemblies();
@@ -167,56 +210,111 @@ export const getAssemblies = (): Assembly[] => {
   }
 };
 
-export const saveAssemblies = (assemblies: Assembly[]) => {
+export const saveAssemblies = (assemblies: Assembly[], phId?: string) => {
   if (typeof window === "undefined") return;
-  localStorage.setItem(getStorageKey(), JSON.stringify(assemblies));
+  localStorage.setItem(getStorageKey(phId), JSON.stringify(assemblies));
 };
 
-export const createAssembly = (assembly: Omit<Assembly, "id" | "status"> & { topics?: AssemblyTopic[] }) => {
-  const current = getAssemblies();
+export const createAssembly = (assembly: Omit<Assembly, "id" | "status"> & { topics?: AssemblyTopic[] }, phId?: string) => {
+  const current = getAssemblies(phId ?? getCurrentPhId());
   const normalizedTopics = (assembly.topics ?? []).map((t) => ({ ...t, id: t.id || createId() }));
   const newAssembly: Assembly = {
     id: createId(),
     status: "Programada",
     secondCallWarning: true,
     mode: "Presencial",
+    wizard_step: 1,
     ...assembly,
     topics: normalizedTopics,
     attendeesCount: isDemoUser() ? 50 : (assembly.attendeesCount ?? 200),
     faceIdCount: isDemoUser() ? 35 : (assembly.faceIdCount ?? 130),
   };
   const updated = [newAssembly, ...current];
-  saveAssemblies(updated);
+  saveAssemblies(updated, phId ?? getCurrentPhId());
   return newAssembly;
 };
 
-export const updateAssembly = (id: string, updater: (assembly: Assembly) => Assembly) => {
-  const current = getAssemblies();
+export const updateAssembly = (id: string, updater: (assembly: Assembly) => Assembly, phId?: string) => {
+  const pid = phId ?? getCurrentPhId();
+  const current = getAssemblies(pid);
   const updated = current.map((assembly) => (assembly.id === id ? updater(assembly) : assembly));
-  saveAssemblies(updated);
+  saveAssemblies(updated, pid);
   return updated.find((assembly) => assembly.id === id) || null;
 };
 
-/** Elimina una asamblea. Solo permite eliminar si no está celebrada (crédito no consumido). */
-export const deleteAssembly = (id: string): boolean => {
-  const current = getAssemblies();
+/** Archivo temporal: asambleas eliminadas en fase 1 (recuperables). */
+export const getArchivedAssemblies = (phId?: string): Assembly[] => {
+  if (typeof window === "undefined") return [];
+  const key = getArchiveStorageKey(phId);
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    return JSON.parse(raw) as Assembly[];
+  } catch {
+    return [];
+  }
+};
+
+/** Mueve asamblea al archivo temporal. Solo si wizard_step === 1. */
+export const archiveAssembly = (id: string, phId?: string): boolean => {
+  const pid = phId ?? getCurrentPhId();
+  const current = getAssemblies(pid);
   const assembly = current.find((a) => a.id === id);
-  if (!assembly || assembly.status === "Completada") return false;
-  saveAssemblies(current.filter((a) => a.id !== id));
+  if (!assembly) return false;
+  const step = (assembly.wizard_step ?? 1) as WizardStep;
+  if (step !== 1) return false;
+  if (assembly.status === "Completada") return false;
+  const archived = [...getArchivedAssemblies(pid), assembly];
+  localStorage.setItem(getArchiveStorageKey(pid), JSON.stringify(archived));
+  saveAssemblies(current.filter((a) => a.id !== id), pid);
   return true;
+};
+
+/** Restaura asamblea desde archivo temporal a la lista activa. */
+export const restoreArchivedAssembly = (id: string, phId?: string): boolean => {
+  const pid = phId ?? getCurrentPhId();
+  const archived = getArchivedAssemblies(pid);
+  const assembly = archived.find((a) => a.id === id);
+  if (!assembly) return false;
+  const current = getAssemblies(pid);
+  saveAssemblies([assembly, ...current], pid);
+  localStorage.setItem(getArchiveStorageKey(pid), JSON.stringify(archived.filter((a) => a.id !== id)));
+  return true;
+};
+
+/** Borra definitivamente una asamblea del archivo temporal. No se puede recuperar. */
+export const deleteArchivedAssemblyPermanently = (id: string, phId?: string): boolean => {
+  const pid = phId ?? getCurrentPhId();
+  const archived = getArchivedAssemblies(pid);
+  const updated = archived.filter((a) => a.id !== id);
+  if (updated.length === archived.length) return false;
+  localStorage.setItem(getArchiveStorageKey(pid), JSON.stringify(updated));
+  return true;
+};
+
+/** Elimina una asamblea moviéndola al archivo temporal. Solo permite si wizard_step === 1. */
+export const deleteAssembly = (id: string, phId?: string): boolean => {
+  return archiveAssembly(id, phId);
 };
 
 /** Indica si la asamblea ya se celebró y consumió crédito (no se puede editar, eliminar ni reprogramar). */
 export const isAssemblyCelebrated = (assembly: Assembly): boolean => assembly.status === "Completada";
 
-export const findAssembly = (id: string) => getAssemblies().find((assembly) => assembly.id === id) || null;
+export const findAssembly = (id: string, phId?: string) => getAssemblies(phId ?? getCurrentPhId()).find((assembly) => assembly.id === id) || null;
 
-/** Restablece asambleas demo: borra las guardadas y deja las 2 por defecto (seed). Solo aplica para usuario demo. */
-export const resetDemoAssemblies = (): void => {
+/** Actualiza solo wizard_step de una asamblea (persistencia de fase). */
+export const updateAssemblyWizardStep = (id: string, step: WizardStep, phId?: string) => {
+  return updateAssembly(id, (a) => ({ ...a, wizard_step: step }), phId);
+};
+
+/** Restablece asambleas demo del PH dado. urban-tower: borra y recarga seed. PHs custom: borra todo. */
+export const resetDemoAssemblies = (phId?: string): void => {
   if (typeof window === "undefined" || !isDemoUser()) return;
+  const pid = phId ?? getCurrentPhId();
   try {
-    localStorage.removeItem(STORAGE_KEY_DEMO);
-    localStorage.removeItem(STORAGE_KEY_DEMO + "_v");
+    const key = getStorageKey(pid);
+    localStorage.removeItem(key);
+    localStorage.removeItem(key + "_v");
   } catch {
     // ignore
   }

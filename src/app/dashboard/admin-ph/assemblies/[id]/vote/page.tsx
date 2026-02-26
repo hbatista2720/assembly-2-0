@@ -31,12 +31,9 @@ export default function AssemblyVotePage() {
         <Link className="btn btn-ghost" href={`/dashboard/admin-ph/assemblies/${encodeURIComponent(assembly.id)}`}>
           Detalle de asamblea
         </Link>
-        <Link className="btn" href={`/dashboard/admin-ph/monitor/${encodeURIComponent(assembly.id)}`}>
+        <Link className="btn btn-primary" href={`/dashboard/admin-ph/monitor/${encodeURIComponent(assembly.id)}`}>
           Monitor Back Office
         </Link>
-        <a className="btn btn-primary" href={`/presenter/demo-token?assemblyId=${encodeURIComponent(assembly.id)}`} target="_blank" rel="noopener noreferrer">
-          Vista presentación
-        </a>
       </div>
 
       <div className="card" style={{ marginTop: "18px" }}>

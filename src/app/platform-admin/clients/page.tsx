@@ -10,6 +10,7 @@ type ClientRecord = {
   status: "Activo" | "Suspendido" | "Cancelado";
   expiresAt: string;
   buildings: number;
+  tipoComunidad?: string;
 };
 
 const SEED_CLIENTS: ClientRecord[] = [
@@ -70,9 +71,9 @@ export default function ClientsPage() {
         <a href="/dashboard/admin" className="btn btn-ghost">
           ← Volver al Dashboard
         </a>
-        <h1 style={{ margin: "12px 0 0" }}>Gestión de Clientes (PH)</h1>
+        <h1 style={{ margin: "12px 0 0" }}>Gestión de Comunidades</h1>
         <p className="muted" style={{ marginTop: "6px" }}>
-          Estado de suscripción, vencimientos y acciones por cliente.
+          Estado de suscripción, tipo de propiedad, vencimientos y acciones por comunidad.
         </p>
       </div>
 
@@ -82,7 +83,7 @@ export default function ClientsPage() {
         ) : (
           <div className="table" style={{ "--table-columns": "1.6fr 1fr 1fr 1fr 1fr" } as React.CSSProperties}>
             <div className="table-row table-header">
-              <span>Cliente</span>
+              <span>Comunidad</span>
               <span>Plan</span>
               <span>Estado</span>
               <span>Vence</span>
@@ -93,7 +94,7 @@ export default function ClientsPage() {
                 <span>
                   <strong>{client.name}</strong>
                   <div className="muted" style={{ fontSize: "12px" }}>
-                    {client.buildings} PH
+                    {client.buildings} {client.buildings === 1 ? "comunidad" : "comunidades"}
                   </div>
                 </span>
                 <span>{client.plan}</span>

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateUnits } from "../../../../lib/monitoringMock";
+import { applyTopicVotes, generateUnits } from "../../../../lib/monitoringMock";
 
 export async function GET(request: NextRequest) {
   const assemblyId = request.nextUrl.searchParams.get("assemblyId") || "demo";
   const demo = request.nextUrl.searchParams.get("demo") === "1" || request.nextUrl.searchParams.get("demo") === "true";
-  const units = generateUnits(assemblyId, demo);
+  const topicId = request.nextUrl.searchParams.get("topicId") ?? null;
+  const topicTitle = request.nextUrl.searchParams.get("topicTitle") ?? null;
+  let units = generateUnits(assemblyId, demo);
+  units = applyTopicVotes(units, topicId, topicTitle);
   return NextResponse.json({ assemblyId, units });
 }

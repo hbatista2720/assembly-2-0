@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getDemoResidents } from "../../lib/demoResidentsStore";
+import { ensureDemoResident, getDemoResidents, setDemoResidentChatbotSessionActiveByEmail } from "../../lib/demoResidentsStore";
 
 const DEMO_RESIDENT_EMAILS = [
   "residente1@demo.assembly2.com",
@@ -32,7 +32,7 @@ export default function ChatPage() {
   const [chatRole, setChatRole] = useState<"admin" | "junta" | "residente" | "demo" | "">("");
   const [residentEmailValidated, setResidentEmailValidated] = useState(false);
   type ChatCard = "votacion" | "asambleas" | "calendario" | "tema" | "poder";
-  const [chatMessages, setChatMessages] = useState<Array<{ from: "bot" | "user"; text: string; card?: ChatCard }>>([]);
+  const [chatMessages, setChatMessages] = useState<Array<{ from: "bot" | "user"; text: string; card?: ChatCard; link?: string }>>([]);
   const MAX_VOTE_MODIFICATIONS = 2;
   const [residentVoteSent, setResidentVoteSent] = useState(false);
   const [residentLastVote, setResidentLastVote] = useState<"Sí" | "No" | "Abstengo" | null>(null);
@@ -130,6 +130,35 @@ export default function ChatPage() {
       })
       .catch(() => {});
   }, [chatRole, residentEmailValidated, residentProfile?.organization_id]);
+
+  useEffect(() => {
+    if (chatRole !== "residente" || !residentEmailValidated || typeof window === "undefined") return;
+    const email = localStorage.getItem("assembly_resident_email");
+    if (!email) return;
+    ensureDemoResident(email);
+    const updated = setDemoResidentChatbotSessionActiveByEmail(email, true);
+    if (updated) window.dispatchEvent(new CustomEvent("admin-ph-residents-changed"));
+  }, [chatRole, residentEmailValidated]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const markInactive = () => {
+      const email = localStorage.getItem("assembly_resident_email");
+      if (!email) return;
+      const updated = setDemoResidentChatbotSessionActiveByEmail(email, false);
+      if (updated) window.dispatchEvent(new CustomEvent("admin-ph-residents-changed"));
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") markInactive();
+    };
+    const onBeforeUnload = () => markInactive();
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, []);
 
   useEffect(() => {
     if (chatRole !== "residente" || !residentEmailValidated) return;
@@ -242,8 +271,8 @@ export default function ChatPage() {
       .catch(() => {});
   }, [chatRole, residentEmailValidated]);
 
-  const pushBotMessage = (text: string) => {
-    setChatMessages((prev) => [...prev, { from: "bot", text }]);
+  const pushBotMessage = (text: string, opts?: { link?: string }) => {
+    setChatMessages((prev) => [...prev, { from: "bot", text, link: opts?.link }]);
   };
 
   const pushUserMessage = (text: string) => {
@@ -495,7 +524,42 @@ export default function ChatPage() {
       return;
     }
 
-    pushBotMessage("Listo. Te enviamos el acceso de demo.");
+    if (chatRole === "admin" || chatRole === "demo") {
+      fetch("/api/demo/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailLower }),
+      })
+        .then((res) => res.json().then((data) => ({ status: res.status, data })))
+        .then(({ status, data }) => {
+          if (status === 429) {
+            pushBotMessage("Demasiadas solicitudes. Intenta de nuevo en unos minutos o escribe a soporte.");
+            setChatStep(8);
+            setChatInput("");
+            return;
+          }
+          if (data?.success) {
+            if (data.already_exists) {
+              pushBotMessage("Ya tienes un demo activo. Entra con tu correo aquí:");
+            } else {
+              pushBotMessage("Tu demo está listo. Entra con este correo en el enlace:");
+            }
+            pushBotMessage("Entrar al demo →", { link: "/login" });
+          } else {
+            pushBotMessage(data?.error || "No pudimos preparar tu demo ahora. Intenta más tarde o escribe a soporte.");
+          }
+          setChatStep(8);
+          setChatInput("");
+        })
+        .catch(() => {
+          pushBotMessage("No pudimos preparar tu demo ahora. Intenta más tarde o escribe a soporte.");
+          setChatStep(8);
+          setChatInput("");
+        });
+      return;
+    }
+
+    pushBotMessage("Listo. Ya tengo tu correo y te enviaremos el acceso.");
     setChatStep(8);
     setChatInput("");
   };
@@ -643,7 +707,13 @@ export default function ChatPage() {
                         : "1px solid rgba(148,163,184,0.12)",
                   }}
                 >
-                  {message.text}
+                  {message.from === "bot" && message.link ? (
+                    <Link href={message.link} className="chat-ios btn-dialog btn-dialog-primary" style={{ display: "inline-block" }}>
+                      {message.text || "Entrar al demo →"}
+                    </Link>
+                  ) : (
+                    message.text
+                  )}
                 </div>
               )}
               {message.from === "bot" && message.card && (
@@ -1144,6 +1214,10 @@ export default function ChatPage() {
                   const userId = localStorage.getItem("assembly_user_id");
                   const email = localStorage.getItem("assembly_resident_email") || localStorage.getItem("assembly_email");
                   const organizationId = localStorage.getItem("assembly_organization_id");
+                  if (email) {
+                    const updated = setDemoResidentChatbotSessionActiveByEmail(email, false);
+                    if (updated) window.dispatchEvent(new CustomEvent("admin-ph-residents-changed"));
+                  }
                   const payload: Record<string, string | null | undefined> = {
                     assembly_id: null,
                     resident_name: residentProfile?.resident_name ?? null,

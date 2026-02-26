@@ -132,6 +132,15 @@ PENDIENTE:
 2. Revisar Chatbot (FASE 2) - Dar aprobación o feedback
 3. Esperar que Coder resuelva bloqueador de FASE 3
 4. Probar login con los 3 usuarios de prueba
+5. Validar columna Chatbot Online: residente entra a /residentes/chat → debe mostrar "Activo" en Propietarios; al cerrar sesión → "Inactivo"
+```
+
+### Para CONTRALOR:
+```
+VALIDAR – Chatbot Online (Coder implementó 20 Feb):
+- Columna "Activo/Online" en Propietarios (Dashboard Admin PH). Indica si el residente está conectado al chatbot.
+- En modo demo: residente entra a /residentes/chat → muestra "Activo"; cierra sesión → "Inactivo".
+- Marketing y QA deben validar UX y funcionamiento. Contralor audita cuando ambos reporten.
 ```
 
 ### Para ARQUITECTO:
@@ -143,9 +152,11 @@ Plugins Legales pospuestos para Fase 2.
 
 ### Para MARKETING:
 ```
-NINGUNA ACCIÓN REQUERIDA
-Landing Page y pricing ya implementados.
-Copy listo para producción.
+VALIDAR – Chatbot Online / Activo:
+1. Columna "Activo/Online" en Propietarios (Dashboard Admin PH → Residentes): indica si el residente está conectado al chatbot en tiempo real.
+2. En modo demo: cuando un residente (ej. residente1@demo.assembly2.com) entra a /residentes/chat y valida su correo, debe aparecer "Activo" en la columna. Al cerrar sesión o cerrar la pestaña, debe pasar a "Inactivo".
+3. Filtro "Chatbot: Activo/Online" / "Chatbot: Inactivo" para filtrar residentes por estado de conexión.
+4. Verificar UX y copy de la columna y filtros. Informar al Contralor al validar.
 ```
 
 ---
@@ -247,6 +258,8 @@ Copy listo para producción.
 ```
 [FECHA] [DESCRIPCIÓN DEL AVANCE]
 ────────────────────────────────────────
+20 Feb | ✅ Chatbot Online/Activo: Columna "Activo/Online" en Propietarios. Detecta cuando residente entra al chatbot (setDemoResidentChatbotSessionActiveByEmail). Al validar en /residentes/chat → Activo; al cerrar sesión/visible → Inactivo. Filtro Chatbot: Activo/Online | Inactivo. Contralor y Marketing informados para validar.
+26 Ene | ✅ .cursorignore creado en raíz del proyecto (Coder/INSTRUCCIONES_CURSORIGNORE_ESTABILIDAD.md). Excluye node_modules, .next, .npm-cache, out, build, *.log, .DS_Store. Contralor informado.
 26 Ene | Dashboard Henry §5 y §7 **100%**: Monitor VPS, CRM campañas (105_platform_campaigns),
        | métricas negocio, export CSV leads, ejecutar campañas (placeholder). Ver QA_REPORTE §8.
 26 Ene | Dashboard Henry – Tickets: tabla platform_tickets (104_platform_tickets.sql),

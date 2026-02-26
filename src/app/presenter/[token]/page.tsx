@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { getDemoResidents, isDemoResidentsContext } from "../../../lib/demoResidentsStore";
@@ -7,6 +8,21 @@ import { findAssembly } from "../../../lib/assembliesStore";
 
 const OVERRIDES_STORAGE_PREFIX = "assembly_monitor_overrides_";
 const CURRENT_TOPIC_STORAGE_PREFIX = "assembly_monitor_current_topic_";
+const ASSEMBLY_STARTED_AT_PREFIX = "assembly_monitor_started_at_";
+const ASSEMBLY_FIRST_CALL_PREFIX = "assembly_monitor_first_call_";
+const ASSEMBLY_CONVOCATION_APPROVED_PREFIX = "assembly_monitor_convocation_approved_";
+const ASSEMBLY_ORDER_OF_DAY_PREFIX = "assembly_monitor_order_of_day_";
+
+function loadTimelineFromStorage(assemblyId: string) {
+  if (typeof window === "undefined") return { startedAt: null, firstCallAt: null, convocationApproved: null as "primera" | "segunda" | null, orderOfDayApproved: null as "votacion_total" | "asentimiento" | null };
+  const startedAt = localStorage.getItem(ASSEMBLY_STARTED_AT_PREFIX + assemblyId);
+  const firstCallAt = localStorage.getItem(ASSEMBLY_FIRST_CALL_PREFIX + assemblyId);
+  const convV = localStorage.getItem(ASSEMBLY_CONVOCATION_APPROVED_PREFIX + assemblyId);
+  const convocationApproved = convV === "primera" || convV === "segunda" ? convV : null;
+  const orderV = localStorage.getItem(ASSEMBLY_ORDER_OF_DAY_PREFIX + assemblyId);
+  const orderOfDayApproved = orderV === "votacion_total" || orderV === "asentimiento" ? orderV : (orderV === "voto" ? "votacion_total" : orderV === "verbal" ? "asentimiento" : null);
+  return { startedAt, firstCallAt, convocationApproved, orderOfDayApproved };
+}
 
 function loadCurrentTopicFromStorage(assemblyId: string): { topicId: string; topicTitle: string } | null {
   if (typeof window === "undefined") return null;
@@ -70,26 +86,58 @@ type PresenterData = {
   topics?: { id: string; label: string }[];
 };
 
+/** Mismos colores que Monitor Back Office: casillas bien visibles en tema oscuro. */
 const getUnitBg = (u: Unit) => {
-  if (u.paymentStatus === "MORA") return "rgba(180, 83, 9, 0.18)";
-  if (!u.isPresent) return "rgba(148, 163, 184, 0.14)";
-  if (u.voteValue === "NO") return "rgba(239, 68, 68, 0.1)";
-  if (u.voteValue) return "rgba(16, 185, 129, 0.14)";
-  return "rgba(234, 179, 8, 0.16)";
+  if (u.paymentStatus === "MORA") return "#b45309";
+  if (!u.isPresent) return "#94a3b8";
+  if (u.voteValue === "NO") return "#dc2626";
+  if (u.voteValue) return "#10b981";
+  return "#eab308";
 };
 
-const getVoteIcon = (u: Unit) => {
-  if (!u.voteValue) return null;
-  if (u.voteValue === "SI") return "✅";
-  if (u.voteValue === "NO") return "❌";
-  return "⚪";
-};
+const getUnitBorderColor = (u: Unit) => getUnitBg(u);
 
-const getMethodIcon = (u: Unit) => {
-  if (u.voteMethod === "MANUAL") return "📱";
-  if (u.hasFaceId) return "🔒";
+/* Iconos SVG igual que vista tablero Back Office (mejor contraste en tema oscuro). */
+const IconCheck = () => (
+  <span className="presenter-unit-icon presenter-unit-icon-si" title="Votó SI" aria-hidden>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+  </span>
+);
+const IconCross = () => (
+  <span className="presenter-unit-icon presenter-unit-icon-no" title="Votó NO" aria-hidden>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+  </span>
+);
+const IconCircle = () => (
+  <span className="presenter-unit-icon presenter-unit-icon-abst" title="Abstención" aria-hidden>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="9" /></svg>
+  </span>
+);
+const IconManual = () => (
+  <span className="presenter-unit-icon presenter-unit-icon-manual" title="Voto manual" aria-hidden>
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z" /><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" /></svg>
+  </span>
+);
+const IconLock = () => (
+  <span className="presenter-unit-icon presenter-unit-icon-faceid" title="Face ID activo" aria-hidden>
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>
+  </span>
+);
+
+function getVoteIcon(u: Unit): ReactNode {
+  if (!u.isPresent || u.paymentStatus === "MORA" || !u.voteValue) return null;
+  if (u.voteValue === "SI") return <IconCheck />;
+  if (u.voteValue === "NO") return <IconCross />;
+  return <IconCircle />;
+}
+
+function getMethodIcon(u: Unit): ReactNode {
+  if (!u.isPresent) return null;
+  if (u.paymentStatus === "MORA") return <IconLock />;
+  if (u.voteMethod === "MANUAL") return <IconManual />;
+  if (u.hasFaceId) return <IconLock />;
   return null;
-};
+}
 
 function formatAssemblyDate(dateStr: string | undefined): string {
   if (!dateStr) return "";
@@ -113,6 +161,10 @@ export default function PresenterView() {
   const [filterTopic, setFilterTopic] = useState<string>("all");
   const [localOverrides, setLocalOverrides] = useState<Record<string, { voteValue: "SI" | "NO" | "ABSTENCION" }>>({});
   const [syncTopic, setSyncTopic] = useState<{ topicId: string; topicTitle: string } | null>(null);
+  const [timeline, setTimeline] = useState(() =>
+    typeof window !== "undefined" ? loadTimelineFromStorage(new URLSearchParams(window.location.search).get("assemblyId") || "demo") : loadTimelineFromStorage("demo")
+  );
+  const [abandons, setAbandons] = useState<{ unit?: string; abandoned_at?: string }[]>([]);
 
   const assemblyId = assemblyIdFromUrl ?? data?.assemblyId ?? "demo";
   const isDemo = token === "demo-token" && typeof window !== "undefined" && isDemoResidentsContext();
@@ -185,15 +237,22 @@ export default function PresenterView() {
     };
   }, [effectiveUnits, data?.votation?.results]);
 
+  /** Unidades que abandonaron: no cuentan como presentes (igual que Monitor Back Office). */
+  const abandonedUnitCodes = useMemo(
+    () => new Set<string>(abandons.map((e) => e.unit).filter((u): u is string => !!u)),
+    [abandons]
+  );
+
   const quorumDisplay = useMemo(() => {
     if (isDemo && effectiveUnits.length > 0) {
       const total = effectiveUnits.length;
-      const present = effectiveUnits.filter((u) => u.isPresent).length;
-      const percentage = total ? Math.round((present / total) * 1000) / 10 : 0;
-      return { percentage, achieved: percentage >= 51, present, total };
+      const presentRaw = effectiveUnits.filter((u) => u.isPresent).length;
+      const present = effectiveUnits.filter((u) => u.isPresent && !abandonedUnitCodes.has(u.code)).length;
+      const percentage = total ? Math.round((Math.min(present, total) / total) * 1000) / 10 : 0;
+      return { percentage, achieved: percentage >= 50, present, total };
     }
     return data?.quorum ?? null;
-  }, [isDemo, effectiveUnits, data?.quorum]);
+  }, [isDemo, effectiveUnits, abandonedUnitCodes, data?.quorum]);
 
   const detailCounts = useMemo(() => {
     const list = effectiveUnits;
@@ -214,6 +273,38 @@ export default function PresenterView() {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const refreshTimeline = () => setTimeline(loadTimelineFromStorage(assemblyId));
+    refreshTimeline();
+    const interval = setInterval(refreshTimeline, 3000);
+    return () => clearInterval(interval);
+  }, [assemblyId]);
+
+  useEffect(() => {
+    let active = true;
+    const loadAbandons = async () => {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const hasValidAssemblyId = typeof assemblyId === "string" && uuidRegex.test(assemblyId);
+      const orgId = typeof window !== "undefined" ? localStorage.getItem("assembly_organization_id") : null;
+      const url = hasValidAssemblyId
+        ? `/api/resident-abandon?assemblyId=${encodeURIComponent(assemblyId)}`
+        : orgId
+          ? `/api/resident-abandon?organizationId=${encodeURIComponent(orgId)}`
+          : null;
+      if (!url) return;
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const json = await res.json();
+      if (active && Array.isArray(json?.events)) setAbandons(json.events);
+    };
+    loadAbandons();
+    const interval = setInterval(loadAbandons, 8000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [assemblyId]);
 
   useEffect(() => {
     let active = true;
@@ -242,7 +333,7 @@ export default function PresenterView() {
     }
     let active = true;
     const loadDemoUnits = async () => {
-      const res = await fetch(`/api/monitor/units?assemblyId=demo&demo=1`);
+      const res = await fetch(`/api/monitor/units?assemblyId=${encodeURIComponent(assemblyId)}&demo=1`);
       if (!res.ok) return;
       const json = await res.json();
       let list: Unit[] = json.units ?? [];
@@ -263,12 +354,12 @@ export default function PresenterView() {
       if (active) setDemoMergedUnits(list);
     };
     loadDemoUnits();
-    const interval = setInterval(loadDemoUnits, 8000);
+    const interval = setInterval(loadDemoUnits, 5000);
     return () => {
       active = false;
       clearInterval(interval);
     };
-  }, [isDemo]);
+  }, [isDemo, assemblyId]);
 
   return (
     <div className="presenter-root">
@@ -327,6 +418,57 @@ export default function PresenterView() {
             </div>
           ))}
         </div>
+
+        <div className="panel presenter-timeline">
+          <div className="panel-title">Línea de tiempo · Etapas</div>
+          <div className="presenter-timeline-steps">
+            <div className={`presenter-timeline-step ${timeline.startedAt ? "done" : "pending"}`}>
+              <span className="presenter-timeline-dot" />
+              <span className="presenter-timeline-label">Inicio de asamblea</span>
+              {timeline.startedAt ? (
+                <span className="presenter-timeline-time">{new Date(timeline.startedAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+              ) : (
+                <span className="presenter-timeline-muted">No registrado</span>
+              )}
+            </div>
+            <div className={`presenter-timeline-step ${timeline.firstCallAt ? "done" : "pending"}`}>
+              <span className="presenter-timeline-dot" />
+              <span className="presenter-timeline-label">Primera Convocatoria</span>
+              {timeline.firstCallAt ? (
+                <span className="presenter-timeline-time">{new Date(timeline.firstCallAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}</span>
+              ) : (
+                <span className="presenter-timeline-muted">Pendiente</span>
+              )}
+            </div>
+            <div className={`presenter-timeline-step ${timeline.convocationApproved ? "done" : "pending"}`}>
+              <span className="presenter-timeline-dot" />
+              <span className="presenter-timeline-label">Quórum aprobado</span>
+              {timeline.convocationApproved ? (
+                <span className="presenter-timeline-time">{timeline.convocationApproved === "primera" ? "Primera convocatoria" : "Segunda convocatoria"}</span>
+              ) : (
+                <span className="presenter-timeline-muted">Pendiente</span>
+              )}
+            </div>
+            <div className={`presenter-timeline-step ${timeline.orderOfDayApproved ? "done" : "pending"}`}>
+              <span className="presenter-timeline-dot" />
+              <span className="presenter-timeline-label">Orden del día aprobado</span>
+              {timeline.orderOfDayApproved ? (
+                <span className="presenter-timeline-time">{timeline.orderOfDayApproved === "votacion_total" ? "Votación Total" : "Por Asentimiento"}</span>
+              ) : (
+                <span className="presenter-timeline-muted">Pendiente</span>
+              )}
+            </div>
+            <div className={`presenter-timeline-step ${timeline.orderOfDayApproved ? "done" : "pending"}`}>
+              <span className="presenter-timeline-dot" />
+              <span className="presenter-timeline-label">Fase de votación de temas</span>
+              {timeline.orderOfDayApproved ? (
+                <span className="presenter-timeline-time">En curso</span>
+              ) : (
+                <span className="presenter-timeline-muted">Tras aprobar orden del día</span>
+              )}
+            </div>
+          </div>
+        </div>
       </section>
 
       <section className="presenter-units-section">
@@ -366,7 +508,11 @@ export default function PresenterView() {
             <div
               key={unit.id}
               className="presenter-unit-cell"
-              style={{ backgroundColor: getUnitBg(unit) }}
+              style={{
+                backgroundColor: getUnitBg(unit),
+                border: `2px solid ${getUnitBorderColor(unit)}`,
+                color: "#fff",
+              }}
               title={`${unit.code} · ${unit.owner}`}
             >
               <div className="presenter-unit-code">{unit.code}</div>
@@ -514,6 +660,44 @@ export default function PresenterView() {
           font-size: 13px;
           color: #e2e8f0;
         }
+        .presenter-timeline {
+          grid-column: 1 / -1;
+        }
+        .presenter-timeline-steps {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16px 24px;
+          align-items: flex-start;
+        }
+        .presenter-timeline-step {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-size: 13px;
+        }
+        .presenter-timeline-step .presenter-timeline-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          flex-shrink: 0;
+          background: rgba(148, 163, 184, 0.4);
+        }
+        .presenter-timeline-step.done .presenter-timeline-dot {
+          background: #10b981;
+          box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+        }
+        .presenter-timeline-step .presenter-timeline-label {
+          color: #e2e8f0;
+          font-weight: 500;
+        }
+        .presenter-timeline-step .presenter-timeline-time {
+          color: #10b981;
+          font-weight: 600;
+        }
+        .presenter-timeline-step .presenter-timeline-muted {
+          color: #64748b;
+          font-size: 12px;
+        }
         .presenter-units-section {
           margin-top: 24px;
           padding: 20px;
@@ -587,18 +771,32 @@ export default function PresenterView() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          border: 1px solid rgba(148, 163, 184, 0.2);
-          color: #0f172a;
           font-weight: 600;
+          color: #fff !important;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.3);
         }
         .presenter-unit-code {
           font-size: 11px;
           line-height: 1.2;
+          color: #fff !important;
         }
         .presenter-unit-icons {
-          font-size: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 3px;
           margin-top: 2px;
         }
+        .presenter-unit-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .presenter-unit-icon.presenter-unit-icon-si { color: #6ee7b7; }
+        .presenter-unit-icon.presenter-unit-icon-no { color: #fca5a5; }
+        .presenter-unit-icon.presenter-unit-icon-abst { color: #e2e8f0; }
+        .presenter-unit-icon.presenter-unit-icon-manual { color: #a5b4fc; }
+        .presenter-unit-icon.presenter-unit-icon-faceid { color: rgba(255,255,255,0.9); }
         .presenter-units-stats {
           margin-top: 12px;
           font-size: 13px;

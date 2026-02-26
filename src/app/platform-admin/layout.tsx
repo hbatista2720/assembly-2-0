@@ -6,7 +6,7 @@ export default function PlatformAdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <main className="container">
+    <main className="container platform-admin-container">
       <PlatformAdminShell>{children}</PlatformAdminShell>
     </main>
   );

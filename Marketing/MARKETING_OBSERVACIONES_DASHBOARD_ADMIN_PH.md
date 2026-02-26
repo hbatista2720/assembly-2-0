@@ -243,6 +243,20 @@
 
 ---
 
+## ✅ VALIDACIÓN PENDIENTE – Chatbot Online (20 Feb 2026)
+
+**Coder implementó:** Columna "Activo/Online" en Propietarios (Dashboard Admin PH → Residentes).
+
+**Para Marketing validar:**
+1. **Columna:** Indica si el residente está conectado al chatbot. Valores: "Activo" (verde, con punto), "Inactivo" (gris), "—" (no registrado).
+2. **Filtro:** "Chatbot: Activo/Online" / "Chatbot: Inactivo" para filtrar por estado.
+3. **Prueba en demo:** Entrar como admin demo → Propietarios. En otra pestaña, ir a /residentes/chat con residente1@demo.assembly2.com. Validar correo → debe aparecer "Activo" en la fila de ese residente. Cerrar sesión en el chatbot → debe pasar a "Inactivo".
+4. **UX y copy:** Verificar que la etiqueta "Activo/Online" y el filtro sean claros para el administrador. Informar al Contralor al finalizar.
+
+**Contralor informado.** Registro en Contralor_Desarrollo/ESTATUS_AVANCE.md.
+
+---
+
 ## 📂 REFERENCIAS
 
 - **Contralor/ESTATUS_AVANCE.md** — Bloque "Para CODER – Dashboard Admin PH": instrucción al Coder, reglas R1–R8 y estado de implementación (qué está aplicado por el Coder).

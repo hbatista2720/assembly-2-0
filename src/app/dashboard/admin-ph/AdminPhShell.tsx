@@ -54,6 +54,12 @@ const NavIcons: Record<string, () => JSX.Element> = {
   add: () => (
     <svg viewBox="0 0 24 24" style={{ ...iconStyle, width: 20, height: 20 }} fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
   ),
+  cart: () => (
+    <svg viewBox="0 0 24 24" style={iconStyle} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+    </svg>
+  ),
 };
 
 function getInitials(email: string): string {
@@ -95,62 +101,104 @@ type NavItem = {
   match: (pathname: string) => boolean;
   requiresManageTeam?: boolean;
   showWhenNoPh?: boolean;
+  /** Mostrar también cuando estamos en una ruta de módulo PH (proceso-asamblea, owners, etc.) aunque no haya PH seleccionado, para poder navegar. */
+  showWhenInPhRoute?: boolean;
 };
 
+const PH_MODULE_PATHS = [
+  "/dashboard/admin-ph/proceso-asamblea",
+  "/dashboard/admin-ph/owners",
+  "/dashboard/admin-ph/assemblies",
+  "/dashboard/admin-ph/monitor",
+  "/dashboard/admin-ph/acts",
+  "/dashboard/admin-ph/assembly",
+  "/dashboard/admin-ph/reports",
+  "/dashboard/admin-ph/team",
+  "/dashboard/admin-ph/settings",
+  "/dashboard/admin-ph/support",
+] as const;
+
+function isInPhModuleRoute(pathname: string): boolean {
+  return PH_MODULE_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard/admin-ph", label: "Dashboard principal", iconKey: "dashboard", match: (p) => p === "/dashboard/admin-ph", showWhenNoPh: true },
-  { href: "/dashboard/admin-ph", label: "Tus propiedades", iconKey: "building", match: (p) => p === "/dashboard/admin-ph", showWhenNoPh: true },
-  { href: "/dashboard/admin-ph/subscription", label: "Modificar suscripciones", iconKey: "document", match: (p) => p.startsWith("/dashboard/admin-ph/subscription"), showWhenNoPh: true },
-  { href: "/dashboard/admin-ph/owners", label: "Propietarios", iconKey: "users", match: (p) => p.startsWith("/dashboard/admin-ph/owners") },
-  { href: "/dashboard/admin-ph/assemblies", label: "Asambleas", iconKey: "calendar", match: (p) => p.startsWith("/dashboard/admin-ph/assemblies") },
-  { href: "/dashboard/admin-ph/monitor", label: "Monitor Back Office", iconKey: "monitor", match: (p) => p.startsWith("/dashboard/admin-ph/monitor") },
-  { href: "/dashboard/admin-ph/acts", label: "Actas", iconKey: "file", match: (p) => p.startsWith("/dashboard/admin-ph/acts") },
-  { href: "/dashboard/admin-ph/reports", label: "Reportes", iconKey: "chart", match: (p) => p.startsWith("/dashboard/admin-ph/reports") },
-  { href: "/dashboard/admin-ph/team", label: "Equipo", iconKey: "team", match: (p) => p.startsWith("/dashboard/admin-ph/team"), requiresManageTeam: true },
-  { href: "/dashboard/admin-ph/settings", label: "Configuración", iconKey: "settings", match: (p) => p.startsWith("/dashboard/admin-ph/settings") },
-  { href: "/dashboard/admin-ph/support", label: "Soporte", iconKey: "support", match: (p) => p.startsWith("/dashboard/admin-ph/support") },
+  { href: "/dashboard/admin-ph", label: "Dashboard principal", iconKey: "dashboard", match: (p) => p === "/dashboard/admin-ph", showWhenInPhRoute: true },
+  { href: "/dashboard/admin-ph", label: "Tus propiedades", iconKey: "building", match: (p) => p === "/dashboard/admin-ph", showWhenNoPh: true, showWhenInPhRoute: true },
+  { href: "/dashboard/admin-ph/subscription", label: "Suscripciones", iconKey: "document", match: (p) => p.startsWith("/dashboard/admin-ph/subscription"), showWhenNoPh: true },
+  { href: "/dashboard/admin-ph/reports", label: "Reportes", iconKey: "chart", match: (p) => p.startsWith("/dashboard/admin-ph/reports"), showWhenInPhRoute: true },
+  { href: "/dashboard/admin-ph/team", label: "Equipo", iconKey: "team", match: (p) => p.startsWith("/dashboard/admin-ph/team"), requiresManageTeam: true, showWhenInPhRoute: true },
+  { href: "/dashboard/admin-ph/settings", label: "Configuración", iconKey: "settings", match: (p) => p.startsWith("/dashboard/admin-ph/settings"), showWhenInPhRoute: true },
+  { href: "/dashboard/admin-ph/support", label: "Soporte", iconKey: "support", match: (p) => p.startsWith("/dashboard/admin-ph/support"), showWhenInPhRoute: true },
 ];
 
 /** Enlace(s) "Volver" según la ruta: primero al módulo, luego al Dashboard PH. En la base no se muestra enlace, sino título y subtítulo. */
-function getBackLinks(pathname: string): { href: string; label: string }[] {
+function getBackLinks(pathname: string, searchParams?: URLSearchParams | null): { href: string; label: string }[] {
   const base = "/dashboard/admin-ph";
   if (pathname === base) {
     return [];
+  }
+  // Propietarios: si viene del wizard, ofrecer volver al Proceso de Asamblea
+  if (pathname.startsWith(base + "/owners")) {
+    const from = searchParams?.get("from");
+    const assemblyId = searchParams?.get("assemblyId");
+    if (from === "proceso-asamblea") {
+      const wizardHref = assemblyId ? `${base}/proceso-asamblea?assemblyId=${assemblyId}` : base + "/proceso-asamblea";
+      return [
+        { href: wizardHref, label: "← Volver a Proceso de Asamblea" },
+        { href: base, label: "Panel de la Comunidad" },
+      ];
+    }
+    return [{ href: base, label: "← Volver al Panel de la Comunidad" }];
   }
   // Dentro del monitor de una asamblea (o abandonos / modificaciones) → listado Monitor (acción secundaria; la prioridad es "Volver al Monitor" en la página)
   if (pathname.startsWith(base + "/monitor/") && pathname !== base + "/monitor") {
     return [
       { href: base + "/monitor", label: "Listado Monitor" },
-      { href: base, label: "Dashboard PH" },
+      { href: base, label: "Panel de la Comunidad" },
+    ];
+  }
+  // Listado Monitor Back Office
+  if (pathname === base + "/monitor") {
+    return [{ href: base, label: "← Volver al Panel de la Comunidad" }];
+  }
+  // Proceso de Asamblea (wizard)
+  if (pathname.startsWith(base + "/proceso-asamblea")) {
+    if (pathname === base + "/proceso-asamblea") {
+      return [{ href: base, label: "← Volver al Panel de la Comunidad" }];
+    }
+    return [
+      { href: base, label: "← Volver al Panel de la Comunidad" },
+      { href: base + "/proceso-asamblea", label: "Proceso de Asamblea" },
     ];
   }
   // Listado asambleas o detalle/voto de una asamblea → volver a Asambleas
   if (pathname.startsWith(base + "/assemblies")) {
     if (pathname === base + "/assemblies") {
-      return [{ href: base, label: "← Volver al Dashboard" }];
+      return [{ href: base, label: "← Volver al Panel de la Comunidad" }];
     }
     return [
       { href: base + "/assemblies", label: "← Volver a Asambleas" },
-      { href: base, label: "Dashboard PH" },
+      { href: base, label: "Panel de la Comunidad" },
     ];
   }
   // Vista en vivo de una asamblea (Iniciar asamblea)
   if (pathname.startsWith(base + "/assembly/") && pathname.includes("/live")) {
     return [
       { href: base + "/assemblies", label: "← Volver a Asambleas" },
-      { href: base, label: "Dashboard PH" },
+      { href: base, label: "Panel de la Comunidad" },
     ];
   }
   // Suscripción > units-addon
   if (pathname.startsWith(base + "/subscription/") && pathname !== base + "/subscription") {
     return [
       { href: base + "/subscription", label: "← Volver a Suscripción" },
-      { href: base, label: "Dashboard PH" },
+      { href: base, label: "Panel de la Comunidad" },
     ];
   }
-  // Raíz de otros módulos (monitor list, subscription, acts, etc.)
+  // Raíz de otros módulos (monitor list, acts, reports, etc.) → volver al Panel de la Comunidad
   if (pathname.startsWith(base + "/")) {
-    return [{ href: base, label: "← Volver al Dashboard" }];
+    return [{ href: base, label: "← Volver al Panel de la Comunidad" }];
   }
   return [];
 }
@@ -223,6 +271,7 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<Record<string, boolean>>(ROLE_PERMISSIONS.ADMIN_PRINCIPAL);
   const [selectedPhId, setSelectedPhId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [titleUpdateKey, setTitleUpdateKey] = useState(0);
   const [cursorTooltip, setCursorTooltip] = useState<{ show: boolean; text: string; x: number; y: number }>({ show: false, text: "", x: 0, y: 0 });
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
@@ -232,12 +281,37 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
   const [organizationName, setOrganizationName] = useState("");
   const photoInputRef = useRef<HTMLInputElement>(null);
   const isDemo = searchParams.get("mode") === "demo" || (userEmail && userEmail.toLowerCase() === "demo@assembly2.com");
+  const DEMO_WELCOME_KEY = "assembly_demo_welcome_seen";
+  const [showDemoWelcome, setShowDemoWelcome] = useState(false);
 
-  const AVATAR_OPTIONS = ["👤", "🧑", "👩", "👨", "🧑‍💼", "👔"];
+  useEffect(() => {
+    if (!isDemo || typeof window === "undefined") return;
+    const seen = localStorage.getItem(DEMO_WELCOME_KEY);
+    if (seen !== "1") setShowDemoWelcome(true);
+  }, [isDemo]);
+
+  const closeDemoWelcome = () => {
+    setShowDemoWelcome(false);
+    if (typeof window !== "undefined") localStorage.setItem(DEMO_WELCOME_KEY, "1");
+  };
+
+  const AVATAR_OPTIONS = [
+    { id: "👤", label: "Usuario" },
+    { id: "🧑", label: "Persona" },
+    { id: "👩", label: "Persona" },
+    { id: "👨", label: "Persona" },
+    { id: "🧑‍💼", label: "Profesional" },
+    { id: "👩‍💼", label: "Profesional" },
+    { id: "👨‍💼", label: "Profesional" },
+    { id: "👔", label: "Ejecutivo" },
+    { id: "🤝", label: "Asamblea" },
+    { id: "📋", label: "Admin" },
+    { id: "🏢", label: "PH" },
+  ];
   const AVATAR_KEY = "assembly_admin_ph_avatar";
   const PHOTO_KEY = "assembly_admin_ph_photo";
   const ORG_NAME_KEY = "assembly_admin_ph_organization_name";
-  const MAX_PHOTO_SIZE = 800 * 1024;
+  const MAX_PHOTO_SIZE = 1024 * 1024;
 
   const showTooltip = (text: string, e: React.MouseEvent) =>
     setCursorTooltip({ show: true, text, x: e.clientX, y: e.clientY });
@@ -271,9 +345,24 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   useEffect(() => {
+    if (searchParams.get("embed") !== "1" || typeof window === "undefined") return;
+    const phIdFromUrl = searchParams.get("phId");
+    if (phIdFromUrl) {
+      sessionStorage.setItem("assembly_admin_selected_ph", phIdFromUrl);
+      setSelectedPhId(phIdFromUrl);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     const handler = () => setSelectedPhId(typeof window !== "undefined" ? sessionStorage.getItem("assembly_admin_selected_ph") : null);
     window.addEventListener("admin-ph-selected", handler);
     return () => window.removeEventListener("admin-ph-selected", handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setTitleUpdateKey((k) => k + 1);
+    window.addEventListener("admin-ph-title-update", handler);
+    return () => window.removeEventListener("admin-ph-title-update", handler);
   }, []);
 
   useEffect(() => {
@@ -281,6 +370,8 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
     const base = "/dashboard/admin-ph";
     if (pathname === base || pathname.startsWith(base + "/subscription")) return;
     if (pathname.startsWith(base + "/assemblies")) return;
+    if (pathname.startsWith(base + "/proceso-asamblea")) return;  // wizard: usa PH por defecto si no hay selección
+    if (pathname.startsWith(base + "/owners")) return;  // Propietarios: accesible desde wizard sin PH seleccionado
     if (pathname.startsWith(base + "/votations")) return;  // redirige a assemblies
     if (pathname.startsWith(base + "/assembly")) return;   // live: /assembly/[id]/live
     if (pathname.startsWith(base + "/monitor")) return;
@@ -381,13 +472,13 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const valid = file.type === "image/jpeg" || file.type === "image/jpg";
+    const valid = ["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.type);
     if (!valid) {
-      alert("Solo se permiten archivos JPG.");
+      alert("Usa una imagen JPG, PNG o WebP.");
       return;
     }
     if (file.size > MAX_PHOTO_SIZE) {
-      alert("La imagen no debe superar 800 KB. Comprímela o elige otra.");
+      alert("La imagen no debe superar 1 MB. Comprímela o elige otra.");
       return;
     }
     const reader = new FileReader();
@@ -403,7 +494,7 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
 
   const filteredNavItems = NAV_ITEMS.filter((item) => {
     if (item.requiresManageTeam && !permissions.manage_team) return false;
-    if (!selectedPhId) return !!item.showWhenNoPh;
+    if (!selectedPhId) return !!(item.showWhenNoPh || (item.showWhenInPhRoute && isInPhModuleRoute(pathname)));
     return true;
   });
 
@@ -417,6 +508,20 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
     document.addEventListener("click", close);
     return () => document.removeEventListener("click", close);
   }, [userMenuOpen]);
+
+  const isEmbedded = searchParams.get("embed") === "1";
+  const isProcesoWizard = pathname.startsWith("/dashboard/admin-ph/proceso-asamblea");
+  const hideSidebar = isEmbedded || isProcesoWizard;
+
+  if (hideSidebar) {
+    return (
+      <main className="container" style={{ maxWidth: "100%", padding: isProcesoWizard ? "24px" : "16px 20px" }}>
+        <section className="content-area admin-ph-content admin-ph-embed" style={{ display: "block" }}>
+          {children}
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="container">
@@ -438,7 +543,7 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
             {!sidebarCollapsed && (
               <div className="sidebar-brand">
                 <span className="sidebar-pill">Assembly 2.0</span>
-                <h3 className="sidebar-title">Admin PH</h3>
+                <h3 className="sidebar-title">Admin de Comunidad</h3>
                 <p className="sidebar-subtitle">Panel de administración</p>
               </div>
             )}
@@ -450,8 +555,12 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
               const goToDashboardPrincipal = (e: React.MouseEvent) => {
                 e.preventDefault();
                 const target = "/dashboard/admin-ph";
-                sessionStorage.removeItem("assembly_admin_selected_ph");
-                if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("admin-ph-selected"));
+                if (typeof window !== "undefined") {
+                  sessionStorage.removeItem("assembly_admin_selected_ph");
+                  sessionStorage.removeItem("assembly_admin_selected_ph_name");
+                  sessionStorage.removeItem("assembly_admin_from_cambiar_ph");
+                  window.dispatchEvent(new CustomEvent("admin-ph-selected"));
+                }
                 if (pathname === target) {
                   window.location.href = target;
                 } else {
@@ -595,23 +704,31 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
               </span>
             </div>
           )}
-          {pathname === "/dashboard/admin-ph" && (
-              <div className="admin-ph-page-title-block">
-                <h1 className="admin-ph-page-title">Dashboard Principal</h1>
-                <p className="admin-ph-page-subtitle">Resumen general de tu actividad de asambleas residentes e inquilinos</p>
-              </div>
-            )}
+          {pathname === "/dashboard/admin-ph" && (() => {
+              void titleUpdateKey;
+              const phName = selectedPhId && typeof window !== "undefined" ? sessionStorage.getItem("assembly_admin_selected_ph_name") : null;
+              const fromCambiarPh = !selectedPhId && typeof window !== "undefined" && sessionStorage.getItem("assembly_admin_from_cambiar_ph") === "1";
+              const title = selectedPhId ? (phName || "Comunidad") : (fromCambiarPh ? "Tus Comunidades" : "DASHBOARD PRINCIPAL");
+              return (
+                <div className="admin-ph-page-title-block">
+                  <span style={{ display: "inline-block", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--color-primary)", marginBottom: "6px", padding: "4px 10px", background: "rgba(99,102,241,0.15)", borderRadius: "6px" }}>Panel de la Comunidad</span>
+                  <h1 className="admin-ph-page-title">{title}</h1>
+                  <p className="admin-ph-page-subtitle">Dashboard principal de asambleas de residentes e inquilinos.</p>
+                </div>
+              );
+            })()}
           {pathname !== "/dashboard/admin-ph" && (() => {
-            const backLinks = getBackLinks(pathname);
+            const backLinks = getBackLinks(pathname, searchParams);
             if (backLinks.length === 0) return null;
             const isBack = (label: string) => label.startsWith("←") || label.toLowerCase().includes("volver");
+            const isPrimaryBack = backLinks.length >= 1 && isBack(backLinks[0].label) && backLinks[0].label.toLowerCase().includes("dashboard");
             return (
-              <div className="admin-ph-back-nav">
+              <div className={`admin-ph-back-nav ${isPrimaryBack ? "admin-ph-back-nav--prominent" : ""}`}>
                 {backLinks.map((b, i) => (
                   <Link
                     key={i}
                     href={b.href}
-                    className={`admin-ph-back-nav-link ${isBack(b.label) ? "admin-ph-back-nav-link--back" : "admin-ph-back-nav-link--dashboard"}`}
+                    className={`admin-ph-back-nav-link ${isBack(b.label) ? "admin-ph-back-nav-link--back" : "admin-ph-back-nav-link--dashboard"} ${i === 0 && isPrimaryBack ? "admin-ph-back-nav-link--primary" : ""}`}
                     scroll={true}
                   >
                     {isBack(b.label) ? (
@@ -634,6 +751,11 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
                     align-items: center;
                     gap: 10px;
                   }
+                  .admin-ph-back-nav--prominent {
+                    margin-bottom: 18px;
+                    padding-bottom: 14px;
+                    border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+                  }
                   .admin-ph-back-nav-link {
                     display: inline-flex;
                     align-items: center;
@@ -654,6 +776,19 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
                     color: #f1f5f9;
                     transform: translateY(-1px);
                   }
+                  .admin-ph-back-nav-link--primary {
+                    padding: 12px 20px;
+                    font-size: 15px;
+                    font-weight: 600;
+                    background: rgba(99, 102, 241, 0.2);
+                    border-color: rgba(99, 102, 241, 0.45);
+                    color: #c7d2fe;
+                  }
+                  .admin-ph-back-nav-link--primary:hover {
+                    background: rgba(99, 102, 241, 0.3);
+                    border-color: rgba(99, 102, 241, 0.6);
+                    color: #e0e7ff;
+                  }
                   .admin-ph-back-nav-link--back {
                     color: #94a3b8;
                   }
@@ -672,28 +807,36 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
             );
           })()}
 
-          {pathname === "/dashboard/admin-ph" && !selectedPhId && (
-            <div className="card admin-ph-dashboard-header dashboard-demo-card">
-              {isDemo && (
-                <div className="dashboard-demo-strip">
-                  <div className="dashboard-demo-strip-left">
-                    <span className="dashboard-demo-badge">Demo</span>
-                    <div className="dashboard-demo-message">
-                      <span className="dashboard-demo-title">Tu demo expira en 12 días</span>
-                      <span className="dashboard-demo-sub">Actualiza para desbloquear más asambleas y funciones.</span>
-                    </div>
-                  </div>
-                  <div className="dashboard-demo-time-block">
-                    <span className="dashboard-demo-days" aria-hidden>12 / 30 días</span>
-                    <div className="dashboard-demo-progress-wrap" role="progressbar" aria-valuenow={12} aria-valuemin={0} aria-valuemax={30} title="12 de 30 días restantes">
-                      <div className="dashboard-demo-progress-bar" style={{ width: "40%" }} />
-                    </div>
-                  </div>
-                  <Link className="dashboard-demo-cta btn btn-primary" href="/dashboard/admin-ph/subscription" scroll={true}>
-                    Actualizar plan
-                  </Link>
+          {showDemoWelcome && (
+            <div
+              className="profile-modal-overlay profile-modal--dark"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="demo-welcome-title"
+              onClick={closeDemoWelcome}
+              style={{ position: "fixed", inset: 0, zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)", padding: 16 }}
+            >
+              <div className="profile-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "440px", width: "100%" }}>
+                <div className="profile-modal-header">
+                  <h2 id="demo-welcome-title" style={{ margin: 0, fontSize: "1.2rem" }}>Bienvenido al demo</h2>
+                  <button type="button" onClick={closeDemoWelcome} aria-label="Cerrar" style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", color: "#94a3b8", lineHeight: 1 }}>×</button>
                 </div>
-              )}
+                <p style={{ margin: "0 0 12px", fontSize: "14px", lineHeight: 1.6 }}>
+                  Estás usando la <strong>versión demo</strong> de Assembly 2.0 con las siguientes condiciones:
+                </p>
+                <ul style={{ margin: "0 0 16px", paddingLeft: "20px", fontSize: "14px", lineHeight: 1.7 }}>
+                  <li><strong>50 residentes</strong> (propietarios/unidades)</li>
+                  <li><strong>1 crédito</strong> de asamblea disponible</li>
+                  <li><strong>15 días</strong> de prueba</li>
+                  <li>PH de ejemplo: <strong>Urban Tower</strong></li>
+                </ul>
+                <p className="muted" style={{ margin: 0, fontSize: "13px" }}>
+                  Los datos son de ejemplo. Para desbloquear más asambleas y funciones, actualiza el plan desde Suscripción.
+                </p>
+                <button type="button" className="btn btn-primary" style={{ marginTop: "20px" }} onClick={closeDemoWelcome}>
+                  Entendido
+                </button>
+              </div>
             </div>
           )}
 
@@ -737,28 +880,35 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
                 </div>
 
                 <div className="profile-modal-section" style={{ marginTop: "20px" }}>
-                  <span className="profile-modal-section-label">Foto de perfil</span>
-                  <span className="profile-modal-optional">JPG, máx. 800 KB</span>
+                  <span className="profile-modal-section-label">Foto o avatar</span>
+                  <span className="profile-modal-optional">JPG, PNG o WebP · máx. 1 MB</span>
                 </div>
                 <div className="profile-modal-photo-row">
-                  <div className="profile-modal-photo-preview">
+                  <div
+                    className="profile-modal-photo-preview profile-modal-photo-dropzone"
+                    onClick={() => !profilePhoto && photoInputRef.current?.click()}
+                    role={profilePhoto ? undefined : "button"}
+                    tabIndex={profilePhoto ? undefined : 0}
+                    onKeyDown={(e) => { if (!profilePhoto && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); photoInputRef.current?.click(); } }}
+                    aria-label={profilePhoto ? undefined : "Haz clic o arrastra una imagen"}
+                  >
                     {profilePhoto ? (
-                      <img src={profilePhoto} alt="Vista previa" />
+                      <img src={profilePhoto} alt="Tu foto" />
                     ) : (
-                      <span className="profile-modal-photo-placeholder">{profileAvatar}</span>
+                      <span className="profile-modal-photo-placeholder" style={{ fontSize: "36px" }}>{profileAvatar}</span>
                     )}
                   </div>
                   <div className="profile-modal-photo-actions">
                     <input
                       ref={photoInputRef}
                       type="file"
-                      accept=".jpg,.jpeg,image/jpeg"
+                      accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                       onChange={handlePhotoChange}
                       className="profile-modal-photo-input"
-                      aria-label="Subir foto JPG"
+                      aria-label="Subir imagen"
                     />
                     <button type="button" className="btn btn-ghost profile-modal-photo-btn" onClick={() => photoInputRef.current?.click()}>
-                      Subir foto JPG
+                      Subir imagen
                     </button>
                     {profilePhoto && (
                       <button type="button" className="btn btn-ghost profile-modal-photo-btn" onClick={removePhoto}>
@@ -767,20 +917,21 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
                     )}
                   </div>
                 </div>
-                <div className="profile-modal-section" style={{ marginTop: "12px" }}>
-                  <span className="profile-modal-section-label">Avatar (si no usas foto)</span>
+                <div className="profile-modal-section" style={{ marginTop: "16px" }}>
+                  <span className="profile-modal-section-label">Avatares predeterminados</span>
+                  <span className="profile-modal-optional">Si no usas foto</span>
                 </div>
-                <div className="profile-modal-avatar-row">
-                  {AVATAR_OPTIONS.map((emoji) => (
+                <div className="profile-modal-avatar-row profile-modal-avatar-row--modern">
+                  {AVATAR_OPTIONS.map((opt) => (
                     <button
-                      key={emoji}
+                      key={opt.id}
                       type="button"
-                      className={`profile-modal-avatar-option ${!profilePhoto && profileAvatar === emoji ? "selected" : ""}`}
-                      onClick={() => setProfileAvatar(emoji)}
-                      aria-label={`Avatar ${emoji}`}
-                      aria-pressed={!profilePhoto && profileAvatar === emoji}
+                      className={`profile-modal-avatar-option profile-modal-avatar-option--modern ${!profilePhoto && profileAvatar === opt.id ? "selected" : ""}`}
+                      onClick={() => setProfileAvatar(opt.id)}
+                      aria-label={`Avatar: ${opt.label}`}
+                      aria-pressed={!profilePhoto && profileAvatar === opt.id}
                     >
-                      {emoji}
+                      <span style={{ fontSize: "22px" }}>{opt.id}</span>
                     </button>
                   ))}
                 </div>
@@ -845,7 +996,80 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
             </div>
           )}
 
-          {children}
+          {showDemoWelcome && isDemo && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="demo-welcome-title"
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 10001,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(0,0,0,0.6)",
+                padding: 16,
+              }}
+              onClick={closeDemoWelcome}
+            >
+              <div
+                className="card"
+                style={{
+                  maxWidth: 440,
+                  width: "100%",
+                  padding: "24px",
+                  boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+                  border: "1px solid rgba(99, 102, 241, 0.35)",
+                  background: "linear-gradient(160deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98))",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+                  <h2 id="demo-welcome-title" style={{ margin: 0, fontSize: "1.25rem" }}>Bienvenido al demo</h2>
+                  <button type="button" onClick={closeDemoWelcome} aria-label="Cerrar" style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", color: "#94a3b8", lineHeight: 1 }}>×</button>
+                </div>
+                <p style={{ margin: "0 0 12px", fontSize: "14px", lineHeight: 1.55 }}>
+                  Estás en modo demostración con las siguientes condiciones:
+                </p>
+                <ul style={{ margin: "0 0 16px", paddingLeft: "20px", fontSize: "14px", lineHeight: 1.7, color: "#e2e8f0" }}>
+                  <li><strong>PH de ejemplo:</strong> Urban Tower (50 unidades)</li>
+                  <li><strong>Límite:</strong> 50 residentes, 1 crédito de asamblea</li>
+                  <li><strong>Prueba:</strong> 15 días</li>
+                </ul>
+                <p style={{ margin: "0 0 20px", fontSize: "13px", color: "#94a3b8" }}>
+                  Los datos son de ejemplo. Para desbloquear más asambleas y funciones, actualiza el plan desde Suscripción o el banner de demo.
+                </p>
+                <button type="button" className="btn btn-primary" onClick={closeDemoWelcome}>
+                  Entendido
+                </button>
+              </div>
+            </div>
+          )}
+
+          {pathname === "/dashboard/admin-ph" && !selectedPhId ? (
+            <div className="dashboard-widgets-group">
+              {isDemo && (
+                <div className="card admin-ph-dashboard-header dashboard-demo-card">
+                  <div className="dashboard-demo-strip">
+                    <div className="dashboard-demo-strip-left">
+                      <span className="dashboard-demo-badge">Demo</span>
+                      <div className="dashboard-demo-message">
+                        <span className="dashboard-demo-title">Versión demo · Plan 50 usuarios (1 crédito, expira en 15 días)</span>
+                        <span className="dashboard-demo-sub">Los datos son de ejemplo. Actualiza el plan para desbloquear más asambleas y funciones.</span>
+                      </div>
+                    </div>
+                    <Link className="dashboard-demo-cta btn btn-primary" href="/dashboard/admin-ph/subscription" scroll={true}>
+                      Actualizar plan
+                    </Link>
+                  </div>
+                </div>
+              )}
+              {children}
+            </div>
+          ) : (
+            <>{children}</>
+          )}
         </section>
 
         <AdminSupportChatWidget />

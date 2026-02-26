@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import PlatformAdminShell from "../../platform-admin/PlatformAdminShell";
 
 const KPI_FALLBACK = [
-  { label: "Funnel Conversión", value: "18.4%", note: "↑ +2.1% esta semana" },
+  { label: "Funnel Conversión", value: "18.4%", note: "Desde BD" },
+  { label: "Demos Activos", value: "—", note: "En curso" },
   { label: "Tickets Urgentes", value: "3", note: "2 requieren escalación" },
-  { label: "Clientes Activos", value: "45", note: "8 demos en curso" },
+  { label: "Clientes Activos", value: "45", note: "Desde BD" },
 ];
 
 const FUNNEL_STAGES_FALLBACK = [
@@ -85,18 +87,20 @@ export default function AdminInteligenteDashboard() {
       const total = leadsData.length;
       const qualified = leadsData.filter((l) => (l.funnel_stage || "").toLowerCase() !== "new_lead").length;
       const pct = total ? Math.round((qualified / total) * 1000) / 10 : 0;
-      const clientsCount = Array.isArray(clientsData) ? clientsData.length : 45;
+      const clientsCount = Array.isArray(clientsData) ? clientsData.length : 0;
       const demos = leadsData.filter((l) => (l.funnel_stage || "").toLowerCase() === "demo_active").length;
       return [
         { label: "Funnel Conversión", value: `${pct}%`, note: "Desde BD" },
+        { label: "Demos Activos", value: String(demos), note: "En demo dashboard" },
         { label: "Tickets Urgentes", value: "3", note: "2 requieren escalación" },
-        { label: "Clientes Activos", value: String(clientsCount), note: demos ? `${demos} demos en curso` : "8 demos en curso" },
+        { label: "Clientes Activos", value: String(clientsCount || 45), note: clientsCount ? "Desde BD" : "—" },
       ];
     }
     if (Array.isArray(clientsData) && clientsData.length > 0) {
       return [
         KPI_FALLBACK[0],
-        KPI_FALLBACK[1],
+        { label: "Demos Activos", value: "—", note: "Ver Funnel de leads" },
+        KPI_FALLBACK[2],
         { label: "Clientes Activos", value: String(clientsData.length), note: "Desde BD" },
       ];
     }
@@ -169,54 +173,8 @@ export default function AdminInteligenteDashboard() {
   };
 
   return (
-    <main className="container">
-      <div className="app-shell">
-        <aside className="sidebar">
-          <div>
-            <span className="pill">Assembly 2.0</span>
-            <h3 style={{ margin: "12px 0 4px" }}>Admin Plataforma</h3>
-            <p className="muted" style={{ margin: 0 }}>
-              Panel maestro de la operación
-            </p>
-          </div>
-          <nav style={{ display: "grid", gap: "10px" }}>
-            <a className="sidebar-link active" href="/dashboard/admin">
-              📊 Resumen ejecutivo
-            </a>
-            <a className="sidebar-link" href="/platform-admin/monitoring">
-              🖥️ Monitor VPS
-            </a>
-            <a className="sidebar-link" href="/platform-admin/clients">
-              👥 Gestión de clientes
-            </a>
-            <a className="sidebar-link" href="/platform-admin/business">
-              💹 Métricas de negocio
-            </a>
-            <a className="sidebar-link" href="/platform-admin/leads">
-              🎯 Funnel de leads
-            </a>
-            <a className="sidebar-link" href="/platform-admin/tickets">
-              🎫 Tickets inteligentes
-            </a>
-            <a className="sidebar-link" href="/platform-admin/clients">
-              👥 Clientes y demos
-            </a>
-            <a className="sidebar-link" href="/platform-admin/crm">
-              📣 CRM y campañas
-            </a>
-            <a className="sidebar-link" href="/platform-admin/chatbot-config">
-              🤖 Configuración Chatbot
-            </a>
-          </nav>
-          <div style={{ marginTop: "auto", display: "grid", gap: "10px" }}>
-            <a className="btn btn-ghost" href="/">
-              Volver a landing
-            </a>
-            <a className="btn btn-primary" href="/demo">Crear demo</a>
-          </div>
-        </aside>
-
-        <section className="content-area">
+    <main className="container platform-admin-container">
+      <PlatformAdminShell>
           <div className="card" style={{ padding: "20px", marginBottom: "20px" }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "center" }}>
               <div
@@ -269,7 +227,7 @@ export default function AdminInteligenteDashboard() {
                   Ver monitor VPS
                 </a>
                 <a className="btn btn-ghost" href="/platform-admin/clients">
-                  Abrir clientes
+                  Abrir comunidades
                 </a>
                 <a className="btn btn-primary" href="/platform-admin/leads?stage=demo_active">
                   Activar demo
@@ -391,9 +349,9 @@ export default function AdminInteligenteDashboard() {
             </div>
           </section>
 
-          <section id="clientes" className="section">
-            <h2 className="section-title">Clientes y Leads</h2>
-            <p className="section-subtitle">Salud de cuentas, upgrades y demos activas.</p>
+          <section id="comunidades" className="section">
+            <h2 className="section-title">Comunidades y Leads</h2>
+            <p className="section-subtitle">Salud de cuentas, tipo de propiedad, proceso de asambleas y demos activas.</p>
             <div className="grid grid-3">
               {clients.map((client) => (
                 <div key={client.name} className="card">
@@ -402,7 +360,7 @@ export default function AdminInteligenteDashboard() {
                   <div className="card-list" style={{ marginTop: "12px" }}>
                     <div className="list-item">
                       <span>🏢</span>
-                      <span>{client.buildings} edificios</span>
+                      <span>{client.buildings} {Number(client.buildings) === 1 ? "comunidad" : "comunidades"}</span>
                     </div>
                     <div className="list-item">
                       <span>✅</span>
@@ -412,9 +370,14 @@ export default function AdminInteligenteDashboard() {
                 </div>
               ))}
             </div>
-            <a className="btn" style={{ marginTop: "16px" }} href="/platform-admin/clients">
-              Gestionar clientes
-            </a>
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "16px" }}>
+              <a className="btn" href="/platform-admin/clients">
+                Gestionar comunidades
+              </a>
+              <a className="btn btn-ghost" href="/dashboard/admin-ph/proceso-asamblea">
+                Proceso de asambleas
+              </a>
+            </div>
           </section>
 
           <section id="crm" className="section">
@@ -433,8 +396,7 @@ export default function AdminInteligenteDashboard() {
               ))}
             </div>
           </section>
-        </section>
-      </div>
+      </PlatformAdminShell>
 
       {profileModalOpen && (
         <div

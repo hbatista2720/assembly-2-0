@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import AppToaster from "./toaster";
 import ThemeInit from "./ThemeInit";
+import { CartProvider } from "../context/CartContext";
 
 export const metadata = {
   title: "Assembly 2.0",
@@ -22,7 +23,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <ThemeInit />
-        {children}
+        <CartProvider>{children}</CartProvider>
         <AppToaster />
         <style>{`
           * {
@@ -161,9 +162,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             color: #1e293b !important;
           }
           html[data-theme="light"] .admin-ph-dashboard-header.dashboard-demo-card {
-            background: #ffffff !important;
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
             border: 1px solid #e2e8f0 !important;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 14px rgba(0, 0, 0, 0.06) !important;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.8) inset !important;
+          }
+          html[data-theme="light"] .dashboard-widgets-group {
+            background: linear-gradient(160deg, #f8fafc, #f1f5f9) !important;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06) !important;
           }
           html[data-theme="light"] .user-menu-trigger {
             background: #ffffff !important;
@@ -323,6 +329,39 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             background: #1e293b !important;
             color: #f1f5f9 !important;
             border-color: #334155 !important;
+          }
+
+          /* Platform Admin: tema claro (mismo estilo que Admin PH) */
+          html[data-theme="light"] .platform-admin-shell .platform-admin-content {
+            background: #f8fafc;
+          }
+          html[data-theme="light"] .platform-admin-shell .platform-admin-content .card {
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+            color: #1e293b !important;
+          }
+          html[data-theme="light"] .platform-admin-shell .platform-admin-content .btn-ghost {
+            background: #f1f5f9 !important;
+            border: 1px solid #cbd5e1 !important;
+            color: #334155 !important;
+          }
+          html[data-theme="light"] .platform-admin-shell .platform-admin-content .btn-ghost:hover {
+            background: #e2e8f0 !important;
+            border-color: #94a3b8 !important;
+            color: #0f172a !important;
+          }
+          html[data-theme="light"] .platform-admin-shell .platform-admin-content .btn-primary {
+            background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
+            color: #fff !important;
+          }
+          html[data-theme="light"] .platform-admin-shell .platform-admin-content .muted {
+            color: #64748b !important;
+          }
+          html[data-theme="light"] .platform-admin-shell .platform-admin-content .pill {
+            color: #4338ca !important;
+            border-color: rgba(99, 102, 241, 0.4) !important;
+            background: rgba(99, 102, 241, 0.12) !important;
           }
 
           html[data-theme="light"] .profile-modal-avatar-option {
@@ -1106,6 +1145,166 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             padding-left: 24px;
             padding-right: 24px;
           }
+          .container.platform-admin-container,
+          .container:has(.platform-admin-shell) {
+            max-width: 100%;
+            padding-left: 24px;
+            padding-right: 24px;
+          }
+          .platform-admin-shell {
+            grid-template-columns: 260px 1fr;
+          }
+          .platform-admin-content {
+            min-width: 0;
+            max-width: 100%;
+          }
+          @media (min-width: 1280px) {
+            .platform-admin-content {
+              max-width: min(1400px, 94vw);
+            }
+          }
+          @media (min-width: 1600px) {
+            .platform-admin-content {
+              max-width: min(1600px, 92vw);
+            }
+          }
+          /* Platform Admin: mismo estilo que Admin PH (Dashboard asambleas demo) */
+          .platform-admin-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+          .platform-admin-sidebar .sidebar-header {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex-shrink: 0;
+            min-width: 0;
+            padding-bottom: 4px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+            margin-bottom: 4px;
+          }
+          .platform-admin-sidebar .sidebar-footer {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+          .platform-admin-shell .platform-admin-content .card {
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.5));
+            padding: 20px 22px;
+            margin-bottom: 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+          }
+          .platform-admin-shell .platform-admin-content .pill {
+            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #a5b4fc;
+            background: rgba(99, 102, 241, 0.1);
+          }
+          .platform-admin-shell .platform-admin-content .btn {
+            border-radius: 10px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: rgba(30, 41, 59, 0.6);
+            color: #e2e8f0;
+          }
+          .platform-admin-shell .platform-admin-content .btn-primary {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            border: none;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);
+          }
+          .platform-admin-shell .platform-admin-content .btn-ghost {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+          }
+          .platform-admin-shell .platform-admin-content .btn-ghost:hover {
+            background: rgba(51, 65, 85, 0.6);
+            border-color: rgba(148, 163, 184, 0.35);
+          }
+          .platform-admin-shell .platform-admin-content .muted {
+            color: #94a3b8;
+            font-size: 14px;
+          }
+          .platform-admin-shell .platform-admin-content .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 8px;
+          }
+          .platform-admin-shell .platform-admin-content .plans-edit-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s, border-color 0.2s, color 0.2s;
+          }
+          .platform-admin-shell .platform-admin-content .plans-edit-btn:hover {
+            border-color: rgba(99, 102, 241, 0.5);
+            color: #a5b4fc;
+          }
+          .platform-admin-shell .platform-admin-content .plans-table-row {
+            transition: background 0.2s ease;
+          }
+          .platform-admin-shell .platform-admin-content .plans-table-row:hover {
+            background: rgba(99, 102, 241, 0.04);
+          }
+          .platform-admin-shell .platform-admin-content .page-back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            color: #e2e8f0;
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.15s;
+          }
+          .platform-admin-shell .platform-admin-content .page-back-link:hover {
+            background: rgba(71, 85, 105, 0.6);
+            border-color: rgba(148, 163, 184, 0.35);
+            color: #f1f5f9;
+            transform: translateY(-1px);
+          }
+          .platform-admin-shell .platform-admin-content table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          .platform-admin-shell .platform-admin-content table thead th {
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #94a3b8;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+          }
+          .platform-admin-shell .platform-admin-content table tbody tr {
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            transition: background 0.15s ease;
+          }
+          .platform-admin-shell .platform-admin-content table tbody tr:hover {
+            background: rgba(99, 102, 241, 0.06);
+          }
+          .platform-admin-shell .platform-admin-content table tbody td {
+            padding: 14px 16px;
+            vertical-align: middle;
+          }
+          .platform-admin-shell .platform-admin-content .btn-ghost.btn-sm:hover {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.3);
+            color: #c7d2fe;
+          }
           .container.landing-root {
             max-width: 100%;
             width: 100%;
@@ -1449,9 +1648,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
           }
           .pricing-grid--pago-unico {
-            grid-template-columns: repeat(2, minmax(280px, 400px));
-            justify-content: center;
-            max-width: 880px;
+            grid-template-columns: repeat(2, minmax(240px, 320px));
+            justify-content: flex-start;
+            max-width: 680px;
+            gap: 16px;
           }
           @media (max-width: 720px) {
             .pricing-grid--pago-unico {
@@ -2012,6 +2212,590 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
           }
 
+          .dashboard-ph-header {
+            margin-bottom: 20px;
+          }
+          .dashboard-ph-header h2 {
+            margin: 0 0 4px;
+            font-size: 1.35rem;
+          }
+          .dashboard-ph-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+          }
+          .ph-card-modern {
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.7));
+            padding: 20px;
+            cursor: pointer;
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+          }
+          .ph-card-modern:hover {
+            border-color: rgba(99, 102, 241, 0.5);
+            box-shadow: 0 8px 28px rgba(99, 102, 241, 0.12);
+            transform: translateY(-2px);
+          }
+          .ph-card-modern-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 16px;
+          }
+          .ph-card-modern-icon {
+            width: 52px;
+            height: 52px;
+            min-width: 52px;
+            border-radius: 14px;
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+          }
+          .ph-card-modern-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            flex: 1;
+          }
+          .ph-card-modern-badge {
+            font-size: 12px;
+            color: #94a3b8;
+          }
+          .ph-card-assembly-alert {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            background: rgba(251, 191, 36, 0.12);
+            border: 1px solid rgba(251, 191, 36, 0.35);
+            border-radius: 10px;
+          }
+          .ph-card-assembly-alert-icon {
+            font-size: 14px;
+            flex-shrink: 0;
+          }
+          .ph-card-assembly-alert-content {
+            font-size: 12px;
+            color: #fef3c7;
+            line-height: 1.4;
+          }
+          .ph-card-assembly-alert-content strong {
+            color: #fcd34d;
+          }
+          .ph-card-assembly-alert-date {
+            color: #a5b4fc;
+          }
+          .ph-card-assembly-alert-pending {
+            color: #fca5a5;
+          }
+          .ph-card-modern-indicators {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+          }
+          @media (max-width: 400px) {
+            .ph-card-modern-indicators {
+              grid-template-columns: repeat(2, 1fr);
+            }
+          }
+          .ph-card-indicator {
+            text-align: center;
+            padding: 10px 8px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.15);
+          }
+          .ph-card-indicator-label {
+            display: block;
+            font-size: 11px;
+            color: #94a3b8;
+            margin-bottom: 4px;
+          }
+          .ph-card-indicator-value {
+            font-size: 15px;
+            font-weight: 700;
+            color: #e2e8f0;
+          }
+          .ph-card-modern-footer {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+          }
+          .ph-card-actions-secondary {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+          }
+          .ph-card-action-btn {
+            color: #94a3b8;
+            font-size: 13px;
+          }
+          .ph-card-action-btn:hover {
+            color: #e2e8f0;
+          }
+          .ph-card-delete-btn {
+            color: #f87171;
+          }
+          .ph-card-delete-btn:hover {
+            color: #fca5a5;
+          }
+          .ph-quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(148, 163, 184, 0.15);
+          }
+          .ph-quick-action {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 12px;
+            padding: 10px 14px;
+            min-width: 0;
+            border-radius: 12px;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            text-decoration: none;
+            color: #e2e8f0;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background 0.2s, border-color 0.2s, color 0.2s;
+          }
+          .ph-quick-action:hover {
+            background: rgba(51, 65, 85, 0.6);
+            border-color: rgba(148, 163, 184, 0.35);
+            color: #f1f5f9;
+          }
+          .ph-quick-action-icon-wrap {
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            background: rgba(51, 65, 85, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.15);
+          }
+          .ph-quick-action:hover .ph-quick-action-icon-wrap {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.3);
+          }
+          .ph-quick-action-icon-wrap svg {
+            width: 22px;
+            height: 22px;
+            color: currentColor;
+          }
+          .ph-quick-action-label {
+            line-height: 1.25;
+            white-space: normal;
+            overflow: visible;
+            flex: 1;
+            min-width: 0;
+          }
+          .ph-quick-action--primary {
+            background: linear-gradient(135deg, rgba(79, 70, 229, 0.25), rgba(99, 102, 241, 0.15));
+            border-color: rgba(99, 102, 241, 0.45);
+            color: #c7d2fe;
+          }
+          .ph-quick-action--primary .ph-quick-action-icon-wrap {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: rgba(99, 102, 241, 0.35);
+          }
+          .ph-quick-action--primary:hover {
+            background: rgba(99, 102, 241, 0.25);
+            border-color: rgba(99, 102, 241, 0.5);
+          }
+          @media (max-width: 600px) {
+            .ph-quick-actions {
+              grid-template-columns: repeat(2, 1fr);
+            }
+          }
+          .ph-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+          }
+          .ph-kpi-card {
+            display: block;
+            padding: 20px 22px;
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            background: linear-gradient(160deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.5));
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+            transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+          }
+          .ph-kpi-card:hover {
+            border-color: rgba(99, 102, 241, 0.35);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.15);
+            transform: translateY(-2px);
+          }
+          .ph-kpi-card .kpi-label { margin: 0; color: #94a3b8; font-size: 13px; }
+          .ph-kpi-card .kpi-value { margin: 10px 0 4px; font-size: 1.5rem; font-weight: 700; color: #f1f5f9; }
+          .ph-kpi-card .kpi-note { margin: 0; color: #a5b4fc; font-size: 13px; }
+          .ph-kpi-card .ph-kpi-link {
+            display: block;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #818cf8;
+            opacity: 0;
+            transition: opacity 0.2s;
+          }
+          .ph-kpi-card:hover .ph-kpi-link { opacity: 1; }
+
+          .ph-dashboard-widgets-group {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 24px;
+            border-radius: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            background: linear-gradient(160deg, rgba(30, 41, 59, 0.45), rgba(15, 23, 42, 0.4));
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+          }
+          .ph-widgets-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+          }
+          @media (max-width: 960px) {
+            .ph-widgets-grid { grid-template-columns: repeat(2, 1fr); }
+          }
+          @media (max-width: 520px) {
+            .ph-widgets-grid { grid-template-columns: 1fr; }
+          }
+          .ph-widget-card {
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-left: 4px solid rgba(99, 102, 241, 0.5);
+            background: linear-gradient(160deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.5));
+            padding: 18px 20px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+          }
+          .ph-widget-card .ph-widget-icon {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            color: #94a3b8;
+          }
+          .ph-widget-card .ph-widget-label {
+            margin: 0;
+            font-size: 12px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+          }
+          .ph-widget-card .ph-widget-value {
+            margin: 8px 0 4px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f1f5f9;
+          }
+          .ph-widget-card .ph-widget-note {
+            margin: 0;
+            font-size: 12px;
+            color: #a5b4fc;
+          }
+          .ph-widget-card--proxima {
+            padding: 18px 20px;
+          }
+          .ph-widget-card--proxima .ph-widget-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+          }
+          .ph-widget-card--proxima .ph-widget-title {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            flex: 1;
+          }
+          .ph-widget-countdown {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6366f1;
+            background: rgba(99, 102, 241, 0.2);
+            padding: 3px 8px;
+            border-radius: 999px;
+          }
+          .ph-widget-proxima-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 0;
+          }
+          .ph-widget-proxima-title {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #e2e8f0;
+            line-height: 1.3;
+          }
+          .ph-widget-proxima-date {
+            font-size: 12px;
+            color: #94a3b8;
+          }
+          .ph-widget-indicators {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+          }
+          .ph-widget-indicator {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+          }
+          .ph-widget-indicator-label,
+          .ph-widget-indicator-value {
+            font-size: 11px;
+            color: #94a3b8;
+          }
+          .ph-widget-indicator-value {
+            font-weight: 600;
+            color: #e2e8f0;
+          }
+          .ph-widget-progress {
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.2);
+            overflow: hidden;
+          }
+          .ph-widget-progress-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.6), rgba(99, 102, 241, 0.8));
+            transition: width 0.3s ease;
+          }
+          .ph-widget-progress-fill--green {
+            background: linear-gradient(90deg, rgba(74, 222, 128, 0.5), rgba(34, 197, 94, 0.7));
+          }
+          .ph-widget-location {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #94a3b8;
+          }
+          .ph-widget-location-icon {
+            display: flex;
+            flex-shrink: 0;
+          }
+          .ph-widget-cta {
+            margin-top: auto;
+            width: 100%;
+            justify-content: center;
+            border-radius: 10px;
+            padding: 10px 16px;
+            font-size: 13px;
+            text-decoration: none;
+          }
+          .ph-widget-proxima-empty {
+            margin: 0;
+            font-size: 13px;
+            color: #94a3b8;
+          }
+
+          .ph-card-btn {
+            font-size: 13px;
+          }
+
+          .dashboard-widgets-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            padding: 20px 24px;
+            border-radius: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            background: linear-gradient(160deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.35));
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+          }
+          .dashboard-widgets-group .dashboard-demo-card {
+            margin-bottom: 16px;
+          }
+          .dashboard-widgets-group .dashboard-widgets-row {
+            margin-top: 0;
+          }
+          .dashboard-widgets-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+          }
+          .dashboard-widget-card {
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            background: linear-gradient(160deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.5));
+            padding: 20px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+          }
+          .dashboard-widget-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+          }
+          .dashboard-widget-header h3 {
+            margin: 0;
+            font-size: 0.95rem;
+            font-weight: 600;
+          }
+          .dashboard-widget-icon {
+            font-size: 20px;
+          }
+          .dashboard-widget-today {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 10px;
+          }
+          .dashboard-widget-upcoming {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 13px;
+          }
+          .dashboard-widget-upcoming strong {
+            color: #e2e8f0;
+          }
+          .dashboard-widget-notes-body,
+          .dashboard-widget-notifications-body {
+            font-size: 13px;
+          }
+          .dashboard-notification-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+          }
+          .dashboard-notification-item:last-child {
+            border-bottom: none;
+          }
+          .dashboard-notification-dot {
+            width: 6px;
+            height: 6px;
+            min-width: 6px;
+            margin-top: 6px;
+            border-radius: 50%;
+            background: #6366f1;
+          }
+
+          .reminder-checklist-item--checked span {
+            text-decoration: line-through;
+            opacity: 0.65;
+          }
+          .reminder-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: #6366f1;
+            flex-shrink: 0;
+          }
+          .reminder-delete-btn {
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s, background 0.2s;
+          }
+          .reminder-delete-btn:hover {
+            color: #f87171;
+            background: rgba(248, 113, 113, 0.15);
+          }
+
+          .dashboard-widget-upcoming-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+          .dashboard-widget-event {
+            display: flex;
+            gap: 14px;
+            padding: 12px 14px;
+            background: rgba(15, 23, 42, 0.4);
+            border-radius: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-left: 3px solid rgba(99, 102, 241, 0.6);
+            transition: background 0.2s, border-color 0.2s;
+          }
+          .dashboard-widget-event:hover {
+            background: rgba(99, 102, 241, 0.08);
+            border-color: rgba(99, 102, 241, 0.2);
+          }
+          .dashboard-widget-event-date {
+            font-size: 12px;
+            color: #94a3b8;
+            white-space: nowrap;
+            display: flex;
+            flex-direction: column;
+          }
+          .dashboard-widget-event-time {
+            font-size: 11px;
+            opacity: 0.85;
+          }
+          .dashboard-widget-event-content {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+          }
+          .dashboard-widget-event-content strong {
+            font-size: 13px;
+            color: #e2e8f0;
+          }
+          .dashboard-widget-event-countdown {
+            font-size: 11px;
+            color: #6366f1;
+            font-weight: 500;
+          }
+          .dashboard-widget-calendar-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 14px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #a5b4fc;
+            text-decoration: none;
+            border-radius: 10px;
+            transition: color 0.2s, background 0.2s;
+          }
+          .dashboard-widget-calendar-link:hover {
+            color: #c7d2fe;
+            background: rgba(99, 102, 241, 0.12);
+          }
+
           .dashboard-create-ph-wrap {
             margin-top: 24px;
             padding-top: 20px;
@@ -2526,8 +3310,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           }
 
           .admin-ph-dashboard-header.dashboard-demo-card {
-            padding: 18px 22px;
-            margin-bottom: 18px;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.06));
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
           }
           .dashboard-demo-strip {
             display: flex;
@@ -2599,10 +3387,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           }
           .dashboard-demo-cta {
             flex-shrink: 0;
-            padding: 10px 18px;
+            padding: 11px 20px;
             font-size: 13px;
             font-weight: 600;
-            border-radius: 10px;
+            border-radius: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+          }
+          .dashboard-demo-cta:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
           }
           .profile-card-row {
             display: flex;
@@ -2883,6 +3676,33 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             justify-content: center;
           }
 
+          .profile-modal-photo-preview.profile-modal-photo-dropzone {
+            width: 88px;
+            height: 88px;
+            min-width: 88px;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+          }
+
+          .profile-modal-photo-preview.profile-modal-photo-dropzone:hover {
+            border-color: rgba(99, 102, 241, 0.5);
+            background: rgba(99, 102, 241, 0.08);
+          }
+
+          .profile-modal-avatar-row--modern {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+          }
+
+          .profile-modal-avatar-option--modern {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            border-radius: 12px;
+            padding: 0;
+          }
+
           .profile-modal-photo-preview img {
             width: 100%;
             height: 100%;
@@ -3000,6 +3820,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             background: #f8fafc !important;
             border-color: #e2e8f0 !important;
           }
+          .profile-modal-overlay.profile-modal--light .profile-modal-photo-preview.profile-modal-photo-dropzone:hover {
+            background: rgba(99, 102, 241, 0.06) !important;
+            border-color: rgba(99, 102, 241, 0.4) !important;
+          }
           .profile-modal-overlay.profile-modal--light .profile-modal-readonly-badge,
           .profile-modal-overlay.profile-modal--light .profile-modal-optional {
             color: #64748b !important;
@@ -3026,8 +3850,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           .admin-ph-shell .admin-ph-content {
             display: flex;
             flex-direction: column;
-            align-items: center;
+            align-items: flex-start;
             gap: 24px;
+            padding-left: 20px;
+            padding-right: 20px;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
           }
           .admin-ph-page-title-block {
             width: 100%;
@@ -3057,20 +3886,38 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           .admin-ph-shell .admin-ph-content > * {
             width: 100%;
             max-width: 100%;
+            min-width: 0;
+          }
+          /* Móvil: contenido a ancho completo */
+          @media (max-width: 767px) {
+            .admin-ph-shell .admin-ph-content {
+              padding-left: 14px;
+              padding-right: 14px;
+            }
+            .admin-ph-shell .admin-ph-content > * {
+              max-width: 100%;
+            }
+          }
+          /* Tablet: limitar ancho para legibilidad */
+          @media (min-width: 768px) and (max-width: 1023px) {
+            .admin-ph-shell .admin-ph-content > * {
+              max-width: min(900px, 100%);
+            }
+          }
+          /* PC: ancho contenido cómodo (reducido respecto a antes) */
+          @media (min-width: 1024px) {
+            .admin-ph-shell .admin-ph-content > * {
+              max-width: min(1200px, 96vw);
+            }
           }
           @media (min-width: 1280px) {
             .admin-ph-shell .admin-ph-content > * {
-              max-width: min(1600px, 98vw);
+              max-width: min(1360px, 92vw);
             }
           }
-          @media (min-width: 1920px) {
+          @media (min-width: 1600px) {
             .admin-ph-shell .admin-ph-content > * {
-              max-width: min(1920px, 99vw);
-            }
-          }
-          @media (max-width: 1024px) {
-            .admin-ph-shell .admin-ph-content > * {
-              max-width: 100%;
+              max-width: min(1440px, 90vw);
             }
           }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import useAssemblyCredits from "../hooks/useAssemblyCredits";
 
 export default function AssemblyCreditsDisplay({ organizationId }: { organizationId?: string | null }) {
@@ -15,10 +16,29 @@ export default function AssemblyCreditsDisplay({ organizationId }: { organizatio
   }
   if (!credits) return null;
 
+  if (credits.total_available < 1) {
+    return (
+      <div className="card" style={{ marginTop: "16px", borderLeft: "4px solid rgba(234, 179, 8, 0.8)", background: "rgba(250, 204, 21, 0.08)" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "16px" }}>
+          <span style={{ fontSize: "28px" }} aria-hidden>⚠️</span>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ marginTop: 0, color: "#f59e0b" }}>Sin créditos disponibles</h3>
+            <p className="muted" style={{ marginTop: "6px", marginBottom: "16px" }}>
+              No tiene créditos disponibles para crear asambleas. Debe comprar crédito primero.
+            </p>
+            <Link href="/dashboard/admin-ph/subscription" className="btn btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+              Ir a Comprar Créditos
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const expiringCount = credits.expiring_soon.reduce((sum, credit) => sum + credit.credits_remaining, 0);
 
   return (
-    <div className="card" style={{ marginTop: "16px" }}>
+    <div className="card dashboard-card-credits" style={{ marginTop: "16px", borderLeft: "4px solid rgba(16, 185, 129, 0.5)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
         <div>
           <h3 style={{ marginTop: 0 }}>Creditos de asambleas</h3>
@@ -39,8 +59,10 @@ export default function AssemblyCreditsDisplay({ organizationId }: { organizatio
           className="card"
           style={{
             marginTop: "12px",
-            borderLeft: "4px solid rgba(234,179,8,0.9)",
-            background: "rgba(250,204,21,0.12)",
+            borderLeft: "4px solid rgba(234,179,8,0.8)",
+            background: "rgba(250,204,21,0.1)",
+            borderRadius: "12px",
+            padding: "14px 16px",
           }}
         >
           <strong>⚠️ Atencion</strong>

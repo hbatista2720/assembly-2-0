@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
-/** Límites para suscripción demo (Urban Tower PH: 1 edificio, 50 residentes). */
+/** Límites para suscripción demo (Henry: 1 PH, 50 residentes, 1 crédito asamblea). */
 const DEMO_LIMITS = {
   plan: "DEMO",
   organizations: { current: 1, limit: 1, percentage: 100, exceeded: false },
   units: { current: 0, limit: 50, percentage: 0, exceeded: false },
-  assemblies: { current: 2, limit: 2, percentage: 100, exceeded: false },
+  assemblies: { current: 0, limit: 1, percentage: 0, exceeded: false },
   needs_upgrade: false,
   show_banner: false,
 };

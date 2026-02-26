@@ -316,15 +316,15 @@ export default function AssembliesPage() {
   };
 
   return (
-    <div className="card">
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center" }}>
-        <div style={{ flex: 1 }}>
+    <div className="card assemblies-page-card">
+      <div className="assemblies-page-header">
+        <div className="assemblies-page-header-content">
           <h2 style={{ marginTop: 0 }}>Asambleas</h2>
           <p className="muted" style={{ marginTop: "6px" }}>
             Crear, programar y ejecutar asambleas en vivo.
           </p>
         </div>
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+        <div className="assemblies-page-toolbar">
           <div className="assemblies-view-toggle" role="tablist">
             <button
               type="button"
@@ -814,48 +814,58 @@ export default function AssembliesPage() {
               )}
             </div>
           ) : (
-            <div style={{ marginTop: "18px", display: "grid", gap: "16px" }}>
+            <div className="assembly-cards-grid">
               {upcoming.map((item) => (
-                <div key={item.id} className="list-item" style={{ alignItems: "center" }}>
-                  <div style={{ flex: 1 }}>
-                    <strong>{item.title}</strong>
-                    <div className="muted" style={{ fontSize: "12px" }}>
-                      {item.date.replace("T", " ")} · {item.attendeesCount} electores · {item.faceIdCount} con Face ID
-                    </div>
+                <div key={item.id} className="assembly-card-widget">
+                  <div className="assembly-card-widget-header">
+                    <span className="assembly-card-widget-type">{getAssemblyTypeLabel(item)}</span>
+                    <span className="assembly-card-widget-date">📅 {formatShortDate(item.date)}</span>
                   </div>
-                  <Link className="btn btn-ghost" href={`/dashboard/admin-ph/assemblies/${encodeURIComponent(item.id)}`} scroll={true}>
-                    Ver detalles
-                  </Link>
-                  <Link className="btn btn-ghost" href={`/dashboard/admin-ph/assemblies/${encodeURIComponent(item.id)}`} scroll={true}>
-                    Editar
-                  </Link>
-                  <a className="btn btn-primary" href={`/dashboard/admin-ph/assembly/${encodeURIComponent(item.id)}/live`}>
-                    Iniciar asamblea
-                  </a>
-                  <a className="btn btn-ghost" href={`/dashboard/admin-ph/monitor/${encodeURIComponent(item.id)}`}>
-                    Monitor Back Office
-                  </a>
-                  <button type="button" className="btn btn-ghost" style={{ color: "#ef4444" }} onClick={() => handleDelete(item.id)}>
-                    Eliminar
-                  </button>
+                  <h4 className="assembly-card-widget-title">{item.title}</h4>
+                  <div className="assembly-card-widget-meta">
+                    <span>{item.attendeesCount} electores</span>
+                    <span>·</span>
+                    <span>{item.faceIdCount} Face ID</span>
+                    <span>·</span>
+                    <span>{item.date.replace("T", " ")}</span>
+                  </div>
+                  <div className="assembly-card-widget-actions">
+                    <Link className="btn btn-ghost btn-sm" href={`/dashboard/admin-ph/assemblies/${encodeURIComponent(item.id)}`} scroll={true}>
+                      Ver detalles
+                    </Link>
+                    <Link className="btn btn-ghost btn-sm" href={`/dashboard/admin-ph/assemblies/${encodeURIComponent(item.id)}`} scroll={true}>
+                      Editar
+                    </Link>
+                    <a className="btn btn-primary btn-sm" href={`/dashboard/admin-ph/assembly/${encodeURIComponent(item.id)}/live`}>
+                      Iniciar asamblea
+                    </a>
+                    <a className="btn btn-ghost btn-sm" href={`/dashboard/admin-ph/monitor/${encodeURIComponent(item.id)}`}>
+                      Monitor Back Office
+                    </a>
+                    <button type="button" className="btn btn-ghost btn-sm assembly-card-delete" onClick={() => handleDelete(item.id)}>
+                      Eliminar
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
-          <div style={{ marginTop: "24px" }}>
+          <div className="assembly-completed-section">
             <h3 style={{ margin: "0 0 10px" }}>Completadas</h3>
-            <p className="muted" style={{ margin: "0 0 10px", fontSize: "13px" }}>
+            <p className="muted" style={{ margin: "0 0 14px", fontSize: "13px" }}>
               Asambleas celebradas: no se pueden editar, eliminar ni reprogramar (crédito consumido).
             </p>
-            <div className="card-list">
+            <div className="assembly-cards-grid assembly-cards-grid--completed">
               {completed.map((item) => (
-                <div key={item.id} className="list-item" style={{ alignItems: "center" }}>
-                  <span>✅</span>
-                  <span style={{ flex: 1 }}>
-                    {item.title} · {item.date.replace("T", " ")} · Acta generada
-                  </span>
-                  <Link className="btn btn-ghost" href={`/dashboard/admin-ph/assemblies/${encodeURIComponent(item.id)}`} scroll={true}>
+                <div key={item.id} className="assembly-card-widget assembly-card-widget--completed">
+                  <div className="assembly-card-widget-header">
+                    <span className="assembly-card-widget-badge">✅</span>
+                    <span className="assembly-card-widget-date">{formatShortDate(item.date)}</span>
+                  </div>
+                  <h4 className="assembly-card-widget-title">{item.title}</h4>
+                  <p className="assembly-card-widget-meta muted">Acta generada</p>
+                  <Link className="btn btn-ghost btn-sm" href={`/dashboard/admin-ph/assemblies/${encodeURIComponent(item.id)}`} scroll={true}>
                     Ver detalles
                   </Link>
                 </div>
@@ -1060,6 +1070,26 @@ export default function AssembliesPage() {
       )}
 
       <style>{`
+        .assemblies-page-card {
+          overflow: visible;
+        }
+        .assemblies-page-header {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16px;
+          align-items: center;
+          justify-content: space-between;
+          padding-bottom: 16px;
+          margin-bottom: 16px;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+        }
+        .assemblies-page-header-content { flex: 1; min-width: 200px; }
+        .assemblies-page-toolbar {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          align-items: center;
+        }
         .assemblies-view-toggle {
           display: flex;
           gap: 4px;
@@ -1082,6 +1112,82 @@ export default function AssembliesPage() {
           color: #a5b4fc;
           font-weight: 500;
         }
+        .assembly-cards-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+          gap: 18px;
+          margin-top: 18px;
+        }
+        .assembly-cards-grid--completed { margin-top: 14px; }
+        .assembly-card-widget {
+          background: linear-gradient(160deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.8));
+          border: 1px solid rgba(148, 163, 184, 0.22);
+          border-radius: 16px;
+          padding: 20px;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+          transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+        }
+        .assembly-card-widget:hover {
+          border-color: rgba(99, 102, 241, 0.45);
+          box-shadow: 0 8px 28px rgba(99, 102, 241, 0.14);
+          transform: translateY(-2px);
+        }
+        .assembly-card-widget--completed {
+          opacity: 0.92;
+          border-color: rgba(148, 163, 184, 0.15);
+        }
+        .assembly-card-widget--completed:hover {
+          border-color: rgba(148, 163, 184, 0.25);
+          transform: none;
+        }
+        .assembly-card-widget-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 12px;
+        }
+        .assembly-card-widget-type {
+          font-size: 11px;
+          padding: 3px 10px;
+          border-radius: 999px;
+          background: rgba(99, 102, 241, 0.25);
+          color: #a5b4fc;
+          font-weight: 500;
+        }
+        .assembly-card-widget-badge { font-size: 14px; }
+        .assembly-card-widget-date {
+          font-size: 13px;
+          color: #94a3b8;
+        }
+        .assembly-card-widget-title {
+          margin: 0 0 10px;
+          font-size: 1.05rem;
+          font-weight: 700;
+          color: #f1f5f9;
+          line-height: 1.3;
+        }
+        .assembly-card-widget-meta {
+          font-size: 13px;
+          color: #94a3b8;
+          margin: 0 0 14px;
+        }
+        .assembly-card-widget-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .assembly-card-widget-actions .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .assembly-card-delete { color: #f87171 !important; }
+        .assembly-card-delete:hover { background: rgba(248, 113, 113, 0.15); }
+        .assembly-completed-section {
+          margin-top: 28px;
+          padding-top: 24px;
+          border-top: 1px solid rgba(148, 163, 184, 0.18);
+        }
+        .assembly-completed-section h3 {
+          font-size: 1.1rem;
+          margin: 0 0 8px;
+        }
         .assemblies-kanban {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
@@ -1092,13 +1198,14 @@ export default function AssembliesPage() {
           .assemblies-kanban { grid-template-columns: 1fr; }
         }
         .kanban-column {
-          background: rgba(15, 23, 42, 0.4);
-          border: 1px solid rgba(148, 163, 184, 0.2);
-          border-radius: 14px;
-          padding: 14px;
+          background: rgba(30, 41, 59, 0.5);
+          border: 1px solid rgba(148, 163, 184, 0.22);
+          border-radius: 16px;
+          padding: 16px;
           display: flex;
           flex-direction: column;
           min-width: 0;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
         }
         .kanban-column-header {
           display: flex;
@@ -1127,15 +1234,15 @@ export default function AssembliesPage() {
           overflow-y: auto;
         }
         .kanban-card {
-          background: rgba(30, 41, 59, 0.6);
-          border: 1px solid rgba(148, 163, 184, 0.15);
-          border-radius: 12px;
-          padding: 14px;
+          background: linear-gradient(160deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.75));
+          border: 1px solid rgba(148, 163, 184, 0.22);
+          border-radius: 14px;
+          padding: 16px;
           transition: box-shadow 0.2s, border-color 0.2s;
         }
         .kanban-card:hover {
-          border-color: rgba(99, 102, 241, 0.35);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          border-color: rgba(99, 102, 241, 0.4);
+          box-shadow: 0 6px 20px rgba(99, 102, 241, 0.12);
         }
         .kanban-card-pill {
           display: inline-block;

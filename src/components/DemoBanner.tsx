@@ -28,9 +28,9 @@ export default function DemoBanner() {
       }}
     >
       <div>
-        <strong>Modo demo (PH Urban Tower)</strong>
+        <strong>Modo demo</strong>
         <span className="muted" style={{ marginLeft: "8px" }}>
-          Solo el correo demo@assembly2.com es el administrador de este PH demo. Los datos son de ejemplo.
+          Tipo de plan 50 usuarios (1 crédito y expira en 15 días). Los datos son de ejemplo.
         </span>
       </div>
       <a href="/dashboard/admin-ph/subscription" className="btn btn-primary" style={{ flexShrink: 0 }}>

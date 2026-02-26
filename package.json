@@ -13,7 +13,9 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f app",
     "docker:restart": "docker compose restart app",
-    "docker:rebuild": "docker compose up -d --build"
+    "docker:rebuild": "docker compose up -d --build",
+    "db:check": "node scripts/check-db-tables.cjs",
+    "db:migrate": "node scripts/run-migrations.cjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

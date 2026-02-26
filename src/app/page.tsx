@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PLANS } from "../lib/types/pricing";
 import { getDemoResidents } from "../lib/demoResidentsStore";
-
 function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -17,7 +16,7 @@ function HomeContent() {
   const [chatRole, setChatRole] = useState<"admin" | "junta" | "residente" | "demo" | "">("");
   const [residentEmailValidated, setResidentEmailValidated] = useState(false);
   type ChatCard = "votacion" | "asambleas" | "calendario" | "tema" | "poder";
-  const [chatMessages, setChatMessages] = useState<Array<{ from: "bot" | "user"; text: string; card?: ChatCard }>>([]);
+  const [chatMessages, setChatMessages] = useState<Array<{ from: "bot" | "user"; text: string; card?: ChatCard; link?: string }>>([]);
   const MAX_VOTE_MODIFICATIONS = 2;
   const [residentVoteSent, setResidentVoteSent] = useState(false);
   const [residentLastVote, setResidentLastVote] = useState<"Sí" | "No" | "Abstengo" | null>(null);
@@ -213,8 +212,8 @@ function HomeContent() {
       .catch(() => {});
   }, [chatRole, residentEmailValidated]);
 
-  const pushBotMessage = (text: string) => {
-    setChatMessages((prev) => [...prev, { from: "bot", text }]);
+  const pushBotMessage = (text: string, opts?: { link?: string }) => {
+    setChatMessages((prev) => [...prev, { from: "bot", text, link: opts?.link }]);
   };
 
   const pushUserMessage = (text: string) => {
@@ -462,22 +461,50 @@ function HomeContent() {
         return;
       }
 
-      const emailPrefix = emailLower.split("@")[0] || "admin";
-      const demoEmail =
-        chatRole === "admin"
-          ? `${emailPrefix.replace(/[^a-z0-9.]/g, "")}-adminph@demo.assembly.local`
-          : "";
-      const finalLead = { ...leadData, email: emailLower, role: chatRole, demoEmail };
+      const finalLead = { ...leadData, email: emailLower, role: chatRole, demoEmail: "" };
       setLeadData(finalLead);
-      pushBotMessage("Listo. Ya tengo tu correo y te envio el acceso de demo.");
-      if (demoEmail) {
-        pushBotMessage(`Te cree un correo demo para Admin PH: ${demoEmail}`);
-      }
       try {
         localStorage.setItem("landingLead", JSON.stringify({ ...finalLead, createdAt: Date.now() }));
       } catch {
-        // ignore storage issues
+        // ignore
       }
+
+      if (chatRole === "admin" || chatRole === "demo") {
+        fetch("/api/demo/request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: emailLower }),
+        })
+          .then((res) => res.json().then((data) => ({ status: res.status, data })))
+          .then(({ status, data }) => {
+            if (status === 429) {
+              pushBotMessage("Demasiadas solicitudes. Intenta de nuevo en unos minutos o escribe a soporte.");
+              setChatStep(8);
+              setChatInput("");
+              return;
+            }
+            if (data?.success) {
+              if (data.already_exists) {
+                pushBotMessage("Ya tienes un demo activo. Entra con tu correo aquí:");
+              } else {
+                pushBotMessage("Tu demo está listo. Entra con este correo en el enlace:");
+              }
+              pushBotMessage("Entrar al demo →", { link: "/login" });
+            } else {
+              pushBotMessage(data?.error || "No pudimos preparar tu demo ahora. Intenta más tarde o escribe a soporte.");
+            }
+            setChatStep(8);
+            setChatInput("");
+          })
+          .catch(() => {
+            pushBotMessage("No pudimos preparar tu demo ahora. Intenta más tarde o escribe a soporte.");
+            setChatStep(8);
+            setChatInput("");
+          });
+        return;
+      }
+
+      pushBotMessage("Listo. Ya tengo tu correo y te envio el acceso de demo.");
       setChatStep(8);
       setChatInput("");
     }
@@ -678,14 +705,19 @@ function HomeContent() {
               <span className="pill">Live</span>
             </div>
             <div className="grid grid-3" style={{ marginTop: "16px" }}>
-              {["Urban Tower", "Costa del Este", "Vista Azul", "Pacific View", "Torre 9", "PH Lago"].map(
-                (name) => (
-                  <div key={name} className="stat">
-                    <strong>{name}</strong>
-                    <span style={{ color: "#94a3b8", fontSize: "12px" }}>Quorum: 68%</span>
-                  </div>
-                ),
-              )}
+              {[
+                { title: "Quórum en tiempo real", sub: "Actualización live" },
+                { title: "Votación ponderada", sub: "Por coeficiente PH" },
+                { title: "Poderes digitales", sub: "OCR + validación" },
+                { title: "Monitor por unidad", sub: "Vista tablero" },
+                { title: "Chatbot residente", sub: "Lex integrado" },
+                { title: "Actas automáticas", sub: "En minutos" },
+              ].map((item) => (
+                <div key={item.title} className="stat">
+                  <strong>{item.title}</strong>
+                  <span style={{ color: "#94a3b8", fontSize: "12px" }}>{item.sub}</span>
+                </div>
+              ))}
             </div>
             <div className="card-list" style={{ marginTop: "16px" }}>
               {[
@@ -1347,7 +1379,24 @@ function HomeContent() {
                             : "1px solid rgba(148,163,184,0.12)",
                       }}
                     >
-                      {message.text}
+                      {message.from === "bot" && message.link ? (
+                        <Link
+                          href={message.link}
+                          className="btn btn-primary btn-demo"
+                          style={{
+                            display: "inline-block",
+                            marginTop: "8px",
+                            borderRadius: "999px",
+                            padding: "10px 18px",
+                            textDecoration: "none",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {message.text || "Entrar al demo →"}
+                        </Link>
+                      ) : (
+                        message.text
+                      )}
                     </div>
                   )}
                   {message.from === "bot" && message.card && (

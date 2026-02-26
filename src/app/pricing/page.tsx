@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import PricingSelector from "../../components/pricing/PricingSelector";
 import ROICalculator from "../../components/pricing/ROICalculator";
 import EnterprisePlanCard from "../../components/pricing/EnterprisePlanCard";
+import CartNavLink from "../../components/CartNavLink";
 
 function PricingContent() {
   const searchParams = useSearchParams();
@@ -12,18 +13,19 @@ function PricingContent() {
 
   return (
     <main className="container">
-      {fromDashboardPh && (
-        <div style={{ marginBottom: "16px" }}>
+      <div style={{ marginBottom: "16px", display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+        {fromDashboardPh && (
           <a className="btn btn-ghost" href="/dashboard/admin-ph">
-            ← Volver al Dashboard PH
+            ← Volver al Panel de la Comunidad
           </a>
-        </div>
-      )}
+        )}
+        <CartNavLink variant="button" />
+      </div>
       <section className="card" style={{ padding: "28px", marginBottom: "16px" }}>
         <span className="pill">Precios v4.0</span>
         <h1 style={{ margin: "12px 0 8px" }}>Planes y suscripciones</h1>
         <p className="muted" style={{ margin: 0 }}>
-          Matriz oficial con limites por PH, residentes y asambleas.
+          Matriz oficial con límites por comunidad, residentes y asambleas.
         </p>
       </section>
 

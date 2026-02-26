@@ -5,11 +5,19 @@
  */
 
 export const DEMO_RESIDENTS_LIMIT = 50;
-export const DEMO_PH_NAME = "Urban Tower PH";
-const STORAGE_KEY = "assembly_demo_residents";
+export const DEMO_PH_NAME = "Urban Tower";
+export const DEMO_RESIDENTS_STORAGE_KEY = "assembly_demo_residents";
+const STORAGE_KEY = DEMO_RESIDENTS_STORAGE_KEY;
 
 export type PaymentStatus = "al_dia" | "mora";
 export type ChatbotLoginStatus = "never" | "registered" | "logged_in";
+
+/** Entrada del historial de sesiones del chatbot: inicio, fin y duración. */
+export type SessionLogEntry = {
+  started_at: string;
+  ended_at: string;
+  duration_seconds: number;
+};
 
 export type DemoResident = {
   user_id: string;
@@ -41,14 +49,31 @@ export type DemoResident = {
   habilitado_para_asamblea?: boolean;
   /** Estatus de la unidad: Ocupada, Alquilada, Sin inquilino. */
   estatus_unidad?: "Ocupada" | "Alquilada" | "Sin inquilino";
+  /** Inicio de la sesión actual (ISO). Solo mientras chatbot_session_active es true. */
+  session_started_at?: string;
+  /** Historial de sesiones cerradas: inicio, fin y duración. */
+  session_history?: SessionLogEntry[];
 };
 
 const createId = () => `demo_res_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 
-function getStored(): DemoResident[] {
+/** Obtiene la clave de storage por PH. urban-tower usa la clave legacy; cada PH custom tiene la suya. */
+function getStorageKeyForPh(phId: string): string {
+  return phId === "urban-tower" ? STORAGE_KEY : `${STORAGE_KEY}_${phId}`;
+}
+
+/** Obtiene el phId actual desde sessionStorage (para compatibilidad cuando no se pasa). */
+function getCurrentPhId(): string {
+  if (typeof window === "undefined") return "urban-tower";
+  return sessionStorage.getItem("assembly_admin_selected_ph") || "urban-tower";
+}
+
+function getStored(phId?: string): DemoResident[] {
   if (typeof window === "undefined") return [];
+  const pid = phId ?? getCurrentPhId();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const key = getStorageKeyForPh(pid);
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     return JSON.parse(raw);
   } catch {
@@ -56,13 +81,16 @@ function getStored(): DemoResident[] {
   }
 }
 
-function setStored(list: DemoResident[]) {
+function setStored(list: DemoResident[], phId?: string) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  const pid = phId ?? getCurrentPhId();
+  localStorage.setItem(getStorageKeyForPh(pid), JSON.stringify(list));
 }
 
-/** Genera los 50 residentes demo por defecto: unidades 1 a 50 (una por unidad) para sincronizar con Monitor Back Office. */
-function seedDefaultDemoResidents(): DemoResident[] {
+/** Genera los 50 residentes demo por defecto: unidades 1 a 50 (una por unidad) para sincronizar con Monitor Back Office. Solo urban-tower; PHs custom empiezan vacíos. */
+function seedDefaultDemoResidents(phId?: string): DemoResident[] {
+  const pid = phId ?? getCurrentPhId();
+  if (pid !== "urban-tower") return []; // PHs custom empiezan sin residentes
   const list: DemoResident[] = [];
   const cuotaPct = 100 / DEMO_RESIDENTS_LIMIT;
   const now = new Date().toISOString();
@@ -93,7 +121,7 @@ function seedDefaultDemoResidents(): DemoResident[] {
       estatus_unidad: i <= 25 ? "Ocupada" : i <= 40 ? "Alquilada" : "Sin inquilino",
     });
   }
-  setStored(list);
+  setStored(list, pid);
   return list;
 }
 
@@ -126,24 +154,26 @@ function fillSimulatedFields(r: DemoResident, index: number): DemoResident {
   };
 }
 
-/** Lista de residentes demo (máx. 50). Si está vacía, carga los 50 residentes demo por defecto. Rellena campos simulados si faltan. */
-export function getDemoResidents(): DemoResident[] {
+/** Lista de residentes demo (máx. 50) para el PH dado. urban-tower: seed 50 por defecto; PHs custom empiezan vacíos. */
+export function getDemoResidents(phId?: string): DemoResident[] {
+  const pid = phId ?? getCurrentPhId();
   try {
-    const list = getStored();
-    if (!Array.isArray(list) || list.length === 0) return seedDefaultDemoResidents();
+    const list = getStored(pid);
+    if (!Array.isArray(list) || list.length === 0) return seedDefaultDemoResidents(pid);
     return list
       .filter((r) => r != null && (r.user_id || r.email))
       .map((r, idx) => fillSimulatedFields(r as DemoResident, idx));
   } catch {
-    return seedDefaultDemoResidents();
+    return seedDefaultDemoResidents(pid);
   }
 }
 
-/** Restablece el listado demo: borra los datos guardados en localStorage. La próxima lectura (getDemoResidents) cargará los 50 residentes por defecto. Útil para deshacer cambios. */
-export function resetDemoResidents(): void {
+/** Restablece el listado demo del PH dado. urban-tower: borra y recarga 50 por defecto. PHs custom: borra todo. */
+export function resetDemoResidents(phId?: string): void {
   if (typeof window === "undefined") return;
+  const pid = phId ?? getCurrentPhId();
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(getStorageKeyForPh(pid));
   } catch {
     // ignore
   }
@@ -281,6 +311,72 @@ export function setDemoResidentHabilitadoParaAsamblea(userId: string, value: boo
   }
   setStored(list);
   return true;
+}
+
+const SESSION_HISTORY_MAX = 100;
+
+/** Marca si el residente tiene sesión activa en el chatbot (entra/sale). Solo en modo demo. Registra historial de sesiones y dispara admin-ph-residents-changed. */
+export function setDemoResidentChatbotSessionActiveByEmail(email: string, active: boolean): boolean {
+  if (typeof window === "undefined") return false;
+  const list = getStored();
+  const normalized = (email ?? "").trim().toLowerCase();
+  const idx = list.findIndex((r) => (r.email ?? "").trim().toLowerCase() === normalized);
+  if (idx === -1) return false;
+  const now = new Date().toISOString();
+  const current = list[idx];
+  let session_history = current.session_history ?? [];
+  let session_started_at = current.session_started_at;
+
+  if (active) {
+    session_started_at = now;
+  } else {
+    // Cerrar sesión: registrar en historial
+    if (session_started_at) {
+      const started = new Date(session_started_at).getTime();
+      const ended = Date.now();
+      const duration_seconds = Math.round((ended - started) / 1000);
+      session_history = [
+        { started_at: session_started_at, ended_at: now, duration_seconds },
+        ...session_history,
+      ].slice(0, SESSION_HISTORY_MAX);
+      session_started_at = undefined;
+    }
+  }
+
+  list[idx] = {
+    ...current,
+    chatbot_session_active: active,
+    chatbot_registered: current.chatbot_registered ?? true,
+    chatbot_login_status: current.chatbot_login_status ?? (active ? "logged_in" : "registered"),
+    last_activity_at: active ? now : current.last_activity_at,
+    session_started_at,
+    session_history,
+  };
+  setStored(list);
+  try {
+    window.dispatchEvent(new CustomEvent("admin-ph-residents-changed"));
+  } catch {
+    // ignore
+  }
+  return true;
+}
+
+/** Obtiene el historial de sesiones del chatbot por correo. Incluye sesión actual si está online. */
+export function getDemoResidentSessionHistoryByEmail(email: string): (SessionLogEntry & { is_current?: boolean })[] {
+  const list = getStored();
+  const normalized = (email ?? "").trim().toLowerCase();
+  const r = list.find((x) => (x.email ?? "").trim().toLowerCase() === normalized);
+  if (!r) return [];
+  const history = r.session_history ?? [];
+  if (r.chatbot_session_active && r.session_started_at) {
+    const started = new Date(r.session_started_at).getTime();
+    const duration_seconds = Math.round((Date.now() - started) / 1000);
+    return [
+      { started_at: r.session_started_at, ended_at: new Date().toISOString(), duration_seconds, is_current: true },
+      ...history,
+    ];
+  }
+  return history;
 }
 
 /** Actualizar residente demo por correo (útil cuando la lista viene de la API con user_id distinto al del store). */
