@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getGeminiApiKey } from "../../../lib/secrets";
 import { readFile } from "fs/promises";
 import path from "path";
 
@@ -100,9 +101,10 @@ REGLAS ESTRICTAS:
 Responde SOLO con el texto de la respuesta, sin prefijos como "Lex:" ni metadatos.`;
 }
 
-/** GET: estado de configuración. ?validate=1 hace una llamada real a Gemini para validar la API en el entorno. */
+/** GET: estado de configuración. ?validate=1 hace una llamada real a Gemini para validar la API. */
 export async function GET(req: Request) {
-  const configured = !!(process.env.GEMINI_API_KEY ?? "").trim();
+  const apiKey = await getGeminiApiKey();
+  const configured = !!apiKey;
   const url = new URL(req.url);
   const doValidate = url.searchParams.get("validate") === "1";
 
@@ -116,12 +118,11 @@ export async function GET(req: Request) {
   if (!configured) {
     return NextResponse.json({
       ok: false,
-      error: "GEMINI_API_KEY no está configurada en el entorno.",
+      error: "API key de Gemini no configurada. Configúrala en Panel Henry > Chatbot > Tokens.",
     });
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY!;
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
     const result = await model.generateContent("Responde solo con la palabra OK.");
@@ -154,10 +155,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ reply: LEX_IDENTITY_REPLY });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = await getGeminiApiKey();
     if (!apiKey?.trim()) {
       return NextResponse.json(
-        { error: "Chat con Gemini no configurado (GEMINI_API_KEY)." },
+        { error: "Chat con Gemini no configurado. Configura la API key en Panel Henry > Chatbot > Tokens." },
         { status: 503 }
       );
     }

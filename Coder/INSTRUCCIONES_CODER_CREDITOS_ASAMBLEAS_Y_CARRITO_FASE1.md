@@ -331,9 +331,83 @@ La migración 018 añade `proof_base64` y `proof_filename` a `manual_payment_req
 
 ---
 
-## 11. Nota sobre la app de certificados
+## 11. Bandeja de aprobaciones y flujo demo
+
+### Módulo de aprobaciones
+- **Ruta:** `/platform-admin/approvals` (sidebar Henry: **Aprobaciones**).
+- Muestra órdenes PENDING de `manual_payment_requests` (ACH, Yappy, Transferencia).
+- Prioridad: las que tienen comprobante aparecen primero; se puede ver foto/PDF y Aprobar/Rechazar.
+
+### Flujo cliente demo → compra → bandeja
+1. **Cliente demo** (demo@assembly2.com) inicia la app y usa el dashboard.
+2. **Suscripciones** → Wizard → Comprar crédito o Afiliación mensual.
+3. **Checkout** con ACH o Yappy → adjunta comprobante → "Enviar Orden de Compra".
+4. La orden queda en **PENDING** en `manual_payment_requests`.
+5. **Henry** (Admin Plataforma) ve la orden en **Aprobaciones** con badge de pendientes.
+6. Henry revisa comprobante, Aprueba o Rechaza.
+
+### Vista de ejemplo (sin órdenes reales)
+En Bandeja de aprobaciones, si no hay órdenes pendientes, se muestran **2 órdenes simuladas** para visualizar cómo se ve la tabla con datos (Evento Único/ACH, Standard/Yappy, con comprobante de ejemplo). Las órdenes simuladas tienen badge "Ejemplo" y los botones Aprobar/Rechazar están deshabilitados.
+- Para pruebas con BD real: existe `POST /api/platform-admin/seed-demo-orders` que inserta 2 órdenes PENDING en `manual_payment_requests` (migraciones 010 y 018).
+
+---
+
+## 12. Nota sobre la app de certificados
 
 La **app de certificados** (si existe en el ecosistema del proyecto) debe usarse únicamente como **referencia de UI** para inspiración visual (cards, wizards, formularios de pago). No copiar lógica, APIs ni estructura de datos. Assembly 2.0 define su propio modelo de créditos, órdenes y flujo según este documento y las referencias de Marketing/Arquitecto.
+
+---
+
+## 13. Mejoras adicionales implementadas (Dashboard Henry)
+
+### Dashboard principal (sidebar)
+- **Orden:** Dashboard principal (antes "Resumen") aparece primero, seguido de Leads, Aprobaciones, Monitor VPS, Tickets, etc.
+- **Nombre:** "Resumen" renombrado a "Dashboard principal".
+
+### Vista detalle del cliente
+- **Leads** (`/platform-admin/leads`): botón "Ver detalle" abre modal con resumen: email, teléfono, empresa/PH, origen, etapa, score, calificado, fechas.
+- **Aprobaciones** (`/platform-admin/approvals`): botón "Ver detalle" abre modal con: PH/comunidad, email, teléfono, plan, monto, método, fecha. La API `pending-orders` incluye `organization_name`, `contact_phone`, `notes` (JOIN con `organizations`).
+
+### Planes y precios — columna Publicar
+- Toggle **Publicado/Oculto** por plan. Los planes ocultos no se muestran en landing, `/pricing`, carrito ni wizard de suscripciones.
+- Configuración en `localStorage` (`assembly_platform_admin_plan_visibility`). Módulo: `src/lib/planVisibility.ts`.
+
+### Alertas y notificaciones (Dashboard Administrativo Inteligente)
+- **Indicador:** Badge con "X alertas" (órdenes pendientes) o "Notificaciones activas".
+- **Configurar alertas:** modal para múltiples correos, tipos de alerta (órdenes pendientes, tickets urgentes, leads nuevos, capacidad VPS, demos por expirar, resumen campañas), digest de campañas (diario/semanal/off).
+- Config en `localStorage` (`assembly_platform_admin_alert_config`). Módulo: `src/lib/alertNotificationsConfig.ts`.
+- El envío real de emails requiere integración con Resend/SendGrid (placeholder en `notifyPaymentEmail.ts`).
+
+### Monitor VPS
+- Widgets modernos: En vivo, Hoy reservadas, Capacidad (con barra de progreso), Estado (Saludable/Monitorear/Upgrade).
+- Recursos del servidor en chips compactos (RAM, CPU, Disco, Conexiones).
+- Calendario y alertas colapsables. Recomendación inteligente resumida.
+
+### Funnel de Leads
+- Descripción clara "¿Para qué sirve?". Etapas y orígenes con etiquetas legibles.
+- Botón "Ver detalle" en cada lead.
+
+### CRM y Campañas
+- **3 campañas predeterminadas:** Si la API devuelve vacío o falla, se muestran Onboarding Demo, Seguimiento Post-Demo y Reactivación de Leads. Todas editables (local o persistidas si hay BD).
+- **Editar, eliminar, crear campañas.** Modal de edición con nombre, descripción, objetivo, frecuencia y plantilla de email (asunto + cuerpo).
+- **Plantilla personalizable:** variables `{{name}}` y `{{demo_link}}` con botones de inserción rápida.
+- **API:** GET, POST, PATCH, PUT, DELETE. Migración `105b_platform_campaigns_extend.sql` añade `description`, `target_stage`, `frequency`, `email_subject`, `email_body`.
+- Cards con preview de plantilla, botones Editar, Eliminar, Activar/Pausar. "Crear campaña" y "Ejecutar activas ahora".
+- **Sin BD:** Se muestran 3 campañas de ejemplo editables; al guardar se intenta crear en BD. Si la tabla no existe, los cambios son solo en sesión.
+
+### Tickets inteligentes
+- **Tres vistas:** Tablero (Kanban por estado), Lista (tabla compacta), Lista detallada (cards con fecha y botón Responder).
+- **Filtros:** por estado (Abierto, En curso, Escalado, Resuelto) y por prioridad.
+- **Orden:** más recientes primero. Prioridad con colores (Urgente rojo, Alta naranja, Media amarillo).
+- Clic en ticket → detalle para responder o escalar.
+
+### Chatbot (`/platform-admin/chatbot-config`)
+- **Vista moderna:** Cards para Web y Telegram, tests de prueba, parámetros IA en layout optimizado.
+- **Configuración Telegram:** Campo editable para el usuario del bot (sin @). Se guarda en BD (`chatbot_config.telegram_bot_username`). Migración `chatbot_config_telegram.sql`.
+- **Estado de conexión:** Badge "Token OK" / "Sin token" según `TELEGRAM_BOT_TOKEN` en .env. API `GET /api/chatbot/telegram-status`.
+- **Enlaces:** URL web, t.me/{username} con Copiar/Abrir. Pasos: BotFather → TELEGRAM_BOT_TOKEN en .env → guardar usuario.
+- **Tests de prueba:** Residente, Admin PH, Cliente nuevo con correos y vista previa.
+- Modelos IA: Gemini 2.0 Flash, Gemini 1.5 Flash, GPT-3.5, GPT-4.
 
 ---
 

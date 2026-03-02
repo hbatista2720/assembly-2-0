@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import PlatformAdminShell from "../../platform-admin/PlatformAdminShell";
+import { getAlertConfig, setAlertConfig, getAlertLabels, type AlertConfig, type AlertType } from "../../../lib/alertNotificationsConfig";
 
 const KPI_FALLBACK = [
   { label: "Funnel Conversión", value: "18.4%", note: "Desde BD" },
@@ -55,10 +56,13 @@ export default function AdminInteligenteDashboard() {
   const [userEmail, setUserEmail] = useState("");
   const [userRole, setUserRole] = useState("Admin Plataforma");
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [alertConfigModalOpen, setAlertConfigModalOpen] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [savedDisplayName, setSavedDisplayName] = useState("");
   const [leadsData, setLeadsData] = useState<LeadRow[] | null>(null);
   const [clientsData, setClientsData] = useState<ClientRow[] | null>(null);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(0);
+  const [alertConfigForm, setAlertConfigForm] = useState<AlertConfig>(() => getAlertConfig());
 
   useEffect(() => {
     const storedEmail = localStorage.getItem("assembly_email") || "";
@@ -81,6 +85,27 @@ export default function AdminInteligenteDashboard() {
       .then((data) => (Array.isArray(data) ? setClientsData(data) : setClientsData(null)))
       .catch(() => setClientsData(null));
   }, []);
+
+  useEffect(() => {
+    fetch("/api/platform-admin/pending-orders")
+      .then((res) => res.json())
+      .then((data) => {
+        const orders = data?.orders || [];
+        setPendingApprovalsCount(Array.isArray(orders) ? orders.length : 0);
+      })
+      .catch(() => setPendingApprovalsCount(0));
+  }, []);
+
+  useEffect(() => {
+    if (alertConfigModalOpen) {
+      const cfg = getAlertConfig();
+      if (cfg.emails.length === 0 && userEmail) {
+        setAlertConfigForm({ ...cfg, emails: [userEmail] });
+      } else {
+        setAlertConfigForm(cfg);
+      }
+    }
+  }, [alertConfigModalOpen, userEmail]);
 
   const kpi = useMemo(() => {
     if (leadsData && leadsData.length > 0) {
@@ -213,13 +238,42 @@ export default function AdminInteligenteDashboard() {
           <div className="card" style={{ padding: "28px" }}>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "16px" }}>
               <div style={{ flex: 1 }}>
-                <span className="pill">Estado general</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                  <span className="pill">Estado general</span>
+                  {(pendingApprovalsCount > 0 || getAlertConfig().enabled) && (
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "4px 10px",
+                        borderRadius: "8px",
+                        background: pendingApprovalsCount > 0 ? "rgba(239,68,68,0.15)" : "rgba(99,102,241,0.15)",
+                        border: `1px solid ${pendingApprovalsCount > 0 ? "rgba(239,68,68,0.35)" : "rgba(99,102,241,0.3)"}`,
+                        fontSize: "12px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      <span aria-hidden>🔔</span>
+                      {pendingApprovalsCount > 0 ? `${pendingApprovalsCount} alerta${pendingApprovalsCount > 1 ? "s" : ""}` : "Notificaciones activas"}
+                    </span>
+                  )}
+                </div>
                 <h1 style={{ margin: "12px 0 8px" }}>Dashboard Administrativo Inteligente</h1>
                 <p style={{ color: "#cbd5f5", margin: 0 }}>
                   Seguimiento completo de ventas, soporte y crecimiento de la plataforma.
                 </p>
               </div>
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => setAlertConfigModalOpen(true)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+                >
+                  <span aria-hidden>⚙️</span>
+                  Configurar alertas
+                </button>
                 <a className="btn" href="/api/platform-admin/leads/export?format=csv" download target="_blank" rel="noopener noreferrer">
                   Exportar reporte (CSV)
                 </a>
@@ -244,6 +298,32 @@ export default function AdminInteligenteDashboard() {
                 <p style={{ margin: 0, color: "#a5b4fc", fontSize: "14px" }}>{item.note}</p>
               </div>
             ))}
+            <div
+              className="card"
+              style={{
+                border: "1px solid rgba(99,102,241,0.25)",
+                background: getAlertConfig().enabled ? "rgba(99,102,241,0.08)" : "rgba(30,41,59,0.4)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                <span style={{ fontSize: "20px" }}>🔔</span>
+                <p style={{ margin: 0, color: "#94a3b8" }}>Notificaciones</p>
+              </div>
+              <h3 style={{ margin: "8px 0" }}>
+                {getAlertConfig().enabled ? "Activas" : "Desactivadas"}
+              </h3>
+              <p style={{ margin: 0, color: "#a5b4fc", fontSize: "13px" }}>
+                {getAlertConfig().emails.length} correo(s) · {pendingApprovalsCount > 0 ? `${pendingApprovalsCount} alerta(s)` : "Sin alertas"}
+              </p>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ marginTop: "12px" }}
+                onClick={() => setAlertConfigModalOpen(true)}
+              >
+                Configurar
+              </button>
+            </div>
           </div>
 
           <div className="chart-grid">
@@ -397,6 +477,151 @@ export default function AdminInteligenteDashboard() {
             </div>
           </section>
       </PlatformAdminShell>
+
+      {alertConfigModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="alert-config-modal-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 51,
+          }}
+          onClick={() => setAlertConfigModalOpen(false)}
+        >
+          <div
+            className="card"
+            style={{ maxWidth: "500px", margin: "16px", width: "100%", maxHeight: "90vh", overflow: "auto" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="alert-config-modal-title" style={{ marginTop: 0 }}>Configurar alertas y notificaciones</h2>
+            <p className="muted" style={{ marginBottom: "20px" }}>
+              Recibe correos cuando haya órdenes pendientes, tickets urgentes, leads nuevos, etc. Soporta múltiples direcciones.
+            </p>
+
+            <label style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={alertConfigForm.enabled}
+                onChange={(e) => setAlertConfigForm((f) => ({ ...f, enabled: e.target.checked }))}
+              />
+              <span>Activar envío de notificaciones por correo</span>
+            </label>
+
+            <div style={{ marginBottom: "20px" }}>
+              <span className="muted" style={{ fontSize: "12px", display: "block", marginBottom: "8px" }}>Correos de notificación (Henry y equipo)</span>
+              {alertConfigForm.emails.map((email, i) => (
+                <div key={i} style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      const next = [...alertConfigForm.emails];
+                      next[i] = e.target.value;
+                      setAlertConfigForm((f) => ({ ...f, emails: next }));
+                    }}
+                    placeholder="ejemplo@assembly2.com"
+                    style={{
+                      flex: 1,
+                      padding: "10px 12px",
+                      borderRadius: "10px",
+                      border: "1px solid rgba(148,163,184,0.3)",
+                      background: "rgba(15,23,42,0.6)",
+                      color: "#e2e8f0",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={() => setAlertConfigForm((f) => ({ ...f, emails: f.emails.filter((_, j) => j !== i) }))}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setAlertConfigForm((f) => ({ ...f, emails: [...f.emails, ""] }))}
+              >
+                + Añadir correo
+              </button>
+            </div>
+
+            <div style={{ marginBottom: "20px" }}>
+              <span className="muted" style={{ fontSize: "12px", display: "block", marginBottom: "10px" }}>Tipos de alerta</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {(Object.keys(getAlertLabels()) as AlertType[]).map((type) => (
+                  <label key={type} style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={alertConfigForm.alertTypes.includes(type)}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...alertConfigForm.alertTypes, type]
+                          : alertConfigForm.alertTypes.filter((t) => t !== type);
+                        setAlertConfigForm((f) => ({ ...f, alertTypes: next }));
+                      }}
+                    />
+                    <span>{getAlertLabels()[type]}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: "20px" }}>
+              <span className="muted" style={{ fontSize: "12px", display: "block", marginBottom: "10px" }}>Resumen de campañas (digest)</span>
+              <label style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={alertConfigForm.campaignDigest}
+                  onChange={(e) => setAlertConfigForm((f) => ({ ...f, campaignDigest: e.target.checked }))}
+                />
+                <span>Incluir resumen de campañas en notificaciones</span>
+              </label>
+              <select
+                value={alertConfigForm.campaignFrequency}
+                onChange={(e) => setAlertConfigForm((f) => ({ ...f, campaignFrequency: e.target.value as "daily" | "weekly" | "off" }))}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(148,163,184,0.3)",
+                  background: "rgba(15,23,42,0.6)",
+                  color: "#e2e8f0",
+                }}
+              >
+                <option value="daily">Diario</option>
+                <option value="weekly">Semanal</option>
+                <option value="off">Desactivado</option>
+              </select>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", marginTop: "24px" }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  setAlertConfig({
+                    ...alertConfigForm,
+                    emails: alertConfigForm.emails.filter((e) => e.trim()),
+                  });
+                  setAlertConfigModalOpen(false);
+                }}
+              >
+                Guardar
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={() => setAlertConfigModalOpen(false)}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {profileModalOpen && (
         <div

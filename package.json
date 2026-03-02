@@ -15,7 +15,9 @@
     "docker:restart": "docker compose restart app",
     "docker:rebuild": "docker compose up -d --build",
     "db:check": "node scripts/check-db-tables.cjs",
-    "db:migrate": "node scripts/run-migrations.cjs"
+    "db:migrate": "node scripts/run-migrations.cjs",
+    "telegram:verify": "node scripts/verify-telegram-token.mjs",
+    "db:chatbot-fix": "docker compose exec -T postgres psql -U postgres -d assembly -f /docker-entrypoint-initdb.d/chatbot_config_fix.sql"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

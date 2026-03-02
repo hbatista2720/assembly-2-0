@@ -3,6 +3,9 @@
  * Uso: node scripts/run-migrations.cjs
  */
 
+require("dotenv").config({ path: require("path").join(process.cwd(), ".env") });
+require("dotenv").config({ path: require("path").join(process.cwd(), ".env.local") });
+
 const { readFileSync } = require("fs");
 const { join } = require("path");
 const postgres = require("postgres");
@@ -12,8 +15,10 @@ const DATABASE_URL = process.env.DATABASE_URL || "postgres://postgres:postgres@l
 const MIGRATIONS_ORDER = [
   "sql_snippets/auth_otp_local.sql",
   "sql_snippets/schema_subscriptions_base.sql",
+  "src/lib/db/migrations/009_assembly_credits.sql",
   "src/lib/db/migrations/010_payment_methods.sql",
   "src/lib/db/migrations/013_paypal_tilopay_panama.sql",
+  "src/lib/db/migrations/014_discount_coupons.sql",
   "src/lib/db/migrations/018_payment_proof.sql",
 ];
 

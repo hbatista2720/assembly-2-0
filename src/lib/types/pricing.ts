@@ -6,6 +6,15 @@ export type PlanTier =
   | "MULTI_PH_PRO"
   | "ENTERPRISE";
 
+export const PLAN_IDS: PlanTier[] = [
+  "EVENTO_UNICO",
+  "DUO_PACK",
+  "STANDARD",
+  "MULTI_PH_LITE",
+  "MULTI_PH_PRO",
+  "ENTERPRISE",
+];
+
 export type BillingCycle = "one-time" | "monthly" | "annual";
 
 export interface PlanLimits {

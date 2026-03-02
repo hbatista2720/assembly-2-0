@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { createAssembly, getAssemblies, updateAssembly, deleteAssembly, isAssemblyCelebrated, findAssembly, resetDemoAssemblies, isDemoUserExport } from "../../../../lib/assembliesStore";
+import useAssemblyCredits from "../../../../hooks/useAssemblyCredits";
 import type { TopicApprovalType, AssemblyType } from "../../../../lib/assembliesStore";
 
 type FilterStatus = "" | "Programada" | "En vivo" | "Completada";
@@ -46,7 +47,14 @@ const CONFIRM_RESET_DEMO_WORD = "restablecer";
 type ViewMode = "list" | "kanban";
 
 export default function AssembliesPage() {
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const { credits } = useAssemblyCredits(organizationId);
+  const hasCredits = credits ? credits.total_available >= 1 : true;
   const [assemblies, setAssemblies] = useState(() => []);
+
+  useEffect(() => {
+    setOrganizationId(localStorage.getItem("assembly_organization_id"));
+  }, []);
   const [showForm, setShowForm] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [form, setForm] = useState<{
@@ -317,6 +325,22 @@ export default function AssembliesPage() {
 
   return (
     <div className="card assemblies-page-card">
+      {!hasCredits && (
+        <div className="card" style={{ marginBottom: "20px", borderLeft: "4px solid rgba(234, 179, 8, 0.8)", background: "rgba(250, 204, 21, 0.08)" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "16px" }}>
+            <span style={{ fontSize: "28px" }} aria-hidden>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <h3 style={{ marginTop: 0, color: "#f59e0b" }}>Sin créditos disponibles</h3>
+              <p className="muted" style={{ marginTop: "6px", marginBottom: "16px" }}>
+                No tiene créditos disponibles para crear asambleas. Debe comprar crédito primero.
+              </p>
+              <Link href="/dashboard/admin-ph/subscription" className="btn btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                Ir a Comprar Créditos
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="assemblies-page-header">
         <div className="assemblies-page-header-content">
           <h2 style={{ marginTop: 0 }}>Asambleas</h2>
@@ -425,13 +449,13 @@ export default function AssembliesPage() {
               Restablecer asambleas demo
             </button>
           )}
-          <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+          <button className="btn btn-primary" onClick={() => hasCredits && setShowForm(true)} disabled={!hasCredits} title={!hasCredits ? "Sin créditos. Ir a Comprar Créditos." : undefined}>
             Crear asamblea
           </button>
         </div>
       </div>
 
-      {showForm && (
+      {showForm && hasCredits && (
         <div className="create-ph-form card" style={{ marginTop: "16px" }}>
           <div className="create-ph-form-header">
             <h3 className="create-ph-form-title">Nueva asamblea</h3>
@@ -803,12 +827,17 @@ export default function AssembliesPage() {
                     Crea una asamblea o abre el Monitor Back Office en modo demo para ver el panel en vivo.
                   </p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", justifyContent: "center" }}>
-                    <button type="button" className="btn btn-primary" onClick={() => setShowForm(true)}>
+                    <button type="button" className="btn btn-primary" onClick={() => hasCredits && setShowForm(true)} disabled={!hasCredits}>
                       Crear asamblea
                     </button>
                     <Link className="btn btn-ghost" href="/dashboard/admin-ph/monitor">
                       Ir a Monitor Back Office
                     </Link>
+                    {!hasCredits && (
+                      <Link className="btn btn-primary" href="/dashboard/admin-ph/subscription">
+                        Ir a Comprar Créditos
+                      </Link>
+                    )}
                   </div>
                 </>
               )}

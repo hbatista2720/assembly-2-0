@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PLANS, Plan } from "../../lib/types/pricing";
+import { getVisiblePlans } from "../../lib/planVisibility";
 
 const PH_PLANS = ["EVENTO_UNICO", "DUO_PACK", "STANDARD"];
 const ADMIN_PLANS = ["MULTI_PH_LITE", "MULTI_PH_PRO", "ENTERPRISE"];
@@ -11,7 +12,7 @@ export default function PricingSelector() {
 
   const plans = useMemo(() => {
     const allowed = userType === "ph" ? PH_PLANS : ADMIN_PLANS;
-    return PLANS.filter((plan) => allowed.includes(plan.id));
+    return getVisiblePlans(PLANS).filter((plan) => allowed.includes(plan.id));
   }, [userType]);
 
   return (

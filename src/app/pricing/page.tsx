@@ -1,15 +1,21 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import PricingSelector from "../../components/pricing/PricingSelector";
 import ROICalculator from "../../components/pricing/ROICalculator";
 import EnterprisePlanCard from "../../components/pricing/EnterprisePlanCard";
 import CartNavLink from "../../components/CartNavLink";
+import { getPlanVisibility } from "../../lib/planVisibility";
 
 function PricingContent() {
   const searchParams = useSearchParams();
   const fromDashboardPh = searchParams.get("from") === "dashboard-admin-ph";
+  const [showEnterprise, setShowEnterprise] = useState(true);
+
+  useEffect(() => {
+    setShowEnterprise(getPlanVisibility().ENTERPRISE);
+  }, []);
 
   return (
     <main className="container">
@@ -33,13 +39,15 @@ function PricingContent() {
 
       <ROICalculator />
 
-      <section className="section">
-        <h2 className="section-title">Plan Enterprise premium</h2>
-        <p className="section-subtitle">Para promotoras grandes con necesidad de escalamiento ilimitado.</p>
-        <div className="pricing-grid">
-          <EnterprisePlanCard />
-        </div>
-      </section>
+      {showEnterprise && (
+        <section className="section">
+          <h2 className="section-title">Plan Enterprise premium</h2>
+          <p className="section-subtitle">Para promotoras grandes con necesidad de escalamiento ilimitado.</p>
+          <div className="pricing-grid">
+            <EnterprisePlanCard />
+          </div>
+        </section>
+      )}
     </main>
   );
 }

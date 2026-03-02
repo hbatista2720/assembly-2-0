@@ -94,7 +94,7 @@ export default function TicketDetailPage() {
       setSubmitting(false);
       if (res.ok && data?.ok) {
         toast.success("Ticket resuelto.");
-        router.push("/dashboard/platform-admin");
+        router.push("/platform-admin/tickets");
       } else {
         toast.error(data?.error || "No se pudo resolver.");
       }
@@ -110,7 +110,7 @@ export default function TicketDetailPage() {
     });
     toast.success("Ticket resuelto.");
     setSubmitting(false);
-    router.push("/dashboard/platform-admin");
+    router.push("/platform-admin/tickets");
   }
 
   async function handleEscalate() {

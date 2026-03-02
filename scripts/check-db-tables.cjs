@@ -3,6 +3,9 @@
  * Uso: node scripts/check-db-tables.cjs
  */
 
+require("dotenv").config({ path: require("path").join(process.cwd(), ".env") });
+require("dotenv").config({ path: require("path").join(process.cwd(), ".env.local") });
+
 const postgres = require("postgres");
 
 const DATABASE_URL = process.env.DATABASE_URL || "postgres://postgres:postgres@localhost:5432/assembly";
@@ -11,9 +14,9 @@ const TABLES = [
   "organizations",
   "users",
   "subscriptions",
+  "assembly_credits",
   "invoices",
   "manual_payment_requests",
-  "organization_credits",
   "discount_coupons",
 ];
 

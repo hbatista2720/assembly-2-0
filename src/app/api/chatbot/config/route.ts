@@ -22,24 +22,56 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { bot_name, is_active, ai_model, temperature, max_tokens, prompts } = body || {};
+    const {
+      bot_name,
+      is_active,
+      ai_model,
+      temperature,
+      max_tokens,
+      prompts,
+      telegram_bot_username,
+    } = body || {};
 
     if (!bot_name) {
       return NextResponse.json({ error: "bot_name requerido" }, { status: 400 });
     }
 
-    const [updated] = await sql`
-      UPDATE chatbot_config
-      SET
-        is_active = ${is_active},
-        ai_model = ${ai_model},
-        temperature = ${temperature},
-        max_tokens = ${max_tokens},
-        prompts = ${sql.json(prompts)}::jsonb,
-        updated_at = NOW()
-      WHERE bot_name = ${bot_name}
-      RETURNING *
-    `;
+    const includeTg = bot_name === "telegram" && telegram_bot_username !== undefined;
+    const tgUsername = includeTg ? (String(telegram_bot_username || "").trim() || null) : null;
+
+    let updated: { [key: string]: unknown } | undefined;
+    if (includeTg) {
+      try {
+        [updated] = await sql`
+          UPDATE chatbot_config
+          SET is_active=${is_active}, ai_model=${ai_model}, temperature=${temperature},
+              max_tokens=${max_tokens}, prompts=${prompts != null ? sql.json(prompts) : sql`prompts`}::jsonb,
+              telegram_bot_username=${tgUsername}, updated_at=NOW()
+          WHERE bot_name=${bot_name}
+          RETURNING *
+        `;
+      } catch (e: unknown) {
+        if ((e as { code?: string })?.code === "42703") {
+          [updated] = await sql`
+            UPDATE chatbot_config
+            SET is_active=${is_active}, ai_model=${ai_model}, temperature=${temperature},
+                max_tokens=${max_tokens}, prompts=${prompts != null ? sql.json(prompts) : sql`prompts`}::jsonb,
+                updated_at=NOW()
+            WHERE bot_name=${bot_name}
+            RETURNING *
+          `;
+        } else throw e;
+      }
+    } else {
+      [updated] = await sql`
+        UPDATE chatbot_config
+        SET is_active=${is_active}, ai_model=${ai_model}, temperature=${temperature},
+            max_tokens=${max_tokens}, prompts=${prompts != null ? sql.json(prompts) : sql`prompts`}::jsonb,
+            updated_at=NOW()
+        WHERE bot_name=${bot_name}
+        RETURNING *
+      `;
+    }
 
     return NextResponse.json(updated);
   } catch (error) {

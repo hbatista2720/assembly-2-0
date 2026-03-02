@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useCart } from "../context/CartContext";
 import { PLANS } from "../lib/types/pricing";
+import { getVisiblePlans } from "../lib/planVisibility";
 import type { PlanTier } from "../lib/types/pricing";
 
 const UNIT_ADDONS = [
@@ -84,7 +85,7 @@ export default function CartContent({
             <div>
               <label style={{ display: "block", marginBottom: "8px", fontSize: "13px", fontWeight: 600, color: "#94a3b8" }}>Plan</label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                {PLANS.filter((p) => p.id !== "ENTERPRISE").map((plan) => (
+                {getVisiblePlans(PLANS).filter((p) => p.id !== "ENTERPRISE").map((plan) => (
                   <button
                     key={plan.id}
                     type="button"

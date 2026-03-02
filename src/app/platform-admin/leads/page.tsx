@@ -17,11 +17,68 @@ type Lead = {
   created_at: string | null;
 };
 
+function LeadDetailModal({ lead, stageLabels, sourceLabels, onClose }: {
+  lead: Lead;
+  stageLabels: Record<string, string>;
+  sourceLabels: Record<string, string>;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="lead-detail-title"
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.6)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 50,
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="card"
+        style={{ maxWidth: "420px", margin: 16, width: "100%", maxHeight: "90vh", overflow: "auto" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <h2 id="lead-detail-title" style={{ margin: 0, fontSize: "18px" }}>Vista detalle del lead</h2>
+          <button type="button" onClick={onClose} aria-label="Cerrar" style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", color: "#94a3b8" }}>×</button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <DetailRow label="Email" value={lead.email} />
+          <DetailRow label="Teléfono" value={lead.phone || "—"} />
+          <DetailRow label="Empresa / PH" value={lead.company_name || "—"} />
+          <DetailRow label="Origen" value={sourceLabels[lead.lead_source] || lead.lead_source} />
+          <DetailRow label="Etapa" value={stageLabels[lead.funnel_stage] || lead.funnel_stage} />
+          <DetailRow label="Score" value={String(lead.lead_score ?? 0)} />
+          <DetailRow label="Calificado" value={lead.lead_qualified ? "Sí" : "No"} />
+          <DetailRow label="Registrado" value={lead.created_at ? new Date(lead.created_at).toLocaleString("es-PA", { dateStyle: "medium", timeStyle: "short" }) : "—"} />
+          <DetailRow label="Última interacción" value={lead.last_interaction_at ? new Date(lead.last_interaction_at).toLocaleString("es-PA", { dateStyle: "medium", timeStyle: "short" }) : "—"} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      <span className="muted" style={{ fontSize: "12px" }}>{label}</span>
+      <span style={{ fontSize: "14px" }}>{value}</span>
+    </div>
+  );
+}
+
 function LeadsContent() {
   const params = useSearchParams();
   const stage = params.get("stage") || undefined;
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [detailLead, setDetailLead] = useState<Lead | null>(null);
 
   useEffect(() => {
     loadLeads();
@@ -94,17 +151,47 @@ function LeadsContent() {
     toast.success("Descarga iniciada.");
   }
 
+  const stageLabels: Record<string, string> = {
+    new: "Nuevos",
+    qualified: "Calificados",
+    demo_requested: "Demo solicitado",
+    demo_active: "Demo activo",
+    converted: "Convertidos",
+    lost: "Perdidos",
+  };
+
+  const sourceLabels: Record<string, string> = {
+    chatbot: "Chatbot",
+    landing: "Landing",
+    manual: "Manual",
+    demo: "Demo",
+  };
+
   return (
     <>
       <div className="card" style={{ marginBottom: "16px" }}>
         <a href="/dashboard/admin" className="btn btn-ghost">
           ← Volver al Dashboard
         </a>
-        <h1 style={{ margin: "12px 0 0" }}>Gestión de Leads</h1>
+        <h1 style={{ margin: "12px 0 0" }}>Funnel de Leads</h1>
         <p className="muted" style={{ marginTop: "6px" }}>
-          Filtra, califica y activa demos. Datos desde chatbot y CRM.
+          Prospectos interesados en Assembly 2.0 que llegan desde el chatbot de la landing, demo o CRM. Aquí los calificas y activas demos.
         </p>
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "12px", alignItems: "center" }}>
+        <div
+          style={{
+            marginTop: "12px",
+            padding: "12px 16px",
+            background: "rgba(99,102,241,0.08)",
+            borderRadius: "10px",
+            border: "1px solid rgba(99,102,241,0.2)",
+          }}
+        >
+          <strong style={{ fontSize: "13px" }}>¿Para qué sirve?</strong>
+          <p className="muted" style={{ margin: "6px 0 0", fontSize: "13px", lineHeight: 1.5 }}>
+            Ver quién mostró interés (email, empresa), filtrar por etapa del embudo, calificar leads prometedores y activar demo para que prueben la app.
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "16px", alignItems: "center" }}>
           <a href="/platform-admin/leads" className={`btn ${!stage ? "btn-primary" : "btn-ghost"}`}>
             Todos
           </a>
@@ -114,7 +201,7 @@ function LeadsContent() {
               href={`/platform-admin/leads?stage=${s}`}
               className={`btn ${stage === s ? "btn-primary" : "btn-ghost"}`}
             >
-              {s === "new" ? "Nuevos" : s === "qualified" ? "Calificados" : s === "demo_active" ? "Demo activo" : "Convertidos"}
+              {stageLabels[s] || s}
             </a>
           ))}
           <button
@@ -145,11 +232,15 @@ function LeadsContent() {
                     </div>
                   )}
                   <div className="muted" style={{ fontSize: "12px" }}>
-                    Etapa: {lead.funnel_stage} · Score: {lead.lead_score ?? 0}
-                    {lead.lead_qualified ? " · Calificado" : ""}
+                    {stageLabels[lead.funnel_stage] || lead.funnel_stage} · {lead.lead_source === "chatbot" ? "Chatbot" : lead.lead_source === "landing" ? "Landing" : lead.lead_source === "demo" ? "Demo" : lead.lead_source}
+                    {lead.lead_qualified ? " · ✓ Calificado" : ""} · Score: {lead.lead_score ?? 0}
+                    {lead.created_at && ` · ${new Date(lead.created_at).toLocaleDateString("es-PA", { dateStyle: "short" })}`}
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                  <button className="btn btn-ghost" onClick={() => setDetailLead(lead)}>
+                    Ver detalle
+                  </button>
                   {!lead.lead_qualified && (
                     <button className="btn btn-ghost" onClick={() => handleQualify(lead.id)}>
                       Calificar
@@ -166,6 +257,14 @@ function LeadsContent() {
           </div>
         )}
       </div>
+      {detailLead && (
+        <LeadDetailModal
+          lead={detailLead}
+          stageLabels={stageLabels}
+          sourceLabels={sourceLabels}
+          onClose={() => setDetailLead(null)}
+        />
+      )}
     </>
   );
 }

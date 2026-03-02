@@ -8,14 +8,14 @@ import {
   PRESET_FASE_1,
   getGatewayConfig,
   setGatewayConfig,
+  getPaymentMode,
+  applyPaymentModePreset,
   type PaymentMethodId,
   type PaymentMethodConfig,
   type PaymentAction,
-  type PaymentMode,
   type GatewayConfig,
   getPaymentMethods,
   setPaymentMethods,
-  applyPaymentModePreset,
 } from "../../../lib/paymentConfig";
 
 const PAYMENT_METHOD_DESCRIPTIONS: Record<PaymentMethodId, string> = {
@@ -34,7 +34,6 @@ export default function PaymentConfigPage() {
     paypal: { clientId: "", mode: "sandbox" },
     tilopay: { merchantId: "", mode: "sandbox" },
   });
-  const [presetOpen, setPresetOpen] = useState(false);
   const [gatewayModalMethod, setGatewayModalMethod] = useState<PaymentMethodId | null>(null);
   const [summaryModalMethod, setSummaryModalMethod] = useState<PaymentMethodId | null>(null);
 
@@ -66,12 +65,6 @@ export default function PaymentConfigPage() {
     setPaymentMethods(next);
   };
 
-  const handleApplyPreset = (mode: PaymentMode) => {
-    applyPaymentModePreset(mode);
-    refreshState();
-    setPresetOpen(false);
-  };
-
   return (
     <>
       <div className="card" style={{ marginBottom: "24px" }}>
@@ -81,90 +74,15 @@ export default function PaymentConfigPage() {
           </svg>
           Volver al Dashboard
         </Link>
-        <h1 style={{ margin: "12px 0 8px" }}>Configuración de pagos</h1>
+        <h1 style={{ margin: "12px 0 8px" }}>Pasarelas</h1>
         <p className="muted" style={{ margin: 0 }}>
-          Configura cada método de pago: Manual/Automática, Activo/Inactivo y Nivel. Los métodos inactivos no se muestran en el checkout.
+          Configura cada método: Manual/Automática, Activo/Inactivo y Nivel. Los métodos inactivos no se muestran en el checkout.
         </p>
-      </div>
-
-      <div className="card" style={{ marginBottom: "24px", padding: "24px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px", marginBottom: "20px" }}>
-          <h2 style={{ margin: 0, fontSize: "1.1rem" }}>Pasarela de pago</h2>
-          <div style={{ position: "relative" }}>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => setPresetOpen((o) => !o)}
-              style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
-              aria-expanded={presetOpen}
-              aria-haspopup="true"
-            >
-              Pasarela de pago
-              <span style={{ fontSize: "10px" }}>{presetOpen ? "▲" : "▼"}</span>
-            </button>
-            {presetOpen && (
-              <>
-                <div
-                  role="presentation"
-                  style={{ position: "fixed", inset: 0, zIndex: 10 }}
-                  onClick={() => setPresetOpen(false)}
-                />
-                <div
-                  role="menu"
-                  style={{
-                    position: "absolute",
-                    right: 0,
-                    top: "100%",
-                    marginTop: "6px",
-                    minWidth: "200px",
-                    background: "rgba(30,41,59,0.98)",
-                    border: "1px solid rgba(148,163,184,0.3)",
-                    borderRadius: "12px",
-                    boxShadow: "0 10px 40px rgba(0,0,0,0.4)",
-                    zIndex: 20,
-                    padding: "8px 0",
-                  }}
-                >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="btn btn-ghost"
-                    style={{ width: "100%", justifyContent: "flex-start", padding: "10px 16px", fontSize: "14px" }}
-                    onClick={() => handleApplyPreset("FASE_1")}
-                  >
-                    Fase 1 — Solo ACH y Yappy
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="btn btn-ghost"
-                    style={{ width: "100%", justifyContent: "flex-start", padding: "10px 16px", fontSize: "14px" }}
-                    onClick={() => handleApplyPreset("FASE_2")}
-                  >
-                    Fase 2 — Todos los métodos
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-        <p className="muted" style={{ marginBottom: "20px", fontSize: "14px" }}>
-          Aplica un preset (Fase 1 o Fase 2) o configura cada método individualmente en la tabla.
-        </p>
-        <div style={{ padding: "12px 16px", background: "rgba(99,102,241,0.1)", borderRadius: "10px", border: "1px solid rgba(99,102,241,0.2)" }}>
-          <Link href="/platform-admin/approvals" className="btn btn-primary btn-sm" style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
-            Ir a Bandeja de aprobaciones
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </Link>
-        </div>
       </div>
 
       <div className="card" style={{ marginBottom: "24px", padding: "24px", overflowX: "auto" }}>
-        <h2 style={{ margin: "0 0 16px", fontSize: "1.1rem" }}>Métodos de pago</h2>
         <p className="muted" style={{ marginBottom: "20px", fontSize: "14px" }}>
-          Cada método tiene: Manual/Automática (requiere comprobante o no), Activo/Inactivo, Nivel (orden de aparición).
+          Manual/Automática (requiere comprobante o no), Activo/Inactivo, Nivel (orden de aparición).
         </p>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
           <thead>

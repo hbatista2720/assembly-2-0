@@ -19,7 +19,7 @@ const GREETING_BY_PROFILE: Record<TestProfile, string> = {
 const TEST_USERS: Record<TestProfile, string> = {
   residente: "residente2@demo.assembly2.com",
   admin: "admin@torresdelpacifico.com",
-  demo: "nuevo@empresa.com (demo)",
+  demo: "demo@assembly2.com",
 };
 
 export default function ChatbotPreview({

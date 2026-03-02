@@ -39,6 +39,11 @@ const NavIcons: Record<string, () => JSX.Element> = {
       <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z" />
     </svg>
   ),
+  payment: () => (
+    <svg viewBox="0 0 24 24" style={iconStyle} fill="currentColor">
+      <path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
+    </svg>
+  ),
   trending: () => (
     <svg viewBox="0 0 24 24" style={iconStyle} fill="currentColor">
       <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6h-6z" />
@@ -81,23 +86,38 @@ const NavIcons: Record<string, () => JSX.Element> = {
   ),
 };
 
+/** Orden: Dashboard principal primero, luego Leads, Aprobaciones, Monitor, etc. */
 const NAV = [
-  { href: "/dashboard/admin", label: "Resumen ejecutivo", iconKey: "chart" },
-  { href: "/platform-admin/approvals", label: "Bandeja de aprobaciones", iconKey: "approve", badge: true },
+  { href: "/dashboard/admin", label: "Dashboard principal", iconKey: "chart" },
+  { href: "/platform-admin/leads", label: "Leads", iconKey: "target" },
+  { href: "/platform-admin/approvals", label: "Aprobaciones", iconKey: "approve", badge: true },
   { href: "/platform-admin/monitoring", label: "Monitor VPS", iconKey: "monitor" },
-  { href: "/platform-admin/clients", label: "Gestión de comunidades", iconKey: "users" },
-  { href: "/platform-admin/plans", label: "Planes y precios", iconKey: "money" },
-  { href: "/platform-admin/payment-config", label: "Configuración de pagos", iconKey: "card" },
-  { href: "/platform-admin/business", label: "Métricas de negocio", iconKey: "trending" },
-  { href: "/platform-admin/leads", label: "Funnel de leads", iconKey: "target" },
-  { href: "/platform-admin/tickets", label: "Tickets inteligentes", iconKey: "ticket" },
-  { href: "/platform-admin/crm", label: "CRM y campañas", iconKey: "campaign" },
-  { href: "/platform-admin/chatbot-config", label: "Configuración Chatbot", iconKey: "robot" },
+  { href: "/platform-admin/tickets", label: "Tickets", iconKey: "ticket" },
+  { href: "/platform-admin/clients", label: "Comunidades", iconKey: "users" },
+  { href: "/platform-admin/plans", label: "Planes", iconKey: "money" },
+  { href: "/platform-admin/payment-config", label: "Pasarelas", iconKey: "payment" },
+  { href: "/platform-admin/business", label: "Métricas", iconKey: "trending" },
+  { href: "/platform-admin/crm", label: "CRM", iconKey: "campaign" },
+  { href: "/platform-admin/chatbot-config", label: "Chatbot", iconKey: "robot" },
 ];
+
+const SIDEBAR_STORAGE = "assembly_platform_admin_sidebar_collapsed";
 
 export default function PlatformAdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+
+  useEffect(() => {
+    const stored = typeof window !== "undefined" ? localStorage.getItem(SIDEBAR_STORAGE) : null;
+    if (stored !== null) setSidebarCollapsed(stored === "1");
+  }, []);
+
+  const toggleSidebar = () => {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    if (typeof window !== "undefined") localStorage.setItem(SIDEBAR_STORAGE, next ? "1" : "0");
+  };
 
   useEffect(() => {
     fetch("/api/platform-admin/pending-orders")
@@ -120,14 +140,28 @@ export default function PlatformAdminShell({ children }: { children: React.React
   }, []);
 
   return (
-    <div className="app-shell platform-admin-shell">
-      <aside className="sidebar platform-admin-sidebar admin-ph-sidebar">
+    <div className={`app-shell platform-admin-shell admin-ph-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+      <aside className={`sidebar platform-admin-sidebar admin-ph-sidebar ${sidebarCollapsed ? "collapsed" : ""}`} aria-label="Navegación">
         <div className="sidebar-header">
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className="sidebar-toggle"
+            title={sidebarCollapsed ? "Mostrar menú" : "Ocultar menú"}
+            aria-label={sidebarCollapsed ? "Expandir barra lateral" : "Colapsar barra lateral"}
+          >
+            <span className="sidebar-toggle-icon" aria-hidden>
+              {sidebarCollapsed ? "▶" : "◀"}
+            </span>
+            {!sidebarCollapsed && <span className="sidebar-toggle-text">Ocultar</span>}
+          </button>
+          {!sidebarCollapsed && (
           <div className="sidebar-brand">
             <span className="sidebar-pill">Assembly 2.0</span>
             <h3 className="sidebar-title">Admin Plataforma</h3>
             <p className="sidebar-subtitle">Panel maestro de la operación</p>
           </div>
+          )}
         </div>
         <nav className="sidebar-nav">
           {NAV.map((item) => {
@@ -140,6 +174,7 @@ export default function PlatformAdminShell({ children }: { children: React.React
                 key={item.href}
                 href={item.href}
                 className={`sidebar-link ${isActive ? "active" : ""}`}
+                title={item.label}
                 style={item.badge && pendingCount !== null && pendingCount > 0 ? { position: "relative" } : undefined}
               >
                 <span className="sidebar-icon-wrap" aria-hidden>

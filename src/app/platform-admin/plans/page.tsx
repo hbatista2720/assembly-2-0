@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PLANS, type Plan, type PlanTier } from "../../../lib/types/pricing";
+import { getPlanVisibility, setPlanVisibility } from "../../../lib/planVisibility";
 
 const PLAN_OVERRIDES_KEY = "assembly_platform_admin_plan_overrides";
 
@@ -35,11 +36,15 @@ function formatLimit(
 
 export default function PlansPage() {
   const [overrides, setOverrides] = useState<Record<PlanTier, number | null>>({});
+  const [visibility, setVisibility] = useState<Record<PlanTier, boolean>>(() =>
+    typeof window !== "undefined" ? getPlanVisibility() : {}
+  );
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [editPrice, setEditPrice] = useState("");
 
   useEffect(() => {
     setOverrides(loadOverrides());
+    setVisibility(getPlanVisibility());
   }, []);
 
   const handleSavePrice = () => {
@@ -57,6 +62,13 @@ export default function PlansPage() {
     setOverrides({});
     saveOverrides({} as Record<PlanTier, number | null>);
     setEditingPlan(null);
+  };
+
+  const handleToggleVisibility = (planId: PlanTier) => {
+    const isVisible = visibility[planId] !== false;
+    const next = !isVisible;
+    setPlanVisibility(planId, next);
+    setVisibility((prev) => ({ ...prev, [planId]: next }));
   };
 
   const hasOverrides = Object.values(overrides).some((v) => v !== null && v !== undefined);
@@ -135,6 +147,41 @@ export default function PlansPage() {
                     </td>
                     <td style={{ padding: "14px 16px", textAlign: "center" }}>
                       {formatLimit(plan.limits.maxBuildings)}
+                    </td>
+                    <td style={{ padding: "14px 16px", textAlign: "center" }}>
+                      <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", cursor: "pointer" }}>
+                        <span style={{ fontSize: "13px", color: visibility[plan.id] !== false ? "#4ade80" : "#94a3b8" }}>
+                          {visibility[plan.id] !== false ? "Publicado" : "Oculto"}
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={visibility[plan.id] !== false}
+                          onClick={() => handleToggleVisibility(plan.id)}
+                          style={{
+                            width: 44,
+                            height: 24,
+                            borderRadius: 12,
+                            border: "none",
+                            background: visibility[plan.id] !== false ? "#6366f1" : "rgba(71,85,105,0.8)",
+                            cursor: "pointer",
+                            position: "relative",
+                          }}
+                        >
+                          <span
+                            style={{
+                              position: "absolute",
+                              top: 2,
+                              left: visibility[plan.id] !== false ? 22 : 2,
+                              width: 20,
+                              height: 20,
+                              borderRadius: "50%",
+                              background: "#fff",
+                              transition: "left 0.2s ease",
+                            }}
+                          />
+                        </button>
+                      </label>
                     </td>
                     <td style={{ padding: "14px 16px", textAlign: "center" }}>
                       <button

@@ -5,9 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { PLANS, Plan } from "../../../../lib/types/pricing";
 import { useCart } from "../../../../context/CartContext";
-
-const PLANES_PAGO_UNICO = PLANS.filter((p) => p.billing === "one-time");
-const PLANES_SUSCRIPCION = PLANS.filter((p) => p.billing === "monthly");
+import { getVisiblePlans } from "../../../../lib/planVisibility";
 
 type WizardStep = "ver-suscripcion" | "comprar-credito" | "afiliacion-mensual" | null;
 
@@ -42,6 +40,9 @@ export default function SubscriptionPage() {
     setIsDemo(!!demo);
     if (demo) setPlanActualNombre("Plan Demo");
   }, []);
+
+  const planesPagoUnico = getVisiblePlans(PLANS).filter((p) => p.billing === "one-time");
+  const planesSuscripcion = getVisiblePlans(PLANS).filter((p) => p.billing === "monthly");
 
   const updateStep = (s: WizardStep) => {
     setStep(s);
@@ -240,10 +241,10 @@ export default function SubscriptionPage() {
             <WizardVerSuscripcion planActualNombre={planActualNombre} isDemo={isDemo} onComprarCredito={() => updateStep("comprar-credito")} onAfiliacion={() => updateStep("afiliacion-mensual")} />
           )}
           {step === "comprar-credito" && (
-            <WizardComprarCredito planActualNombre={planActualNombre} isDemo={isDemo} />
+            <WizardComprarCredito planActualNombre={planActualNombre} isDemo={isDemo} plans={planesPagoUnico} />
           )}
           {step === "afiliacion-mensual" && (
-            <WizardAfiliacionMensual planActualNombre={planActualNombre} isDemo={isDemo} />
+            <WizardAfiliacionMensual planActualNombre={planActualNombre} isDemo={isDemo} plans={planesSuscripcion} />
           )}
         </div>
       )}
@@ -295,9 +296,11 @@ function WizardVerSuscripcion({
 function WizardComprarCredito({
   planActualNombre,
   isDemo,
+  plans,
 }: {
   planActualNombre: string;
   isDemo: boolean;
+  plans: Plan[];
 }) {
   return (
     <>
@@ -305,7 +308,7 @@ function WizardComprarCredito({
         Pago único. Ideal para 1 o 2 asambleas al año.
       </p>
       <div className="pricing-grid pricing-grid--pago-unico" style={{ marginBottom: "24px" }}>
-        {PLANES_PAGO_UNICO.map((plan) => (
+        {plans.map((plan) => (
           <PlanCard key={plan.id} plan={plan} planActualNombre={planActualNombre} fromDashboard />
         ))}
       </div>
@@ -340,9 +343,11 @@ function WizardComprarCredito({
 function WizardAfiliacionMensual({
   planActualNombre,
   isDemo,
+  plans,
 }: {
   planActualNombre: string;
   isDemo: boolean;
+  plans: Plan[];
 }) {
   return (
     <>
@@ -350,7 +355,7 @@ function WizardAfiliacionMensual({
         Suscripción mensual con créditos acumulables. Para PH con varias asambleas al año.
       </p>
       <div className="pricing-grid">
-        {PLANES_SUSCRIPCION.map((plan) => (
+        {plans.map((plan) => (
           <PlanCard key={plan.id} plan={plan} planActualNombre={planActualNombre} fromDashboard />
         ))}
       </div>

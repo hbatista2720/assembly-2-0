@@ -1,10 +1,13 @@
 /**
  * PATCH: Aprobar o rechazar orden de pago (Henry Admin).
  * Body: { action: "APPROVE" | "REJECT" }
+ * Al aprobar: envía email al comprador (notifyPaymentApproved).
+ * Al rechazar: envía email (notifyPaymentRejected).
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "../../../../../lib/db";
+import { notifyPaymentApproved, notifyPaymentRejected } from "../../../../../lib/notifyPaymentEmail";
 
 export async function PATCH(
   request: NextRequest,
@@ -25,6 +28,19 @@ export async function PATCH(
       );
     }
 
+    const [existing] = await sql<{ contact_email: string; plan_tier: string }[]>`
+      SELECT contact_email, plan_tier FROM manual_payment_requests
+      WHERE id = ${id}::uuid AND status = 'PENDING'
+      LIMIT 1
+    `;
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Orden no encontrada o ya procesada" },
+        { status: 404 }
+      );
+    }
+
     const status = action === "APPROVE" ? "APPROVED" : "REJECTED";
 
     const [updated] = await sql`
@@ -39,6 +55,19 @@ export async function PATCH(
         { error: "Orden no encontrada o ya procesada" },
         { status: 404 }
       );
+    }
+
+    const email = existing.contact_email?.trim();
+    if (email) {
+      if (action === "APPROVE") {
+        notifyPaymentApproved(email, existing.plan_tier, 0).catch((err) =>
+          console.error("[pending-orders PATCH] notifyPaymentApproved:", err)
+        );
+      } else {
+        notifyPaymentRejected(email).catch((err) =>
+          console.error("[pending-orders PATCH] notifyPaymentRejected:", err)
+        );
+      }
     }
 
     return NextResponse.json({

@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PLANS } from "../lib/types/pricing";
+import { getVisiblePlans } from "../lib/planVisibility";
 import { getDemoResidents } from "../lib/demoResidentsStore";
 function HomeContent() {
   const router = useRouter();
@@ -1185,7 +1186,7 @@ function HomeContent() {
         <h2 className="section-title">Precios completos</h2>
         <p className="section-subtitle">Paquetes y limites oficiales de Assembly 2.0.</p>
         <div className="pricing-grid">
-          {PLANS.map((plan) => (
+          {getVisiblePlans(PLANS).map((plan) => (
             <div
               key={plan.id}
               className={`pricing-card ${plan.badge ? "highlight" : ""}`}

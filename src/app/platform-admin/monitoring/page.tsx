@@ -95,6 +95,8 @@ export default function MonitoringPage() {
   const [activeAssemblies, setActiveAssemblies] = useState(8);
   const [reservedToday, setReservedToday] = useState(12);
   const [maxReservedWeek, setMaxReservedWeek] = useState(28);
+  const [expandedCalendar, setExpandedCalendar] = useState(false);
+  const [expandedAlerts, setExpandedAlerts] = useState(false);
 
   useEffect(() => {
     fetch("/api/platform-admin/monitoring")
@@ -188,243 +190,291 @@ export default function MonitoringPage() {
     URL.revokeObjectURL(url);
   };
 
+  const capPercent = Math.round((reservedToday / VPS_PLANS[0].capacity) * 100);
+  const healthColor = recommendation.status === "OK" ? "#22c55e" : recommendation.status === "WARNING" ? "#eab308" : "#ef4444";
+
   return (
     <>
       <div className="card" style={{ marginBottom: "16px" }}>
         <a href="/dashboard/admin" className="btn btn-ghost">
           ← Volver al Dashboard
         </a>
-        <h1 style={{ margin: "12px 0 0" }}>Monitor de Recursos y Capacidad</h1>
+        <h1 style={{ margin: "12px 0 0" }}>Monitor VPS</h1>
         <p className="muted" style={{ marginTop: "6px" }}>
-          Asambleas activas, calendario de ocupación y recomendación automática de VPS.
+          Estado en tiempo real, capacidad y recomendaciones inteligentes.
         </p>
       </div>
 
-      <div className="chart-grid">
-        <div className="card">
-          <p className="muted" style={{ margin: 0 }}>
-            Asambleas ahora
-          </p>
-          <h2 style={{ margin: "10px 0" }}>🟢 {activeAssemblies}</h2>
-          <p className="muted" style={{ margin: 0 }}>
-            activas en vivo
-          </p>
+      {/* Widgets principales — compactos y modernos */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: "20px" }}>
+        <div
+          style={{
+            padding: "20px",
+            borderRadius: "14px",
+            background: "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05))",
+            border: "1px solid rgba(16,185,129,0.3)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+          }}
+        >
+          <span className="muted" style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>En vivo</span>
+          <span style={{ fontSize: "28px", fontWeight: 700, color: "#22c55e" }}>{activeAssemblies}</span>
+          <span className="muted" style={{ fontSize: "13px" }}>asambleas activas</span>
         </div>
-        <div className="card">
-          <p className="muted" style={{ margin: 0 }}>
-            Reservadas hoy
-          </p>
-          <h2 style={{ margin: "10px 0" }}>📅 {reservedToday}</h2>
-          <p className="muted" style={{ margin: 0 }}>
-            programadas
-          </p>
+        <div
+          style={{
+            padding: "20px",
+            borderRadius: "14px",
+            background: "linear-gradient(135deg, rgba(99,102,241,0.12), rgba(99,102,241,0.04))",
+            border: "1px solid rgba(99,102,241,0.25)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+          }}
+        >
+          <span className="muted" style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Hoy</span>
+          <span style={{ fontSize: "28px", fontWeight: 700, color: "#818cf8" }}>{reservedToday}</span>
+          <span className="muted" style={{ fontSize: "13px" }}>reservadas</span>
         </div>
-        <div className="card">
-          <p className="muted" style={{ margin: 0 }}>
-            Capacidad VPS
-          </p>
-          <h2 style={{ margin: "10px 0" }}>
-            {reservedToday}/{VPS_PLANS[0].capacity}
-          </h2>
-          <div className="chart-bar">
-            <span style={{ width: `${Math.round((reservedToday / VPS_PLANS[0].capacity) * 100)}%` }} />
+        <div
+          style={{
+            padding: "20px",
+            borderRadius: "14px",
+            background: capPercent <= 70 ? "linear-gradient(135deg, rgba(34,197,94,0.1), rgba(34,197,94,0.03))" : capPercent <= 90 ? "linear-gradient(135deg, rgba(234,179,8,0.12), rgba(234,179,8,0.04))" : "linear-gradient(135deg, rgba(239,68,68,0.12), rgba(239,68,68,0.04))",
+            border: capPercent <= 70 ? "1px solid rgba(34,197,94,0.25)" : capPercent <= 90 ? "1px solid rgba(234,179,8,0.35)" : "1px solid rgba(239,68,68,0.35)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+          }}
+        >
+          <span className="muted" style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Capacidad</span>
+          <span style={{ fontSize: "28px", fontWeight: 700 }}>{reservedToday}<span style={{ fontSize: "14px", fontWeight: 500, color: "#94a3b8" }}>/{VPS_PLANS[0].capacity}</span></span>
+          <div style={{ height: "6px", background: "rgba(0,0,0,0.2)", borderRadius: "3px", overflow: "hidden" }}>
+            <div style={{ width: `${Math.min(capPercent, 100)}%`, height: "100%", background: capPercent <= 70 ? "#22c55e" : capPercent <= 90 ? "#eab308" : "#ef4444", borderRadius: "3px", transition: "width 0.3s" }} />
           </div>
-          <p className="muted" style={{ margin: "8px 0 0" }}>
-            Uso actual {Math.round((reservedToday / VPS_PLANS[0].capacity) * 100)}%
-          </p>
+          <span className="muted" style={{ fontSize: "13px" }}>{capPercent}% uso</span>
+        </div>
+        <div
+          style={{
+            padding: "20px",
+            borderRadius: "14px",
+            background: "rgba(30,41,59,0.5)",
+            border: "1px solid rgba(148,163,184,0.15)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "8px",
+          }}
+        >
+          <span className="muted" style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Estado</span>
+          <span style={{ fontSize: "18px", fontWeight: 600, color: healthColor }}>
+            {recommendation.status === "OK" ? "✓ Saludable" : recommendation.status === "WARNING" ? "⚠ Monitorear" : "⚠️ Upgrade"}
+          </span>
+          <span className="muted" style={{ fontSize: "12px" }}>{recommendation.suggested ?? "Sin cambios"}</span>
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: "16px" }}>
-        <h3 style={{ marginTop: 0 }}>Estado del servidor</h3>
-        <div className="grid grid-4">
+      {/* Recursos del servidor — chips compactos */}
+      <div className="card" style={{ padding: "20px", marginBottom: "16px" }}>
+        <h3 style={{ margin: "0 0 16px", fontSize: "15px", fontWeight: 600 }}>Recursos del servidor</h3>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
           {metrics.map((metric) => {
             const percent = Math.round((metric.used / metric.total) * 100);
+            const isOk = percent <= 70;
+            const isWarn = percent > 70 && percent <= 90;
             return (
-              <div key={metric.label} className="card" style={{ border: "1px solid rgba(148,163,184,0.2)" }}>
-                <p className="muted" style={{ margin: 0 }}>
-                  {metric.label}
-                </p>
-                <h3 style={{ margin: "10px 0" }}>
-                  {metric.used}
-                  {metric.unit} / {metric.total}
-                  {metric.unit}
-                </h3>
-                <div className="chart-bar">
-                  <span style={{ width: `${percent}%` }} />
+              <div
+                key={metric.label}
+                style={{
+                  flex: "1 1 140px",
+                  padding: "14px 18px",
+                  borderRadius: "12px",
+                  background: isOk ? "rgba(34,197,94,0.08)" : isWarn ? "rgba(234,179,8,0.08)" : "rgba(239,68,68,0.08)",
+                  border: `1px solid ${isOk ? "rgba(34,197,94,0.2)" : isWarn ? "rgba(234,179,8,0.25)" : "rgba(239,68,68,0.25)"}`,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <span className="muted" style={{ fontSize: "12px" }}>{metric.label}</span>
+                  <span style={{ fontSize: "13px", fontWeight: 600 }}>{metric.used}{metric.unit} / {metric.total}{metric.unit}</span>
                 </div>
-                <p className="muted" style={{ margin: "8px 0 0" }}>
-                  {percent}% usado
-                </p>
+                <div style={{ height: "6px", background: "rgba(0,0,0,0.15)", borderRadius: "3px", overflow: "hidden" }}>
+                  <div style={{ width: `${percent}%`, height: "100%", background: isOk ? "#22c55e" : isWarn ? "#eab308" : "#ef4444", borderRadius: "3px" }} />
+                </div>
+                <span className="muted" style={{ fontSize: "11px", marginTop: "4px", display: "block" }}>{percent}%</span>
               </div>
             );
           })}
         </div>
       </div>
 
-      <div className="card" style={{ marginTop: "16px" }}>
-        <h3 style={{ marginTop: 0 }}>Recomendación automática</h3>
-        <div className="card" style={{ background: "rgba(15,23,42,0.4)" }}>
-          <h4 style={{ marginTop: 0 }}>
-            {recommendation.status === "OK" ? "✅ VPS actual es suficiente" : "⚠️ Requiere atención"}
-          </h4>
-          <p className="muted" style={{ marginTop: "6px" }}>
-            {recommendation.message}
-          </p>
-          <div className="grid grid-3" style={{ marginTop: "12px" }}>
-            <div className="card">
-              <p className="muted" style={{ margin: 0 }}>
-                VPS actual
-              </p>
-              <strong>{VPS_PLANS[0].name}</strong>
-              <p className="muted" style={{ margin: "6px 0 0" }}>
-                ${VPS_PLANS[0].price}/mes
-              </p>
-            </div>
-            <div className="card">
-              <p className="muted" style={{ margin: 0 }}>
-                Sugerido
-              </p>
-              <strong>{recommendation.suggested ?? "Mantener"}</strong>
-              <p className="muted" style={{ margin: "6px 0 0" }}>
-                ${recommendation.estimatedCost}/mes
-              </p>
-            </div>
-            <div className="card">
-              <p className="muted" style={{ margin: 0 }}>
-                Pico 7 dias
-              </p>
-              <strong>{maxReservedWeek} asambleas</strong>
-              <p className="muted" style={{ margin: "6px 0 0" }}>
-                max esperado
-              </p>
-            </div>
+      {/* Recomendación inteligente — compacta */}
+      <div
+        className="card"
+        style={{
+          padding: "20px",
+          marginBottom: "16px",
+          background: recommendation.status === "OK" ? "rgba(34,197,94,0.06)" : "rgba(234,179,8,0.06)",
+          border: `1px solid ${recommendation.status === "OK" ? "rgba(34,197,94,0.2)" : "rgba(234,179,8,0.25)"}`,
+        }}
+      >
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "16px" }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <strong style={{ fontSize: "15px" }}>{recommendation.status === "OK" ? "✅ VPS actual suficiente" : "💡 Recomendación"}</strong>
+            <p className="muted" style={{ margin: "6px 0 0", fontSize: "13px" }}>{recommendation.message}</p>
+          </div>
+          <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
+            <div><span className="muted" style={{ fontSize: "11px" }}>Actual</span><div><strong>{VPS_PLANS[0].name}</strong> · ${VPS_PLANS[0].price}/mes</div></div>
+            <div><span className="muted" style={{ fontSize: "11px" }}>Sugerido</span><div><strong>{recommendation.suggested ?? "—"}</strong> · ${recommendation.estimatedCost}/mes</div></div>
+            <div><span className="muted" style={{ fontSize: "11px" }}>Pico 7d</span><div><strong>{maxReservedWeek}</strong> asambleas</div></div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-2" style={{ marginTop: "16px" }}>
-        <div className="card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3 style={{ marginTop: 0 }}>Calendario de ocupación - Febrero 2026</h3>
-            <button className="btn btn-ghost" onClick={handleExportCalendar}>
-              Exportar CSV
-            </button>
-          </div>
-          <div className="grid grid-7" style={{ gap: "10px" }}>
-            {calendarDays.map((day) => {
-              const status = getCalendarStatus(day.reserved);
-              return (
-                <div
-                  key={day.day}
-                  className="card"
-                  style={{
-                    padding: "10px",
-                    border: "1px solid rgba(148,163,184,0.2)",
-                    background: status.tone,
-                  }}
-                >
-                  <strong>{day.day}</strong>
-                  <p className="muted" style={{ margin: "6px 0" }}>
-                    [{day.reserved}]
-                  </p>
-                  <span style={{ fontSize: "12px" }}>{status.dot}</span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="card-list" style={{ marginTop: "12px" }}>
-            {[
-              "⚪ 0 reservas",
-              "🟢 1-10 libre",
-              "🟡 11-20 normal",
-              "🟠 21-25 ocupado",
-              "🔴 26-30 lleno",
-              "⚠️ >30 upgrade",
-            ].map((item) => (
-              <div key={item} className="list-item">
-                <span>{item}</span>
+      {/* Calendario y alertas — resumidos con expansión */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px" }}>
+        <div className="card" style={{ padding: "20px" }}>
+          <button
+            type="button"
+            onClick={() => setExpandedCalendar(!expandedCalendar)}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              width: "100%",
+              background: "none",
+              border: "none",
+              color: "inherit",
+              cursor: "pointer",
+              padding: 0,
+              fontSize: "15px",
+              fontWeight: 600,
+            }}
+          >
+            <span>📅 Calendario Feb 2026</span>
+            <span style={{ fontSize: "12px", color: "#94a3b8" }}>{expandedCalendar ? "▲ Ocultar" : "▼ Ver"}</span>
+          </button>
+          {!expandedCalendar && (
+            <p className="muted" style={{ margin: "12px 0 0", fontSize: "13px" }}>
+              {calendarDays.filter((d) => d.reserved > 15).length} días con alta ocupación. Pico: {Math.max(...calendarDays.map((d) => d.reserved))} reservas.
+            </p>
+          )}
+          {expandedCalendar && (
+            <>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "16px" }}>
+                {calendarDays.map((day) => {
+                  const status = getCalendarStatus(day.reserved);
+                  return (
+                    <div
+                      key={day.day}
+                      style={{
+                        width: "36px",
+                        padding: "8px",
+                        borderRadius: "8px",
+                        background: status.tone,
+                        textAlign: "center",
+                        fontSize: "12px",
+                      }}
+                      title={`Día ${day.day}: ${day.reserved} reservas - ${status.label}`}
+                    >
+                      <strong>{day.day}</strong>
+                      <div className="muted" style={{ fontSize: "10px" }}>[{day.reserved}]</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "12px", fontSize: "11px" }}>
+                {["⚪0", "🟢1-10", "🟡11-20", "🟠21-25", "🔴26-30"].map((l) => (
+                  <span key={l} className="muted">{l}</span>
+                ))}
+              </div>
+              <button className="btn btn-ghost btn-sm" style={{ marginTop: "12px" }} onClick={handleExportCalendar}>
+                Exportar CSV
+              </button>
+            </>
+          )}
+        </div>
+
+        <div className="card" style={{ padding: "20px" }}>
+          <button
+            type="button"
+            onClick={() => setExpandedAlerts(!expandedAlerts)}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              width: "100%",
+              background: "none",
+              border: "none",
+              color: "inherit",
+              cursor: "pointer",
+              padding: 0,
+              fontSize: "15px",
+              fontWeight: 600,
+            }}
+          >
+            <span>🔔 Alertas</span>
+            <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+              {alerts.length} activas · {expandedAlerts ? "▲" : "▼"}
+            </span>
+          </button>
+          {!expandedAlerts && alerts.length > 0 && (
+            <p className="muted" style={{ margin: "12px 0 0", fontSize: "13px" }}>
+              {alerts[0]?.title} — {alerts[0]?.message.slice(0, 50)}…
+            </p>
+          )}
+          {expandedAlerts && (
+            <div style={{ marginTop: "16px" }}>
+              {alerts.length === 0 ? (
+                <p className="muted" style={{ margin: 0 }}>Sin alertas activas.</p>
+              ) : (
+                alerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    style={{
+                      padding: "12px",
+                      borderRadius: "10px",
+                      background: ALERT_COLORS[alert.type],
+                      borderLeft: "4px solid rgba(99,102,241,0.6)",
+                      marginBottom: "10px",
+                    }}
+                  >
+                    <strong>{alert.title}</strong>
+                    <p className="muted" style={{ margin: "6px 0", fontSize: "13px" }}>{alert.message}</p>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      {alert.date && <span className="muted" style={{ fontSize: "12px" }}>{alert.date}</span>}
+                      <button className="btn btn-ghost btn-sm" onClick={() => handleAcknowledge(alert.id)}>Reconocer</button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Tablas compactas */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "16px", marginTop: "16px" }}>
+        <div className="card" style={{ padding: "20px" }}>
+          <h3 style={{ margin: "0 0 12px", fontSize: "14px" }}>Planes VPS</h3>
+          <div style={{ fontSize: "13px" }}>
+            {VPS_PLANS.map((p) => (
+              <div key={p.name} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(148,163,184,0.1)" }}>
+                <span><strong>{p.name}</strong> · {p.capacity} asambleas</span>
+                <span>${p.price}/mes</span>
               </div>
             ))}
           </div>
         </div>
-
-        <div className="card">
-          <h3 style={{ marginTop: 0 }}>Alertas proactivas</h3>
-          <div className="card-list">
-            {alerts.length === 0 ? (
-              <p className="muted">No hay alertas activas.</p>
-            ) : (
-              alerts.map((alert) => (
-                <div
-                  key={alert.id}
-                  className="card"
-                  style={{ borderLeft: "4px solid rgba(99,102,241,0.7)", background: ALERT_COLORS[alert.type] }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
-                    <div>
-                      <strong>{alert.title}</strong>
-                      <p className="muted" style={{ marginTop: "6px" }}>
-                        {alert.message}
-                      </p>
-                      {alert.action && <p style={{ marginTop: "6px" }}>Accion: {alert.action}</p>}
-                      {alert.date && (
-                        <p className="muted" style={{ marginTop: "6px" }}>
-                          Fecha: {alert.date}
-                        </p>
-                      )}
-                    </div>
-                    <button className="btn btn-ghost" onClick={() => handleAcknowledge(alert.id)}>
-                      Reconocer
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
+        <div className="card" style={{ padding: "20px" }}>
+          <h3 style={{ margin: "0 0 12px", fontSize: "14px" }}>Próximos picos</h3>
+          <div style={{ fontSize: "13px" }}>
+            {forecast.slice(0, 3).map((item) => (
+              <div key={item.date} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(148,163,184,0.1)" }}>
+                <span>{item.date}</span>
+                <span>{item.assemblies} asambleas · {item.users} usuarios</span>
+              </div>
+            ))}
           </div>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: "16px" }}>
-        <h3 style={{ marginTop: 0 }}>Analisis costo / capacidad</h3>
-        <div className="table" style={{ "--table-columns": "1.3fr 1fr 1fr 1fr" } as any}>
-          <div className="table-row table-header">
-            <span>VPS</span>
-            <span>Precio</span>
-            <span>Capacidad</span>
-            <span>Costo/Asamblea</span>
-          </div>
-          {VPS_PLANS.map((plan) => (
-            <div key={plan.name} className="table-row">
-              <span>{plan.name}</span>
-              <span>${plan.price}/mes</span>
-              <span>{plan.capacity} asambleas</span>
-              <span>${(plan.price / plan.capacity).toFixed(2)}</span>
-            </div>
-          ))}
-        </div>
-        <p className="muted" style={{ marginTop: "10px" }}>
-          Tip: el costo por asamblea se mantiene o baja al escalar.
-        </p>
-      </div>
-
-      <div className="card" style={{ marginTop: "16px" }}>
-        <h3 style={{ marginTop: 0 }}>Prediccion de carga (30 dias)</h3>
-        <div className="table" style={{ "--table-columns": "1fr 1fr 1fr 1fr" } as any}>
-          <div className="table-row table-header">
-            <span>Fecha</span>
-            <span>Asambleas</span>
-            <span>Usuarios estimados</span>
-            <span>Estado</span>
-          </div>
-          {forecast.map((item) => (
-            <div key={item.date} className="table-row">
-              <span>{item.date}</span>
-              <span>{item.assemblies}</span>
-              <span>{item.users}</span>
-              <span className="badge badge-warning">{item.status}</span>
-            </div>
-          ))}
         </div>
       </div>
     </>
