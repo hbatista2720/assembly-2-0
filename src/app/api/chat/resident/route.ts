@@ -6,11 +6,12 @@
 
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getGeminiApiKey } from "../../../lib/secrets";
+import { getGeminiApiKey, getGroqApiKey } from "@lib/secrets";
+import { generateWithGroq } from "@lib/groq";
 import { readFile } from "fs/promises";
 import path from "path";
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
 const FALLBACK_REPLY = "Soy Lex, el asistente de Assembly 2.0 para tu PH. ¿En qué puedo ayudarte? Puedes usar los botones: Votación, Asambleas, Calendario, Tema del día o Ceder poder. O escríbeme tu consulta.";
 
@@ -103,27 +104,43 @@ Responde SOLO con el texto de la respuesta, sin prefijos como "Lex:" ni metadato
 
 /** GET: estado de configuración. ?validate=1 hace una llamada real a Gemini para validar la API. */
 export async function GET(req: Request) {
-  const apiKey = await getGeminiApiKey();
-  const configured = !!apiKey;
+  const groqKey = await getGroqApiKey();
+  const geminiKey = await getGeminiApiKey();
+  const configured = !!(groqKey || geminiKey);
   const url = new URL(req.url);
   const doValidate = url.searchParams.get("validate") === "1";
 
   if (!doValidate) {
     return NextResponse.json({
-      geminiConfigured: configured,
+      geminiConfigured: !!geminiKey,
+      groqConfigured: !!groqKey,
       model: GEMINI_MODEL,
     });
   }
 
-  if (!configured) {
+  if (groqKey) {
+    try {
+      const reply = await generateWithGroq(groqKey, "Responde solo con la palabra OK.", [], "OK", { maxTokens: 10 });
+      return NextResponse.json({
+        ok: reply.length > 0,
+        message: reply.length > 0 ? "API Groq respondió correctamente." : "Groq devolvió respuesta vacía.",
+        provider: "groq",
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return NextResponse.json({ ok: false, error: "La llamada a Groq falló.", detail: message, provider: "groq" });
+    }
+  }
+
+  if (!geminiKey) {
     return NextResponse.json({
       ok: false,
-      error: "API key de Gemini no configurada. Configúrala en Panel Henry > Chatbot > Tokens.",
+      error: "Ninguna API de IA configurada. Configura GROQ_API_KEY o GEMINI_API_KEY en Panel Henry > Chatbot > Tokens.",
     });
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const genAI = new GoogleGenerativeAI(geminiKey);
     const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
     const result = await model.generateContent("Responde solo con la palabra OK.");
     const text = (result.response.text() ?? "").trim();
@@ -132,6 +149,7 @@ export async function GET(req: Request) {
       ok,
       message: ok ? "API Gemini respondió correctamente." : "Gemini devolvió respuesta vacía.",
       ...(ok ? {} : { error: "Respuesta vacía" }),
+      provider: "gemini",
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -139,6 +157,7 @@ export async function GET(req: Request) {
       ok: false,
       error: "La llamada a Gemini falló. Revisa la clave y la red.",
       detail: message,
+      provider: "gemini",
     });
   }
 }
@@ -155,28 +174,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ reply: LEX_IDENTITY_REPLY });
     }
 
-    const apiKey = await getGeminiApiKey();
-    if (!apiKey?.trim()) {
+    const groqKey = await getGroqApiKey();
+    const geminiKey = await getGeminiApiKey();
+    if (!groqKey?.trim() && !geminiKey?.trim()) {
       return NextResponse.json(
-        { error: "Chat con Gemini no configurado. Configura la API key en Panel Henry > Chatbot > Tokens." },
+        { error: "Chat con IA no configurado. Configura GROQ_API_KEY o GEMINI_API_KEY en Panel Henry > Chatbot > Tokens." },
         { status: 503 }
       );
     }
 
     const context = body.context || {};
     const history = Array.isArray(body.history) ? body.history : [];
-
     const knowledgeSnippet = await loadKnowledgeBase();
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: GEMINI_MODEL,
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 512,
-        topP: 0.9,
-      },
-    });
 
     const systemPrompt = buildSystemPrompt({
       email: context.email,
@@ -188,29 +197,56 @@ export async function POST(req: Request) {
       knowledgeSnippet: knowledgeSnippet || undefined,
     });
 
-    let conversationBlock = "";
-    for (const h of history.slice(-8)) {
-      const role = h.role === "user" ? "Usuario" : "Lex";
-      const text = typeof h.text === "string" ? h.text.trim() : "";
-      if (text) conversationBlock += `${role}: ${text}\n`;
-    }
-    if (conversationBlock) conversationBlock += "\n";
-
-    const fullPrompt = `${systemPrompt}\n\n---\nConversación reciente:\n${conversationBlock}Usuario: ${message}\n\nLex:`;
-
-    const result = await model.generateContent(fullPrompt);
-    const response = result.response;
     let reply = "";
-    try {
-      reply = (response.text() ?? "").trim();
-    } catch {
-      const candidates = (response as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }).candidates;
-      if (candidates?.[0]?.content?.parts?.[0]?.text) {
-        reply = candidates[0].content.parts[0].text.trim();
+
+    if (groqKey?.trim()) {
+      try {
+        reply = await generateWithGroq(groqKey, systemPrompt, history.slice(-8), message, {
+          maxTokens: 512,
+          temperature: 0.7,
+        });
+      } catch (err) {
+        console.warn("[api/chat/resident] Groq error, fallback a Gemini si está configurado:", err);
+        if (geminiKey?.trim()) {
+          // fallback a Gemini
+        } else {
+          reply = FALLBACK_REPLY;
+        }
       }
     }
+
+    if (!reply && geminiKey?.trim()) {
+      const genAI = new GoogleGenerativeAI(geminiKey);
+      const model = genAI.getGenerativeModel({
+        model: GEMINI_MODEL,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 512,
+          topP: 0.9,
+        },
+      });
+      let conversationBlock = "";
+      for (const h of history.slice(-8)) {
+        const role = h.role === "user" ? "Usuario" : "Lex";
+        const text = typeof h.text === "string" ? h.text.trim() : "";
+        if (text) conversationBlock += `${role}: ${text}\n`;
+      }
+      if (conversationBlock) conversationBlock += "\n";
+      const fullPrompt = `${systemPrompt}\n\n---\nConversación reciente:\n${conversationBlock}Usuario: ${message}\n\nLex:`;
+      const result = await model.generateContent(fullPrompt);
+      const response = result.response;
+      try {
+        reply = (response.text() ?? "").trim();
+      } catch {
+        const candidates = (response as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }).candidates;
+        if (candidates?.[0]?.content?.parts?.[0]?.text) {
+          reply = candidates[0].content.parts[0].text.trim();
+        }
+      }
+    }
+
     if (!reply) {
-      console.warn("[api/chat/resident] Gemini devolvió respuesta vacía; usando fallback (revisar GEMINI_API_KEY).");
+      console.warn("[api/chat/resident] IA devolvió respuesta vacía.");
       reply = FALLBACK_REPLY;
     }
 

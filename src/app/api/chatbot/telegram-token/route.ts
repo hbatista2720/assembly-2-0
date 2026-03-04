@@ -4,7 +4,7 @@
  * Requiere header X-Service-Key = CHATBOT_SERVICE_KEY (opcional: si no existe, usa env directo en el bot).
  */
 import { NextRequest, NextResponse } from "next/server";
-import { getTelegramToken } from "../../../../lib/secrets";
+import { getTelegramToken } from "@lib/secrets";
 
 export async function GET(req: NextRequest) {
   const serviceKey = req.headers.get("x-service-key")?.trim();

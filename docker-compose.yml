@@ -1,12 +1,11 @@
-version: "3.8"
-
+# version obsoleto en Docker Compose V2, se ignora
 services:
   # === PostgreSQL 15 ===
   postgres:
     image: postgres:15-alpine
     container_name: assembly-db
     environment:
-      POSTGRES_USER: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: assembly
     ports:
@@ -15,24 +14,25 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./sql_snippets:/docker-entrypoint-initdb.d
       - ./backups:/backups
+    # Valores ajustados para VPS con poca RAM (1–2 GB). En servidores con más RAM puedes subir shared_buffers.
     command: >
       postgres
-      -c max_connections=200
-      -c shared_buffers=1GB
-      -c effective_cache_size=3GB
-      -c work_mem=16MB
-      -c maintenance_work_mem=512MB
+      -c max_connections=100
+      -c shared_buffers=256MB
+      -c effective_cache_size=768MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=128MB
       -c checkpoint_completion_target=0.9
       -c random_page_cost=1.1
       -c effective_io_concurrency=200
-      -c shared_preload_libraries=pg_stat_statements
     networks:
       - assembly-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      start_period: 40s
     restart: unless-stopped
 
   # === PgBouncer ===
@@ -40,7 +40,7 @@ services:
     image: edoburu/pgbouncer:latest
     container_name: assembly-pgbouncer
     environment:
-      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/assembly
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/assembly
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 1000
       DEFAULT_POOL_SIZE: 25
@@ -80,7 +80,7 @@ services:
     container_name: assembly-app
     environment:
       # Opción C (temporal): app → postgres directo. Para usar PgBouncer: cambiar a @pgbouncer:5432 (corrección 99_pgbouncer_md5_compat.sql ya en init).
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/assembly
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/assembly
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET}
       OTP_SECRET: ${OTP_SECRET}
@@ -92,7 +92,12 @@ services:
       SMTP_PASS: ${SMTP_PASS}
       OTP_DEBUG: ${OTP_DEBUG:-true}
       OTP_TTL_MINUTES: ${OTP_TTL_MINUTES:-10}
-      NODE_ENV: development
+      NODE_ENV: production
+      # Para que el dashboard Henry reconozca tokens y las APIs (Groq/Gemini, Telegram status) funcionen igual que en local
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: ${NEXT_PUBLIC_TELEGRAM_BOT_USERNAME:-}
     ports:
       - "3000:3000"
     depends_on:
@@ -116,11 +121,15 @@ services:
       context: .
       dockerfile: Dockerfile.telegram
     container_name: assembly-telegram-bot
+    command: ["node", "scripts/run-chatbot.cjs"]
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@pgbouncer:5432/assembly
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@pgbouncer:5432/assembly
       REDIS_URL: redis://redis:6379
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      # El bot llama a la app para verificar usuario e IA; en Docker debe apuntar al servicio app
+      CHATBOT_API_URL: ${CHATBOT_API_URL:-http://app:3000}
     ports:
       - "3001:3001"
     depends_on:
@@ -141,7 +150,7 @@ services:
       dockerfile: Dockerfile.whatsapp
     container_name: assembly-whatsapp-bot
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@pgbouncer:5432/assembly
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@pgbouncer:5432/assembly
       REDIS_URL: redis://redis:6379
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID}
       WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN}
@@ -166,9 +175,10 @@ services:
       dockerfile: Dockerfile.webchat
     container_name: assembly-web-chatbot
     environment:
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@pgbouncer:5432/assembly
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@pgbouncer:5432/assembly
       REDIS_URL: redis://redis:6379
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
     ports:
       - "3003:3003"
     depends_on:

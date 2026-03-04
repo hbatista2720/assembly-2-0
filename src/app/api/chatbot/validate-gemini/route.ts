@@ -5,9 +5,9 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getGeminiApiKey } from "../../../../lib/secrets";
+import { getGeminiApiKey } from "@lib/secrets";
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
 export async function POST(req: NextRequest) {
   try {
@@ -36,11 +36,18 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    console.error("[validate-gemini] Error:", msg);
+    const isNetwork = /ECONNREFUSED|ENOTFOUND|ETIMEDOUT|fetch failed/i.test(msg);
+    const short = isNetwork
+      ? "Error de red (el servidor no puede conectar con Google). Revisa firewall/DNS en el VPS."
+      : msg.length > 120
+        ? msg.slice(0, 120) + "..."
+        : msg;
     return NextResponse.json({
       ok: false,
       valid: false,
       message: "La API key no es válida o hay un error de red.",
-      detail: msg,
+      detail: short,
     });
   }
 }

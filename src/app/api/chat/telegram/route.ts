@@ -6,11 +6,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { sql } from "../../../../lib/db";
-import { getGeminiApiKey } from "../../../../lib/secrets";
+import { getGeminiApiKey, getGroqApiKey } from "@lib/secrets";
+import { generateWithGroq } from "@lib/groq";
 import { readFile } from "fs/promises";
 import path from "path";
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
 let knowledgeCache: string | null = null;
 async function loadKnowledge(): Promise<string> {
@@ -24,12 +25,12 @@ async function loadKnowledge(): Promise<string> {
   return knowledgeCache;
 }
 
-/** GET: estado de Gemini para el chatbot de Telegram */
+/** GET: estado de IA (Groq/Gemini) para el chatbot de Telegram */
 export async function GET() {
-  const apiKey = await getGeminiApiKey();
-  const configured = !!apiKey;
+  const [groqKey, geminiKey] = await Promise.all([getGroqApiKey(), getGeminiApiKey()]);
   return NextResponse.json({
-    geminiConfigured: configured,
+    groqConfigured: !!groqKey,
+    geminiConfigured: !!geminiKey,
     model: GEMINI_MODEL,
   });
 }
@@ -45,10 +46,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "message es requerido" }, { status: 400 });
     }
 
-    const apiKey = (await getGeminiApiKey())?.trim();
-    if (!apiKey) {
+    const groqKey = (await getGroqApiKey())?.trim();
+    const geminiKey = (await getGeminiApiKey())?.trim();
+    if (!groqKey && !geminiKey) {
       return NextResponse.json(
-        { reply: "La IA no está configurada. Configura la API key de Gemini en Panel Henry > Chatbot > Tokens." },
+        { reply: "La IA no está configurada. Configura GROQ_API_KEY o GEMINI_API_KEY en Panel Henry > Chatbot > Tokens." },
         { status: 200 }
       );
     }
@@ -64,7 +66,6 @@ export async function POST(req: NextRequest) {
       prompts[role] ||
       prompts.landing ||
       "Eres Lex, asistente de Assembly 2.0. Responde de forma amigable y breve en español. Ayudas con demos, leads, votaciones y asambleas de PH.";
-    const modelName = config?.ai_model || GEMINI_MODEL;
     const temperature = Number(config?.temperature) ?? 0.7;
     const maxTokens = Number(config?.max_tokens) ?? 512;
 
@@ -77,28 +78,47 @@ export async function POST(req: NextRequest) {
 ${knowledgeBlock}
 REGLAS: Responde SOLO el texto de la respuesta, sin prefijos. Sé natural y breve. Si no sabes algo, ofrece contactar soporte o usar /registrarme, /mivoto.`;
 
-    let convBlock = "";
-    for (const h of history.slice(-6)) {
-      const r = h.role === "user" ? "Usuario" : "Lex";
-      const t = typeof h.text === "string" ? h.text.trim() : "";
-      if (t) convBlock += `${r}: ${t}\n`;
+    let reply = "";
+
+    if (groqKey) {
+      try {
+        reply = await generateWithGroq(groqKey, systemPrompt, history.slice(-6), message, {
+          temperature,
+          maxTokens,
+        });
+      } catch (err) {
+        console.warn("[api/chat/telegram] Groq error:", err);
+        if (geminiKey) {
+          // fallback a Gemini abajo
+        } else {
+          reply = "¿En qué más puedo ayudarte? Escribe /registrarme o /mivoto.";
+        }
+      }
     }
-    if (convBlock) convBlock += "\n";
 
-    const fullPrompt = `${systemPrompt}\n\n---\n${convBlock}Usuario: ${message}\n\nLex:`;
+    if (!reply && geminiKey) {
+      const modelName = config?.ai_model || GEMINI_MODEL;
+      let convBlock = "";
+      for (const h of history.slice(-6)) {
+        const r = h.role === "user" ? "Usuario" : "Lex";
+        const t = typeof h.text === "string" ? h.text.trim() : "";
+        if (t) convBlock += `${r}: ${t}\n`;
+      }
+      if (convBlock) convBlock += "\n";
+      const fullPrompt = `${systemPrompt}\n\n---\n${convBlock}Usuario: ${message}\n\nLex:`;
+      const genAI = new GoogleGenerativeAI(geminiKey);
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          temperature,
+          maxOutputTokens: maxTokens,
+          topP: 0.9,
+        },
+      });
+      const result = await model.generateContent(fullPrompt);
+      reply = (result.response.text() ?? "").trim();
+    }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: modelName,
-      generationConfig: {
-        temperature,
-        maxOutputTokens: maxTokens,
-        topP: 0.9,
-      },
-    });
-
-    const result = await model.generateContent(fullPrompt);
-    let reply = (result.response.text() ?? "").trim();
     if (!reply) {
       reply =
         "¿En qué más puedo ayudarte? Puedes escribir /registrarme para registrarte como lead o /mivoto para información sobre votación.";

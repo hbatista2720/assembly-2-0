@@ -44,6 +44,12 @@ export async function getGeminiApiKey(): Promise<string> {
   return (process.env.GEMINI_API_KEY ?? "").trim();
 }
 
+export async function getGroqApiKey(): Promise<string> {
+  const fromDb = await getSecret("groq_api_key");
+  if (fromDb) return fromDb;
+  return (process.env.GROQ_API_KEY ?? "").trim();
+}
+
 export function maskSecret(value: string): string {
   if (!value || value.length < 8) return "***";
   return value.slice(0, 4) + "••••••••" + value.slice(-4);

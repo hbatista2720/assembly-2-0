@@ -1,4 +1,5 @@
--- === OTP Local (Docker) ===
+-- === OTP Local (Docker) - DEBE ejecutarse PRIMERO (00_) para crear organizations y users ===
+-- Otros scripts (101_face_id, 102_demo...) dependen de estas tablas.
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE IF NOT EXISTS organizations (

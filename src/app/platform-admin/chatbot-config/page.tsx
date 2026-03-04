@@ -65,13 +65,19 @@ export default function ChatbotConfigPage() {
   const [tgUsernameSaving, setTgUsernameSaving] = useState(false);
   const [tgStatus, setTgStatus] = useState<{ configured: boolean; valid?: boolean; username?: string; message?: string } | null>(null);
   const [geminiStatus, setGeminiStatus] = useState<{ geminiConfigured: boolean; model?: string } | null>(null);
+  const [geminiStatusLoading, setGeminiStatusLoading] = useState(false);
   const [configTab, setConfigTab] = useState<"ajustes" | "prompts">("ajustes");
-  const [secrets, setSecrets] = useState<{ telegramMasked?: string; geminiMasked?: string; telegramConfigured?: boolean; geminiConfigured?: boolean } | null>(null);
+  const [secrets, setSecrets] = useState<{ telegramMasked?: string; geminiMasked?: string; groqMasked?: string; telegramConfigured?: boolean; geminiConfigured?: boolean; groqConfigured?: boolean; ai_provider_preference?: "gemini" | "groq" } | null>(null);
   const [tgTokenInput, setTgTokenInput] = useState("");
   const [geminiKeyInput, setGeminiKeyInput] = useState("");
+  const [groqKeyInput, setGroqKeyInput] = useState("");
   const [tokensSaving, setTokensSaving] = useState(false);
   const [tgValidating, setTgValidating] = useState(false);
   const [geminiValidating, setGeminiValidating] = useState(false);
+  const [groqValidating, setGroqValidating] = useState(false);
+  const [initializingChannels, setInitializingChannels] = useState(false);
+  /** Proveedor de IA elegido: primero se selecciona esto, luego se configura la API key. */
+  const [aiProvider, setAiProvider] = useState<"gemini" | "groq">("gemini");
 
   useEffect(() => {
     if (typeof window !== "undefined") setBaseUrl(window.location.origin);
@@ -99,13 +105,22 @@ export default function ChatbotConfigPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Comprueba que la API key de Gemini sea válida (llamada real). Verde solo si validación OK. */
   async function checkGeminiStatus() {
+    setGeminiStatusLoading(true);
     try {
-      const r = await fetch("/api/chat/telegram");
+      const r = await fetch("/api/chatbot/validate-gemini", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
       const d = await r.json();
-      setGeminiStatus({ geminiConfigured: !!d?.geminiConfigured, model: d?.model });
+      const valid = !!d?.valid;
+      setGeminiStatus({ geminiConfigured: valid, model: d?.model });
     } catch {
       setGeminiStatus({ geminiConfigured: false });
+    } finally {
+      setGeminiStatusLoading(false);
     }
   }
 
@@ -147,10 +162,11 @@ export default function ChatbotConfigPage() {
       const d = await r.json();
       if (d?.valid) {
         toast.success(d?.message || "API key válida");
-        checkGeminiStatus();
       } else {
-        toast.error(d?.message || "API key inválida");
+        const errMsg = d?.detail ? `${d.message} (${d.detail})` : (d?.message || "API key inválida");
+        toast.error(errMsg);
       }
+      checkGeminiStatus(); // Se llama siempre para actualizar el badge
     } catch {
       toast.error("Error al validar");
     } finally {
@@ -158,10 +174,32 @@ export default function ChatbotConfigPage() {
     }
   }
 
+  async function validateGroqKey(apiKey?: string) {
+    setGroqValidating(true);
+    try {
+      const r = await fetch("/api/chatbot/validate-groq", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(apiKey ? { api_key: apiKey } : {}),
+      });
+      const d = await r.json();
+      if (d?.valid) {
+        toast.success(d?.message || "Groq válido");
+      } else {
+        toast.error(d?.message || d?.detail || "Groq inválido");
+      }
+    } catch {
+      toast.error("Error al validar Groq");
+    } finally {
+      setGroqValidating(false);
+    }
+  }
+
   async function saveTokens() {
     const updates: Record<string, string> = {};
     if (tgTokenInput.trim()) updates.telegram_bot_token = tgTokenInput.trim();
     if (geminiKeyInput.trim()) updates.gemini_api_key = geminiKeyInput.trim();
+    if (groqKeyInput.trim()) updates.groq_api_key = groqKeyInput.trim();
     if (Object.keys(updates).length === 0) {
       toast.error("Ingresa al menos un token para actualizar");
       return;
@@ -178,6 +216,7 @@ export default function ChatbotConfigPage() {
         toast.success(d?.message || "Tokens actualizados");
         setTgTokenInput("");
         setGeminiKeyInput("");
+        setGroqKeyInput("");
         fetchSecrets();
         checkTelegramToken();
         checkGeminiStatus();
@@ -191,6 +230,87 @@ export default function ChatbotConfigPage() {
     }
   }
 
+  /** Guarda solo la preferencia de proveedor (Gemini/Groq) para que persista al salir del módulo. */
+  async function saveAiProviderPreference(provider: "gemini" | "groq") {
+    try {
+      const r = await fetch("/api/chatbot/secrets", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ai_provider_preference: provider }),
+      });
+      const d = await r.json();
+      if (d?.ok) {
+        setAiProvider(provider);
+        fetchSecrets();
+      } else {
+        toast.error(d?.error || "Error al guardar preferencia");
+      }
+    } catch {
+      toast.error("Error al guardar preferencia");
+    }
+  }
+
+  /** Guarda solo la API key del proveedor de IA seleccionado (Gemini o Groq). */
+  async function saveAiKey() {
+    const key = aiProvider === "gemini" ? geminiKeyInput.trim() : groqKeyInput.trim();
+    if (!key) {
+      toast.error(`Ingresa la API key de ${aiProvider === "gemini" ? "Gemini" : "Groq"}`);
+      return;
+    }
+    setTokensSaving(true);
+    try {
+      const updates: Record<string, string> = aiProvider === "gemini" ? { gemini_api_key: key } : { groq_api_key: key };
+      updates.ai_provider_preference = aiProvider;
+      const r = await fetch("/api/chatbot/secrets", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      const d = await r.json();
+      if (d?.ok) {
+        toast.success("API key guardada");
+        if (aiProvider === "gemini") setGeminiKeyInput(""); else setGroqKeyInput("");
+        fetchSecrets();
+        checkGeminiStatus();
+      } else {
+        toast.error(d?.error || "Error al guardar");
+      }
+    } catch {
+      toast.error("Error al guardar");
+    } finally {
+      setTokensSaving(false);
+    }
+  }
+
+  /** Guarda solo el token de Telegram (desde la tarjeta del canal). */
+  async function saveTelegramTokenOnly() {
+    if (!tgTokenInput.trim()) {
+      toast.error("Ingresa el token de Telegram");
+      return;
+    }
+    setTokensSaving(true);
+    try {
+      const r = await fetch("/api/chatbot/secrets", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telegram_bot_token: tgTokenInput.trim() }),
+      });
+      const d = await r.json();
+      if (d?.ok) {
+        toast.success(d?.message || "Token de Telegram guardado");
+        setTgTokenInput("");
+        fetchSecrets();
+        checkTelegramToken();
+      } else {
+        toast.error(d?.error || "Error al guardar");
+      }
+    } catch {
+      toast.error("Error al guardar");
+    } finally {
+      setTokensSaving(false);
+    }
+  }
+
   useEffect(() => {
     checkGeminiStatus();
   }, []);
@@ -198,6 +318,18 @@ export default function ChatbotConfigPage() {
   useEffect(() => {
     fetchSecrets();
   }, []);
+
+  /** Cargar preferencia guardada (Gemini o Groq); si no hay, Groq si solo Groq configurado. */
+  useEffect(() => {
+    if (!secrets) return;
+    if (secrets.ai_provider_preference === "groq" || secrets.ai_provider_preference === "gemini") {
+      setAiProvider(secrets.ai_provider_preference);
+    } else if (secrets.groqConfigured && !secrets.geminiConfigured) {
+      setAiProvider("groq");
+    } else {
+      setAiProvider("gemini");
+    }
+  }, [secrets?.ai_provider_preference, secrets?.groqConfigured, secrets?.geminiConfigured]);
 
   const telegramConfig = useMemo(() => configs.find((c) => c.bot_name === "telegram"), [configs]);
   const effectiveTgUsername = tgUsername || telegramConfig?.telegram_bot_username || ENV_TELEGRAM_USERNAME || "";
@@ -207,6 +339,25 @@ export default function ChatbotConfigPage() {
     const u = telegramConfig?.telegram_bot_username ?? ENV_TELEGRAM_USERNAME ?? "";
     setTgUsername(u);
   }, [telegramConfig?.telegram_bot_username]);
+
+  async function initializeChannels() {
+    setInitializingChannels(true);
+    try {
+      const res = await fetch("/api/chatbot/config", { method: "POST" });
+      const data = await res.json();
+      if (data?.ok && Array.isArray(data.configs)) {
+        setConfigs(data.configs);
+        if (!selectedBot && data.configs.length) setSelectedBot(data.configs[0].bot_name);
+        toast.success(data.message || "Canales Telegram y Web listos.");
+      } else {
+        toast.error(data?.error || "Error al inicializar");
+      }
+    } catch {
+      toast.error("Error al inicializar canales");
+    } finally {
+      setInitializingChannels(false);
+    }
+  }
 
   async function fetchConfigs() {
     try {
@@ -346,12 +497,12 @@ export default function ChatbotConfigPage() {
         </button>
         {showGuide && (
           <div style={{ marginTop: "12px", padding: "14px 18px", borderRadius: "10px", background: "rgba(99,102,241,0.06)", fontSize: "13px", lineHeight: 1.6, color: "#94a3b8" }}>
-            Enlaces: copia la URL web o Telegram. Tests: prueba cada flujo. Parámetros IA: selecciona un bot y edita modelo y prompts.
+            Primero elige el proveedor de IA (Gemini o Groq) y guarda la API key. Luego configura cada canal (Telegram con su token, Web) y los prompts por contexto.
           </div>
         )}
       </div>
 
-      {/* Tokens (Henry puede editar y validar) */}
+      {/* 1. Configuración de IA: primero elegir proveedor (Gemini o Groq), luego API key */}
       <div
         className="card"
         style={{
@@ -362,73 +513,275 @@ export default function ChatbotConfigPage() {
           borderRadius: "16px",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-          <span style={{ fontSize: "24px" }}>🔐</span>
-          <div>
-            <h3 style={{ margin: 0, fontSize: "17px" }}>Tokens y API keys</h3>
-            <p className="muted" style={{ margin: "2px 0 0", fontSize: "12px" }}>Actualiza y valida. Se guardan en BD. El bot de Telegram los usa al reiniciar (con la app corriendo).</p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", marginBottom: "20px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <span style={{ fontSize: "24px" }}>🤖</span>
+            <div>
+              <h3 style={{ margin: 0, fontSize: "17px" }}>Configuración de IA</h3>
+              <p className="muted" style={{ margin: "2px 0 0", fontSize: "12px" }}>Elige el proveedor y añade tu API key. Se usará en Telegram, Web y Residentes.</p>
+            </div>
           </div>
+          <span
+            style={{
+              fontSize: "11px",
+              fontWeight: 600,
+              padding: "4px 10px",
+              borderRadius: "8px",
+              background: (aiProvider === "gemini" && secrets?.geminiConfigured) || (aiProvider === "groq" && secrets?.groqConfigured)
+                ? "rgba(34,197,94,0.2)"
+                : "rgba(251,191,36,0.2)",
+              color: (aiProvider === "gemini" && secrets?.geminiConfigured) || (aiProvider === "groq" && secrets?.groqConfigured) ? "#4ade80" : "#fbbf24",
+            }}
+          >
+            {(aiProvider === "gemini" && secrets?.geminiConfigured) || (aiProvider === "groq" && secrets?.groqConfigured) ? "✓ Configurado" : "No configurado"}
+          </span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "24px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <div>
-            <label style={{ display: "block", marginBottom: "8px", fontSize: "13px", fontWeight: 500 }}>Token de Telegram</label>
-            {secrets?.telegramMasked && !tgTokenInput && (
-              <p className="muted" style={{ margin: "0 0 8px", fontSize: "12px" }}>Actual: {secrets.telegramMasked}</p>
-            )}
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              <input
-                type="password"
-                value={tgTokenInput}
-                onChange={(e) => setTgTokenInput(e.target.value)}
-                placeholder="Pega el token de @BotFather"
-                style={{ ...inputStyle, flex: "1 1 200px" }}
-              />
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={() => validateTelegramToken(tgTokenInput || undefined)}
-                disabled={tgValidating}
-              >
-                {tgValidating ? "..." : "Validar"}
-              </button>
+            <label style={{ display: "block", marginBottom: "8px", fontSize: "13px", fontWeight: 500 }}>Proveedor de IA</label>
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "14px" }}>
+                <input type="radio" name="aiProvider" checked={aiProvider === "gemini"} onChange={() => saveAiProviderPreference("gemini")} />
+                Gemini (Google AI Studio)
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "14px" }}>
+                <input type="radio" name="aiProvider" checked={aiProvider === "groq"} onChange={() => saveAiProviderPreference("groq")} />
+                Groq (console.groq.com)
+              </label>
             </div>
           </div>
           <div>
-            <label style={{ display: "block", marginBottom: "8px", fontSize: "13px", fontWeight: 500 }}>API key de Gemini</label>
-            {secrets?.geminiMasked && !geminiKeyInput && (
+            <label style={{ display: "block", marginBottom: "8px", fontSize: "13px", fontWeight: 500 }}>
+              {aiProvider === "gemini" ? "API key de Gemini" : "API key de Groq"}
+            </label>
+            {aiProvider === "gemini" && secrets?.geminiMasked && !geminiKeyInput && (
               <p className="muted" style={{ margin: "0 0 8px", fontSize: "12px" }}>Actual: {secrets.geminiMasked}</p>
             )}
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {aiProvider === "groq" && secrets?.groqMasked && !groqKeyInput && (
+              <p className="muted" style={{ margin: "0 0 8px", fontSize: "12px" }}>Actual: {secrets.groqMasked}</p>
+            )}
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
               <input
                 type="password"
-                value={geminiKeyInput}
-                onChange={(e) => setGeminiKeyInput(e.target.value)}
-                placeholder="Pega tu API key de Google AI Studio"
-                style={{ ...inputStyle, flex: "1 1 200px" }}
+                value={aiProvider === "gemini" ? geminiKeyInput : groqKeyInput}
+                onChange={(e) => aiProvider === "gemini" ? setGeminiKeyInput(e.target.value) : setGroqKeyInput(e.target.value)}
+                placeholder={aiProvider === "gemini" ? "Pega tu API key de Google AI Studio" : "Pega tu API key de console.groq.com"}
+                style={{ ...inputStyle, flex: "1 1 260px", maxWidth: "400px" }}
               />
               <button
                 type="button"
                 className="btn btn-ghost"
-                onClick={() => validateGeminiKey(geminiKeyInput || undefined)}
-                disabled={geminiValidating}
+                onClick={() => aiProvider === "gemini" ? validateGeminiKey(geminiKeyInput || undefined) : validateGroqKey(groqKeyInput || undefined)}
+                disabled={aiProvider === "gemini" ? geminiValidating : groqValidating}
               >
-                {geminiValidating ? "..." : "Validar"}
+                {aiProvider === "gemini" ? (geminiValidating ? "..." : "Validar") : (groqValidating ? "..." : "Validar")}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={saveAiKey}
+                disabled={tokensSaving || !(aiProvider === "gemini" ? geminiKeyInput.trim() : groqKeyInput.trim())}
+              >
+                {tokensSaving ? "Guardando…" : "Guardar"}
               </button>
             </div>
           </div>
         </div>
-        <div style={{ marginTop: "16px", display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={saveTokens}
-            disabled={tokensSaving || (!tgTokenInput.trim() && !geminiKeyInput.trim())}
-          >
-            {tokensSaving ? "Guardando…" : "Guardar cambios"}
-          </button>
-          <p className="muted" style={{ margin: 0, fontSize: "12px" }}>
-            Tras guardar, reinicia <code>npm run chatbot</code> para que el bot use el nuevo token (la app debe estar corriendo).
-          </p>
+
+        {/* Modelo y prompts por canal (unificado con Configuración de IA) */}
+        <div style={{ marginTop: "24px", paddingTop: "24px", borderTop: "1px solid rgba(148,163,184,0.2)" }}>
+          <div style={{ marginBottom: "20px", paddingBottom: "16px", borderBottom: "1px solid rgba(148,163,184,0.15)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "6px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "24px" }}>⚙️</span>
+              <h3 style={{ margin: 0, fontSize: "18px" }}>Modelo y prompts por canal</h3>
+              <span style={{ fontSize: "12px", fontWeight: 600, padding: "4px 10px", borderRadius: "8px", background: "rgba(99,102,241,0.2)", color: "#a5b4fc" }}>
+                Proveedor activo: {aiProvider === "groq" ? "Groq" : "Gemini"}
+              </span>
+            </div>
+            <p className="muted" style={{ margin: 0, fontSize: "13px", maxWidth: "560px" }}>
+              Ajusta modelo, tokens y creatividad para cada canal (Telegram, Web). Define la personalidad de Lex por contexto (landing, demo, soporte, residente).
+            </p>
+          </div>
+
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "24px" }}>
+            <div style={{ flex: "0 0 220px", minWidth: 0 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
+                {(["telegram", "web"] as const).filter((b) => configs.some((c) => c.bot_name === b)).map((bot) => {
+                  const config = configs.find((c) => c.bot_name === bot);
+                  if (!config) return null;
+                  return (
+                    <button
+                      key={config.bot_name}
+                      type="button"
+                      onClick={() => setSelectedBot(config.bot_name)}
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: "12px",
+                        textAlign: "left",
+                        background: selectedBot === config.bot_name ? "rgba(99,102,241,0.2)" : "rgba(30,41,59,0.4)",
+                        border: selectedBot === config.bot_name ? "1px solid rgba(99,102,241,0.4)" : "1px solid rgba(148,163,184,0.1)",
+                        color: "inherit",
+                        cursor: "pointer",
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      <span style={{ fontWeight: 600 }}>{config.bot_name === "telegram" ? "✈️ Telegram" : "🌐 Web"}</span>
+                      <span style={{ fontSize: "10px", marginLeft: "6px", padding: "2px 6px", borderRadius: "6px", background: config.is_active ? "rgba(34,197,94,0.2)" : "rgba(148,163,184,0.2)", color: config.is_active ? "#4ade80" : "#94a3b8" }}>
+                        {config.is_active ? "Activo" : "Pausado"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {configs.length === 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  <p className="muted" style={{ fontSize: "13px", margin: 0 }}>
+                    Aún no hay canales configurados. Crea Telegram y Web para ajustar modelo, prompts y personalidad.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={initializeChannels}
+                    disabled={initializingChannels}
+                    className="btn btn-primary"
+                    style={{ alignSelf: "flex-start" }}
+                  >
+                    {initializingChannels ? "Inicializando…" : "Inicializar canales (Telegram y Web)"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div style={{ flex: "1 1 400px", minWidth: 0 }}>
+              {selectedConfig ? (
+                <>
+                  <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      onClick={() => setConfigTab("ajustes")}
+                      style={{
+                        padding: "10px 18px",
+                        borderRadius: "10px",
+                        border: "none",
+                        background: configTab === "ajustes" ? "rgba(99,102,241,0.25)" : "rgba(30,41,59,0.5)",
+                        color: configTab === "ajustes" ? "#c7d2fe" : "#94a3b8",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: 500,
+                      }}
+                    >
+                      ⚙️ Ajustes del modelo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfigTab("prompts")}
+                      style={{
+                        padding: "10px 18px",
+                        borderRadius: "10px",
+                        border: "none",
+                        background: configTab === "prompts" ? "rgba(99,102,241,0.25)" : "rgba(30,41,59,0.5)",
+                        color: configTab === "prompts" ? "#c7d2fe" : "#94a3b8",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: 500,
+                      }}
+                    >
+                      ✏️ Personalidad por contexto
+                    </button>
+                  </div>
+
+                  {configTab === "ajustes" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                      <div>
+                        <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: 500 }}>Modelo de IA</label>
+                        <select
+                          value={selectedConfig.ai_model || (aiProvider === "groq" ? "llama-3.1-8b-instant" : "gemini-2.0-flash")}
+                          onChange={(e) => updateConfig("ai_model", e.target.value)}
+                          style={{ ...inputStyle, maxWidth: "280px" }}
+                        >
+                          <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                          <option value="gemini-1.5-flash">Gemini 1.5 Flash (legacy)</option>
+                          <option value="llama-3.1-8b-instant">Llama 3.1 8B (Groq)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: 500 }}>Máx. tokens por respuesta</label>
+                        <input
+                          type="number"
+                          min={128}
+                          max={4096}
+                          value={selectedConfig.max_tokens || 500}
+                          onChange={(e) => updateConfig("max_tokens", Number(e.target.value))}
+                          style={{ ...inputStyle, maxWidth: "140px" }}
+                        />
+                        <p className="muted" style={{ margin: "6px 0 0", fontSize: "12px" }}>Límite de longitud de cada respuesta (128–4096)</p>
+                      </div>
+                      <div>
+                        <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: 500 }}>Creatividad (temperatura): {selectedConfig.temperature ?? 0.7}</label>
+                        <input
+                          type="range"
+                          min={0}
+                          max={1}
+                          step={0.1}
+                          value={selectedConfig.temperature ?? 0.7}
+                          onChange={(e) => updateConfig("temperature", Number(e.target.value))}
+                          style={{ maxWidth: "280px" }}
+                        />
+                        <p className="muted" style={{ margin: "6px 0 0", fontSize: "12px" }}>0 = más preciso · 1 = más creativo y variado</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {configTab === "prompts" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                      <p className="muted" style={{ margin: "0 0 8px", fontSize: "13px" }}>
+                        Define cómo se comporta Lex según el tipo de usuario. Cada contexto usa un prompt distinto.
+                      </p>
+                      {PROMPT_CONTEXTS.map((context) => {
+                        const prompt = selectedConfig.prompts?.[context] || "";
+                        return (
+                          <div
+                            key={context}
+                            style={{
+                              padding: "18px",
+                              borderRadius: "14px",
+                              background: "rgba(15,23,42,0.5)",
+                              border: "1px solid rgba(148,163,184,0.12)",
+                            }}
+                          >
+                            <div style={{ marginBottom: "8px" }}>
+                              <strong style={{ fontSize: "14px" }}>{CONTEXT_LABELS[context] || context}</strong>
+                              <p className="muted" style={{ margin: "4px 0 0", fontSize: "12px" }}>{CONTEXT_DESCRIPTIONS[context] || ""}</p>
+                            </div>
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingContext(editingContext === context ? null : context)} style={{ marginBottom: "10px" }}>
+                              {editingContext === context ? "Cerrar editor" : "Editar prompt"}
+                            </button>
+                            {editingContext === context ? (
+                              <textarea
+                                value={prompt}
+                                onChange={(e) => updatePrompt(context, e.target.value)}
+                                rows={5}
+                                placeholder="Ej: Eres Lex, asistente de Assembly 2.0. Responde de forma amigable..."
+                                style={{ ...inputStyle, minHeight: "100px", resize: "vertical", width: "100%" }}
+                              />
+                            ) : (
+                              <p className="muted" style={{ margin: 0, fontSize: "13px", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{prompt || "Sin prompt configurado."}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", gap: "12px", marginTop: "24px", flexWrap: "wrap", paddingTop: "16px", borderTop: "1px solid rgba(148,163,184,0.12)" }}>
+                    <button className="btn btn-ghost" onClick={fetchConfigs}>Cancelar</button>
+                    <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? "Guardando…" : "Guardar cambios"}</button>
+                  </div>
+                </>
+              ) : configs.length > 0 ? (
+                <p className="muted">Selecciona un canal (Telegram o Web) para editar ajustes y personalidad.</p>
+              ) : null}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -503,6 +856,27 @@ export default function ChatbotConfigPage() {
             )}
           </div>
 
+          <label style={{ display: "block", marginBottom: "8px", fontSize: "13px", fontWeight: 500 }}>Token del bot (Telegram)</label>
+          {secrets?.telegramMasked && !tgTokenInput && (
+            <p className="muted" style={{ margin: "0 0 8px", fontSize: "12px" }}>Actual: {secrets.telegramMasked}</p>
+          )}
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
+            <input
+              type="password"
+              value={tgTokenInput}
+              onChange={(e) => setTgTokenInput(e.target.value)}
+              placeholder="Pega el token de @BotFather"
+              style={{ ...inputStyle, flex: "1 1 200px" }}
+            />
+            <button type="button" className="btn btn-ghost" onClick={() => validateTelegramToken(tgTokenInput || undefined)} disabled={tgValidating}>
+              {tgValidating ? "..." : "Validar"}
+            </button>
+            <button type="button" className="btn btn-primary" onClick={saveTelegramTokenOnly} disabled={tokensSaving || !tgTokenInput.trim()}>
+              {tokensSaving ? "..." : "Guardar token"}
+            </button>
+          </div>
+          <p className="muted" style={{ fontSize: "11px", margin: "-8px 0 12px" }}>Tras guardar, reinicia el proceso del bot para que use el nuevo token.</p>
+
           <label style={{ display: "block", marginBottom: "8px", fontSize: "13px" }}>Usuario del bot (sin @)</label>
           <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
             <input
@@ -536,58 +910,6 @@ export default function ChatbotConfigPage() {
           )}
         </div>
 
-        {/* IA (Gemini) */}
-        <div
-          className="card"
-          style={{
-            padding: "24px",
-            background: "linear-gradient(180deg, rgba(30,41,59,0.6), rgba(15,23,42,0.8))",
-            border: "1px solid rgba(99,184,255,0.2)",
-            borderRadius: "16px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", marginBottom: "16px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <span style={{ fontSize: "28px" }}>🤖</span>
-              <div>
-                <h3 style={{ margin: 0, fontSize: "17px" }}>IA (Gemini)</h3>
-                <p className="muted" style={{ margin: "2px 0 0", fontSize: "12px" }}>Respuestas inteligentes en Telegram</p>
-              </div>
-            </div>
-            {geminiStatus && (
-              <span
-                style={{
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  padding: "4px 10px",
-                  borderRadius: "8px",
-                  background: geminiStatus.geminiConfigured ? "rgba(34,197,94,0.2)" : "rgba(251,191,36,0.2)",
-                  color: geminiStatus.geminiConfigured ? "#4ade80" : "#fbbf24",
-                }}
-              >
-                {geminiStatus.geminiConfigured ? "✓ Configurado" : "No configurado"}
-              </span>
-            )}
-          </div>
-          <p className="muted" style={{ fontSize: "12px", margin: 0 }}>
-            {geminiStatus?.geminiConfigured
-              ? "Gemini alimenta las respuestas inteligentes en todos los canales: Telegram, Landing, Residentes y Soporte."
-              : "Añade GEMINI_API_KEY en .env para activar la IA en todos los chatbots."}
-          </p>
-          {geminiStatus?.geminiConfigured && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "10px", fontSize: "11px" }}>
-              <span style={{ padding: "4px 8px", borderRadius: "8px", background: "rgba(99,102,241,0.2)", color: "#a5b4fc" }}>✈️ Telegram</span>
-              <span style={{ padding: "4px 8px", borderRadius: "8px", background: "rgba(99,102,241,0.2)", color: "#a5b4fc" }}>🌐 Landing</span>
-              <span style={{ padding: "4px 8px", borderRadius: "8px", background: "rgba(99,102,241,0.2)", color: "#a5b4fc" }}>👤 Residentes</span>
-              <span style={{ padding: "4px 8px", borderRadius: "8px", background: "rgba(99,102,241,0.2)", color: "#a5b4fc" }}>❓ Soporte</span>
-            </div>
-          )}
-          {!geminiStatus?.geminiConfigured && (
-            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ marginTop: "12px" }}>
-              Obtener API key
-            </a>
-          )}
-        </div>
       </div>
 
       {/* Tests */}
@@ -626,183 +948,6 @@ export default function ChatbotConfigPage() {
               </div>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* Config IA - Rediseño moderno */}
-      <div className="card" style={{ marginTop: "20px", padding: "24px", background: "linear-gradient(180deg, rgba(30,41,59,0.5), rgba(15,23,42,0.9))", border: "1px solid rgba(99,184,255,0.15)" }}>
-        <div style={{ marginBottom: "20px", paddingBottom: "16px", borderBottom: "1px solid rgba(148,163,184,0.15)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "6px" }}>
-            <span style={{ fontSize: "24px" }}>🤖</span>
-            <h3 style={{ margin: 0, fontSize: "18px" }}>Configuración de IA (Gemini)</h3>
-          </div>
-          <p className="muted" style={{ margin: 0, fontSize: "13px", maxWidth: "560px" }}>
-            Los mismos ajustes y personalidades se aplican a Telegram, Web (landing), chat de residentes y soporte.
-          </p>
-        </div>
-
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "24px" }}>
-          <div style={{ flex: "0 0 220px", minWidth: 0 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
-              {(["telegram", "web"] as const).filter((b) => configs.some((c) => c.bot_name === b)).map((bot) => {
-                const config = configs.find((c) => c.bot_name === bot);
-                if (!config) return null;
-                return (
-                  <button
-                    key={config.bot_name}
-                    type="button"
-                    onClick={() => setSelectedBot(config.bot_name)}
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: "12px",
-                      textAlign: "left",
-                      background: selectedBot === config.bot_name ? "rgba(99,102,241,0.2)" : "rgba(30,41,59,0.4)",
-                      border: selectedBot === config.bot_name ? "1px solid rgba(99,102,241,0.4)" : "1px solid rgba(148,163,184,0.1)",
-                      color: "inherit",
-                      cursor: "pointer",
-                      textTransform: "capitalize",
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>{config.bot_name === "telegram" ? "✈️ Telegram" : "🌐 Web"}</span>
-                    <span style={{ fontSize: "10px", marginLeft: "6px", padding: "2px 6px", borderRadius: "6px", background: config.is_active ? "rgba(34,197,94,0.2)" : "rgba(148,163,184,0.2)", color: config.is_active ? "#4ade80" : "#94a3b8" }}>
-                      {config.is_active ? "Activo" : "Pausado"}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            {configs.length === 0 && <p className="muted" style={{ fontSize: "12px" }}>Sin bots en BD.</p>}
-          </div>
-
-          <div style={{ flex: "1 1 400px", minWidth: 0 }}>
-            {selectedConfig ? (
-              <>
-                <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    onClick={() => setConfigTab("ajustes")}
-                    style={{
-                      padding: "10px 18px",
-                      borderRadius: "10px",
-                      border: "none",
-                      background: configTab === "ajustes" ? "rgba(99,102,241,0.25)" : "rgba(30,41,59,0.5)",
-                      color: configTab === "ajustes" ? "#c7d2fe" : "#94a3b8",
-                      cursor: "pointer",
-                      fontSize: "14px",
-                      fontWeight: 500,
-                    }}
-                  >
-                    ⚙️ Ajustes del modelo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfigTab("prompts")}
-                    style={{
-                      padding: "10px 18px",
-                      borderRadius: "10px",
-                      border: "none",
-                      background: configTab === "prompts" ? "rgba(99,102,241,0.25)" : "rgba(30,41,59,0.5)",
-                      color: configTab === "prompts" ? "#c7d2fe" : "#94a3b8",
-                      cursor: "pointer",
-                      fontSize: "14px",
-                      fontWeight: 500,
-                    }}
-                  >
-                    ✏️ Personalidad por contexto
-                  </button>
-                </div>
-
-                {configTab === "ajustes" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                    <div>
-                      <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: 500 }}>Modelo de IA</label>
-                      <select
-                        value={selectedConfig.ai_model || "gemini-1.5-flash"}
-                        onChange={(e) => updateConfig("ai_model", e.target.value)}
-                        style={{ ...inputStyle, maxWidth: "280px" }}
-                      >
-                        <option value="gemini-2.0-flash">Gemini 2.0 Flash (más rápido)</option>
-                        <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: 500 }}>Máx. tokens por respuesta</label>
-                      <input
-                        type="number"
-                        min={128}
-                        max={4096}
-                        value={selectedConfig.max_tokens || 500}
-                        onChange={(e) => updateConfig("max_tokens", Number(e.target.value))}
-                        style={{ ...inputStyle, maxWidth: "140px" }}
-                      />
-                      <p className="muted" style={{ margin: "6px 0 0", fontSize: "12px" }}>Límite de longitud de cada respuesta (128–4096)</p>
-                    </div>
-                    <div>
-                      <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: 500 }}>Creatividad (temperatura): {selectedConfig.temperature ?? 0.7}</label>
-                      <input
-                        type="range"
-                        min={0}
-                        max={1}
-                        step={0.1}
-                        value={selectedConfig.temperature ?? 0.7}
-                        onChange={(e) => updateConfig("temperature", Number(e.target.value))}
-                        style={{ maxWidth: "280px" }}
-                      />
-                      <p className="muted" style={{ margin: "6px 0 0", fontSize: "12px" }}>0 = más preciso · 1 = más creativo y variado</p>
-                    </div>
-                  </div>
-                )}
-
-                {configTab === "prompts" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                    <p className="muted" style={{ margin: "0 0 8px", fontSize: "13px" }}>
-                      Define cómo se comporta Lex según el tipo de usuario. Cada contexto usa un prompt distinto.
-                    </p>
-                    {PROMPT_CONTEXTS.map((context) => {
-                      const prompt = selectedConfig.prompts?.[context] || "";
-                      return (
-                        <div
-                          key={context}
-                          style={{
-                            padding: "18px",
-                            borderRadius: "14px",
-                            background: "rgba(15,23,42,0.5)",
-                            border: "1px solid rgba(148,163,184,0.12)",
-                          }}
-                        >
-                          <div style={{ marginBottom: "8px" }}>
-                            <strong style={{ fontSize: "14px" }}>{CONTEXT_LABELS[context] || context}</strong>
-                            <p className="muted" style={{ margin: "4px 0 0", fontSize: "12px" }}>{CONTEXT_DESCRIPTIONS[context] || ""}</p>
-                          </div>
-                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditingContext(editingContext === context ? null : context)} style={{ marginBottom: "10px" }}>
-                            {editingContext === context ? "Cerrar editor" : "Editar prompt"}
-                          </button>
-                          {editingContext === context ? (
-                            <textarea
-                              value={prompt}
-                              onChange={(e) => updatePrompt(context, e.target.value)}
-                              rows={5}
-                              placeholder="Ej: Eres Lex, asistente de Assembly 2.0. Responde de forma amigable..."
-                              style={{ ...inputStyle, minHeight: "100px", resize: "vertical", width: "100%" }}
-                            />
-                          ) : (
-                            <p className="muted" style={{ margin: 0, fontSize: "13px", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{prompt || "Sin prompt configurado."}</p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <div style={{ display: "flex", gap: "12px", marginTop: "24px", flexWrap: "wrap", paddingTop: "16px", borderTop: "1px solid rgba(148,163,184,0.12)" }}>
-                  <button className="btn btn-ghost" onClick={fetchConfigs}>Cancelar</button>
-                  <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? "Guardando…" : "Guardar cambios"}</button>
-                </div>
-              </>
-            ) : (
-              <p className="muted">Selecciona un canal (Telegram o Web).</p>
-            )}
-          </div>
         </div>
       </div>
 

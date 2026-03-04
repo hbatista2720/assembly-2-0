@@ -4,7 +4,7 @@ config({ path: path.resolve(process.cwd(), ".env") });
 config({ path: path.resolve(process.cwd(), ".env.local") });
 import TelegramBot from "node-telegram-bot-api";
 import { registerCommands, startRegistrarmeFlow } from "./commands";
-import { sql } from "../lib/db";
+import { sql } from "@lib/db";
 
 const APP_URL =
   process.env.CHATBOT_API_URL ||
@@ -28,18 +28,6 @@ async function getTelegramToken(): Promise<string> {
   }
   return fromEnv;
 }
-
-const token = await getTelegramToken();
-if (!token) {
-  console.error("❌ TELEGRAM_BOT_TOKEN no configurado. Añádelo en .env o en Panel Henry > Chatbot > Tokens.");
-  process.exit(1);
-}
-
-const bot = new TelegramBot(token, { polling: true });
-
-console.log("🤖 Chatbot Assembly 2.0 iniciado con éxito!");
-
-registerCommands(bot);
 
 const userRole: Record<number, string> = {};
 const userEmail: Record<number, string> = {};
@@ -121,6 +109,27 @@ async function getBotConfig() {
   return config;
 }
 
+/** Verifica usuario por correo vía API de la app (usa la misma BD que la app). */
+async function verifyUserByEmail(
+  email: string,
+  options?: { roleFilter?: "RESIDENTE" }
+): Promise<{ id: string; email: string; role: string } | null> {
+  try {
+    const res = await fetch(`${APP_URL}/api/chatbot/verify-user`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim().toLowerCase(), roleFilter: options?.roleFilter ?? null }),
+    });
+    const data = await res.json();
+    if (data?.ok && data?.user) return data.user;
+    return null;
+  } catch (err) {
+    console.error("[Telegram] Error llamando verify-user:", (err as Error)?.message);
+    return null;
+  }
+}
+
+function registerHandlers(bot: TelegramBot) {
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   console.log("[Telegram] /start recibido, chatId:", chatId);
@@ -129,12 +138,16 @@ bot.onText(/\/start/, async (msg) => {
   delete chatHistory[chatId];
   delete mivotoState[chatId];
   identifyState[chatId] = { step: "awaiting_email" };
+  let config = null;
   try {
-    const config = await getBotConfig();
-    if (!config) {
-      await bot.sendMessage(chatId, "Chatbot temporalmente desactivado.");
-      return;
-    }
+    config = await getBotConfig();
+  } catch (err) {
+    console.error("[Telegram] /start getBotConfig (BD o app):", (err as Error)?.message);
+  }
+  if (!config) {
+    console.warn("[Telegram] Sin config de chatbot_config; usando mensaje por defecto. Revisa DATABASE_URL si el bot corre en otro proceso.");
+  }
+  try {
     await bot.sendMessage(
       chatId,
       `¡Hola! 👋 Soy **Lex**, el asistente de Assembly 2.0.
@@ -143,9 +156,9 @@ Para ayudarte, necesito identificarte. **Envía tu correo electrónico** para co
       { parse_mode: "Markdown" },
     );
   } catch (err) {
-    console.error("[Telegram] Error en /start:", err);
+    console.error("[Telegram] Error enviando mensaje /start:", err);
     try {
-      await bot.sendMessage(chatId, "¡Hola! 👋 Soy Lex. Error de conexión. Intenta más tarde.");
+      await bot.sendMessage(chatId, "¡Hola! 👋 Soy Lex. No pude enviar el mensaje. Intenta más tarde.");
     } catch (_) {}
   }
 });
@@ -293,32 +306,22 @@ bot.on("message", async (msg) => {
       await bot.sendMessage(chatId, "No parece un correo válido. Envíame tu email registrado como residente.");
       return;
     }
-    try {
-      const [user] = await sql<{ id: string; email: string; role: string; nombre?: string }[]>`
-        SELECT id, email, role, nombre
-        FROM users
-        WHERE LOWER(email) = ${email} AND role = 'RESIDENTE'
-        LIMIT 1
-      `;
-      delete mivotoState[chatId];
-      if (user) {
-        userRole[chatId] = "residente";
-        userEmail[chatId] = user.email;
-        const displayName = user.nombre || user.email.split("@")[0];
-        await bot.sendMessage(chatId, `Hola **${displayName}** 👋 Te identifiqué. Aquí están las opciones de voto:`, {
-          parse_mode: "Markdown",
-        });
-        await sendMivotoOptions(bot, chatId);
-      } else {
-        await bot.sendMessage(
-          chatId,
-          `No encontramos ese correo como **residente registrado**. ¿Estás registrado en tu PH? Prueba /registrarme o contacta a tu administrador.`,
-          { parse_mode: "Markdown" },
-        );
-      }
-    } catch (err) {
-      console.error("[Telegram] Error en flujo Mi voto:", err);
-      await bot.sendMessage(chatId, "Error al verificar. Intenta más tarde o escribe /start.");
+    delete mivotoState[chatId];
+    const user = await verifyUserByEmail(email, { roleFilter: "RESIDENTE" });
+    if (user) {
+      userRole[chatId] = "residente";
+      userEmail[chatId] = user.email;
+      const displayName = user.email.split("@")[0];
+      await bot.sendMessage(chatId, `Hola **${displayName}** 👋 Te identifiqué. Aquí están las opciones de voto:`, {
+        parse_mode: "Markdown",
+      });
+      await sendMivotoOptions(bot, chatId);
+    } else {
+      await bot.sendMessage(
+        chatId,
+        `No encontramos ese correo como **residente registrado**. ¿Estás registrado en tu PH? Prueba /registrarme o contacta a tu administrador.`,
+        { parse_mode: "Markdown" },
+      );
     }
     return;
   }
@@ -329,49 +332,56 @@ bot.on("message", async (msg) => {
     const email = text.trim().toLowerCase();
     const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (!isValidEmail) {
+      // Si parece una pregunta o saludo (hola, cómo te llamas, qué es esto...), usar la IA para responder y que se sienta conversacional
+      const lower = text.toLowerCase().replace(/\s+/g, " ").trim();
+      const isConversational =
+        /^(hola|hello|hi|buenas|hey|qué tal|que tal|buenos?\s*d[ií]as|buenas\s*tardes|good\s*morning)/i.test(lower) ||
+        /(cómo te llamas|como te llamas|tu nombre|quien eres|quién eres|qué es (este )?chat|que es (este )?chat|qué es esto|que es esto|para qué sirves|ayuda)/i.test(lower) ||
+        (lower.length >= 3 && lower.length < 50 && /[a-záéíóúñ]/i.test(lower) && !/^\d+$/.test(lower));
+      if (isConversational) {
+        (chatHistory[chatId] = chatHistory[chatId] || []).push({ role: "user", text });
+        const reply = await getAiReply(chatId, text);
+        (chatHistory[chatId] = chatHistory[chatId] || []).push({ role: "assistant", text: reply });
+        await bot.sendMessage(
+          chatId,
+          `${reply}\n\n💡 **Para desbloquear más opciones** (Mi voto, Registrarme, etc.), envía tu **correo electrónico** para identificarte.`,
+          { parse_mode: "Markdown" },
+        );
+        return;
+      }
       await bot.sendMessage(chatId, "No parece un correo válido. Envíame tu email para identificarte.");
       return;
     }
-    try {
-      const [user] = await sql<{ id: string; email: string; role: string; nombre?: string }[]>`
-        SELECT id, email, role, nombre
-        FROM users
-        WHERE LOWER(email) = ${email}
-        LIMIT 1
-      `;
-      delete identifyState[chatId];
-      if (user) {
-        const role = dbRoleToBot(user.role);
-        userRole[chatId] = role;
-        userEmail[chatId] = user.email;
-        const displayName = user.nombre || user.email.split("@")[0];
-        const actions = getActionButtons(role);
-        await bot.sendMessage(
-          chatId,
-          `Hola **${displayName}** 👋 Te identifiqué como ${ROLE_LABELS[role] || role}. ¿En qué te ayudo?`,
-          {
-            parse_mode: "Markdown",
-            reply_markup: { inline_keyboard: actions.map((a) => [a]) },
+    delete identifyState[chatId];
+    const user = await verifyUserByEmail(email);
+    if (user) {
+      const role = dbRoleToBot(user.role);
+      userRole[chatId] = role;
+      userEmail[chatId] = user.email;
+      const displayName = user.email.split("@")[0];
+      const actions = getActionButtons(role);
+      await bot.sendMessage(
+        chatId,
+        `Hola **${displayName}** 👋 Te identifiqué como ${ROLE_LABELS[role] || role}. ¿En qué te ayudo?`,
+        {
+          parse_mode: "Markdown",
+          reply_markup: { inline_keyboard: actions.map((a) => [a]) },
+        },
+      );
+    } else {
+      await bot.sendMessage(
+        chatId,
+        `No te encontré en el sistema con ese correo. ¿Quieres **registrarte como lead** o elegir un perfil para consultas generales?`,
+        {
+          parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "📋 Registrarme como lead", callback_data: "action_registrarme" }],
+              ...ROLE_BUTTONS.reply_markup.inline_keyboard,
+            ],
           },
-        );
-      } else {
-        await bot.sendMessage(
-          chatId,
-          `No te encontré en el sistema con ese correo. ¿Quieres **registrarte como lead** o elegir un perfil para consultas generales?`,
-          {
-            parse_mode: "Markdown",
-            reply_markup: {
-              inline_keyboard: [
-                [{ text: "📋 Registrarme como lead", callback_data: "action_registrarme" }],
-                ...ROLE_BUTTONS.reply_markup.inline_keyboard,
-              ],
-            },
-          },
-        );
-      }
-    } catch (err) {
-      console.error("[Telegram] Error buscando usuario por email:", err);
-      await bot.sendMessage(chatId, "Error al verificar. Intenta más tarde o escribe /start.");
+        },
+      );
     }
     return;
   }
@@ -388,4 +398,22 @@ bot.on("message", async (msg) => {
   (chatHistory[chatId] = chatHistory[chatId] || []).push({ role: "assistant", text: reply });
 
   await bot.sendMessage(chatId, reply, { parse_mode: "Markdown" });
+});
+}
+
+async function main() {
+  const token = await getTelegramToken();
+  if (!token) {
+    console.error("❌ TELEGRAM_BOT_TOKEN no configurado. Añádelo en .env o en Panel Henry > Chatbot > Tokens.");
+    process.exit(1);
+  }
+  const bot = new TelegramBot(token, { polling: true });
+  console.log("🤖 Chatbot Assembly 2.0 iniciado con éxito!");
+  registerCommands(bot);
+  registerHandlers(bot);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
 });

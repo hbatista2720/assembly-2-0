@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTelegramToken } from "../../../../lib/secrets";
+import { getTelegramToken } from "@lib/secrets";
 
 /**
  * GET /api/chatbot/telegram-status

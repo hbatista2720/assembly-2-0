@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     if (type === "gemini") {
       try {
         const genAI = new GoogleGenerativeAI(token);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         const result = await model.generateContent("Di 'OK' en una palabra.");
         const text = result.response.text()?.trim();
         return NextResponse.json({

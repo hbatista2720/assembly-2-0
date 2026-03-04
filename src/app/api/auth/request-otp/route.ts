@@ -64,7 +64,10 @@ export async function POST(req: Request) {
       expires_in_minutes: OTP_TTL_MINUTES,
     });
   } catch (error) {
-    console.error("Error request OTP:", error);
-    return NextResponse.json({ error: "Error al generar OTP" }, { status: 500 });
+    const err = error instanceof Error ? error : new Error(String(error));
+    const message = err.message || String(error);
+    console.error("Error request OTP:", message, err.stack);
+    const safeMessage = OTP_DEBUG ? message : "Error al generar OTP";
+    return NextResponse.json({ error: safeMessage }, { status: 500 });
   }
 }

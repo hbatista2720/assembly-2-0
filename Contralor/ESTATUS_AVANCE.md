@@ -51,10 +51,10 @@ FORMATO DE COMMIT:
 | FASE 9, 10, 11 | ✅ Aprobado QA | ✅ dc1f9c7 | ⏳ Push (Henry si falla) |
 | Plan navegación + Chatbot residente (Opción B) + Usuarios demo | ✅ Aprobado QA | ✅ a76fb32 | ✅ Push OK |
 
-**Último backup:** **Commit ejecutado.** Commit **c3d018d** (Backup Feb 2026: Instrucciones créditos/carrito Fase1, Telegram BD/setup, chatbot APIs, platform-admin, pricing). ⏳ **Henry:** ejecutar `git push origin main` para completar el backup.
+**Último backup:** **Completado.** Push ejecutado por Henry: **091e982..5457935** main → main (2 Mar 2026). Incluye: Instrucciones créditos/carrito Fase1, Telegram BD/setup, chatbot APIs, platform-admin, pricing.
 **Repositorio:** https://github.com/hbatista2720/assembly-2-0
 
-**¿Backup requerido ahora?** Commit listo. Falta push (Henry). **Validación redirección por rol:** ✅ QA aprobó. Ver QA_FEEDBACK.md § "QA Validación · Redirección por rol". **Usuarios demo por plan:** ✅ Ejecutado. Ver REPORTE_USUARIOS_DEMO_POR_PLAN.md. **Siguiente:** Más pruebas (plan § "Próximas pruebas"), QA validar Dashboard Admin PH con los 5 usuarios por plan.
+**¿Backup requerido ahora?** No. Backup completo (5457935). **Validación redirección por rol:** ✅ QA aprobó. Ver QA_FEEDBACK.md § "QA Validación · Redirección por rol". **Usuarios demo por plan:** ✅ Ejecutado. Ver REPORTE_USUARIOS_DEMO_POR_PLAN.md. **Siguiente:** Más pruebas (plan § "Próximas pruebas"), QA validar Dashboard Admin PH con los 5 usuarios por plan.
 
 **Reporte Coder al Contralor (últimos cambios – tema, perfil, demo, contadores):**
 - Botón **"Subir a plan real"** validado: redirige a `/pricing?from=demo` (trazabilidad).
@@ -974,6 +974,25 @@ Tarea: Validar el proceso del dashboard Admin PH (flujos, rutas, coherencia con 
 Cuando Marketing confirme el flujo, el Arquitecto valida y reporta al Contralor.
 Referencias: Marketing/MARKETING_OBSERVACIONES_DASHBOARD_ADMIN_PH.md, ESTATUS_AVANCE (este bloque).
 ```
+
+### Para CODER – Deploy Assembly 2.0 en VPS Vultr (assembly-prod)
+```
+Tarea: Desplegar Assembly 2.0 en el VPS ya creado por Henry (Vultr).
+
+Datos del servidor:
+- Ubicación: Miami
+- IP: 45.63.104.7
+- Usuario: root
+- Contraseña: Henry la proporciona al Coder por canal seguro (no guardar en repo ni en archivos del proyecto).
+
+Servidor: Docker on Ubuntu 24.04, 1 vCPU, 1 GB RAM, 25 GB. Nombre en Vultr: assembly-prod. Ping verificado OK.
+
+Referencia de deploy: Coder/INSTRUCCIONES_IMPLEMENTACION_VPS_ALL_IN_ONE.md (o la guía de deploy/VPS del proyecto). Conectar por SSH (ssh root@45.63.104.7), clonar/upload proyecto, configurar .env, docker-compose, etc.
+
+Al finalizar, informar al Contralor y a Henry (URL de la app si aplica).
+```
+
+---
 
 ### Para CODER – Panel ejecutivo Landing (orden Marketing Feb 2026):
 ```

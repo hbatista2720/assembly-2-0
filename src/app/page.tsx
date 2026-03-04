@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PLANS } from "../lib/types/pricing";
@@ -42,6 +42,7 @@ function HomeContent() {
   const [abandonConfirmPhrase, setAbandonConfirmPhrase] = useState("");
   const [residentEmailPending, setResidentEmailPending] = useState<string | null>(null);
   const ABANDON_CONFIRM_PHRASE = "Si abandonar";
+  const chatScrollRef = useRef<HTMLDivElement>(null);
   // Emails residentes org demo + PH B Torres (lista fija; ref INSTRUCCIONES_CODER_ASSEMBLY_CONTEXT_BD.md)
   const DEMO_RESIDENT_EMAILS = [
     "residente1@demo.assembly2.com",
@@ -184,6 +185,14 @@ function HomeContent() {
         setChatMessages([{ from: "bot", text: LANDING_CHAT_GREETING }]);
       });
   }, [chatbotOpen, chatMessages.length]);
+
+  useEffect(() => {
+    if (!chatbotOpen) return;
+    const el = chatScrollRef.current;
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    }
+  }, [chatbotOpen, chatMessages]);
 
   useEffect(() => {
     if (chatRole !== "residente" || !residentEmailValidated) return;
@@ -659,10 +668,10 @@ function HomeContent() {
               <button className="btn btn-primary btn-demo" onClick={() => setChatbotOpen(true)}>
                 Agendar demo con Lex
               </button>
-              <a className="btn btn-ghost" href="/pricing">
+              <a className="btn btn-ghost" href="/login?redirect=/dashboard/admin-ph/subscription">
                 Ver precios
               </a>
-              <a className="btn btn-ghost" href="/login?role=admin-inteligente">
+              <a className="btn btn-ghost" href="/login?redirect=/dashboard/admin-ph/subscription">
                 Ver acceso seguro
               </a>
             </div>
@@ -1064,9 +1073,9 @@ function HomeContent() {
         <p className="section-subtitle">Estructura por perfil: administraciones y promotoras.</p>
         <div className="pricing-grid">
           {[
-            { title: "Demo 14 días", desc: "Prueba gratis con 1 PH y flujo completo.", cta: "Probar demo", link: "/demo", accent: "rgba(56, 189, 248, 0.9)", glow: "rgba(56, 189, 248, 0.35)" },
-            { title: "Multi-PH Pro", desc: "Hasta 50 edificios y asambleas ilimitadas.", cta: "Ver administraciones", link: "/administraciones", accent: "rgba(99, 102, 241, 0.9)", glow: "rgba(99, 102, 241, 0.35)" },
-            { title: "Enterprise + CRM", desc: "Promotoras grandes con CRM y tickets ilimitados.", cta: "Ver promotoras", link: "/promotoras", accent: "rgba(236, 72, 153, 0.9)", glow: "rgba(236, 72, 153, 0.35)" },
+            { title: "Demo 14 días", desc: "Prueba gratis con 1 PH y flujo completo.", cta: "Probar demo", link: "/demo", accent: "rgba(56, 189, 248, 0.9)", glow: "rgba(56, 189, 248, 0.35)", openChatbot: false },
+            { title: "Multi-PH Pro", desc: "Hasta 50 edificios, asambleas ilimitadas, panel multi-tenant y reportes consolidados. Ideal para administradoras en crecimiento.", cta: "Conocer beneficios y agendar demo", link: "#", accent: "rgba(99, 102, 241, 0.9)", glow: "rgba(99, 102, 241, 0.35)", openChatbot: true },
+            { title: "Enterprise + CRM", desc: "Promotoras grandes: CRM con IA, tickets ilimitados, consultoría legal y soporte dedicado. Escalamiento sin límites.", cta: "Conocer beneficios y agendar demo", link: "#", accent: "rgba(236, 72, 153, 0.9)", glow: "rgba(236, 72, 153, 0.35)", openChatbot: true },
           ].map((plan, index) => (
             <div
               key={plan.title}
@@ -1093,9 +1102,15 @@ function HomeContent() {
               </div>
               <h3 style={{ marginTop: 0 }}>{plan.title}</h3>
               <p style={{ color: "#cbd5f5" }}>{plan.desc}</p>
-              <a className="btn btn-ghost" href={plan.link}>
-                {plan.cta}
-              </a>
+              {plan.openChatbot ? (
+                <button type="button" className="btn btn-ghost" onClick={() => setChatbotOpen(true)}>
+                  {plan.cta}
+                </button>
+              ) : (
+                <a className="btn btn-ghost" href={plan.link}>
+                  {plan.cta}
+                </a>
+              )}
             </div>
           ))}
         </div>
@@ -1225,12 +1240,22 @@ function HomeContent() {
                   ))}
                 </div>
               ) : null}
-              <a
-                className={`btn ${plan.ctaVariant === "primary" || plan.ctaVariant === "accent" ? "btn-primary btn-demo" : "btn-ghost"}`}
-                href={plan.id === "ENTERPRISE" ? "/login" : `/checkout?plan=${plan.id}`}
-              >
-                {plan.cta}
-              </a>
+              {["ENTERPRISE", "MULTI_PH_LITE", "MULTI_PH_PRO"].includes(plan.id) ? (
+                <button
+                  type="button"
+                  className={`btn ${plan.ctaVariant === "primary" || plan.ctaVariant === "accent" ? "btn-primary btn-demo" : "btn-ghost"}`}
+                  onClick={() => setChatbotOpen(true)}
+                >
+                  {plan.cta}
+                </button>
+              ) : (
+                <a
+                  className={`btn ${plan.ctaVariant === "primary" || plan.ctaVariant === "accent" ? "btn-primary btn-demo" : "btn-ghost"}`}
+                  href="/login?redirect=/dashboard/admin-ph/subscription"
+                >
+                  {plan.cta}
+                </a>
+              )}
             </div>
           ))}
         </div>
@@ -1253,7 +1278,7 @@ function HomeContent() {
             <button className="btn btn-primary btn-demo" onClick={() => setChatbotOpen(true)}>
               Solicitar demo
             </button>
-            <a className="btn btn-ghost" href="/login?role=admin-ph">
+            <a className="btn btn-ghost" href="/login?redirect=/dashboard/admin-ph/subscription">
               Acceso Admin PH
             </a>
           </div>
@@ -1345,6 +1370,7 @@ function HomeContent() {
               )}
             </div>
             <div
+              ref={chatScrollRef}
               style={{
                 marginTop: "18px",
                 display: "grid",
@@ -1690,10 +1716,10 @@ function HomeContent() {
               </div>
             ) : chatStep >= 8 ? (
               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "12px" }}>
-                <a className="btn btn-primary btn-demo" href="/login" style={{ borderRadius: "999px" }}>
+                <button type="button" className="btn btn-primary btn-demo" style={{ borderRadius: "999px" }} onClick={() => setChatbotOpen(true)}>
                   Agendar demo
-                </a>
-                <a className="btn btn-ghost" href="/administraciones" style={{ borderRadius: "999px", border: "1px solid rgba(148,163,184,0.3)" }}>
+                </button>
+                <a className="btn btn-ghost" href="/login?redirect=/dashboard/admin-ph/subscription" style={{ borderRadius: "999px", border: "1px solid rgba(148,163,184,0.3)" }}>
                   Ver planes
                 </a>
               </div>
