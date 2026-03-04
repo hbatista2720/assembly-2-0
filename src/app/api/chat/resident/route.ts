@@ -99,6 +99,12 @@ REGLAS ESTRICTAS:
 - NUNCA respondas "No encuentro ese correo" a ningún mensaje.
 - Para cualquier mensaje que no entiendas claramente, responde con amabilidad y ofrece las opciones (Votación, Asambleas, Calendario, Tema del día, Ceder poder).
 
+FORMATO (tipo WhatsApp, fácil de leer):
+- Responde en mensajes cortos y organizados. Usa saltos de línea (enter) entre cada punto u opción.
+- Al listar opciones (Votación, Asambleas, etc.), escribe cada ítem en una línea nueva, con • o número (1. 2. 3.).
+- No juntes todo en un solo párrafo largo. Máximo 1-2 frases por línea; separa con línea en blanco si son varios bloques.
+- Puedes usar **texto** para resaltar en negrita (ej: **Votación**: participa en...).
+
 Responde SOLO con el texto de la respuesta, sin prefijos como "Lex:" ni metadatos.`;
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ensureDemoResident, getDemoResidents, setDemoResidentChatbotSessionActiveByEmail } from "../../lib/demoResidentsStore";
@@ -23,6 +23,19 @@ const RESIDENTES_CHAT_PROMPT = "Soy Lex, chatbot para asambleas de PH (propiedad
 /** Saludo visible al abrir el chat tipo landing. El prompt de config no se muestra al usuario. */
 const LANDING_CHAT_GREETING =
   "Hola, soy Lex, asistente de Assembly 2.0. ¿Qué perfil te describe mejor: Administrador PH, Junta Directiva o solo demo? Escribe o elige una opción abajo.";
+
+/** Formatea texto del bot: saltos de línea y **negrita** tipo WhatsApp. */
+function formatBotMessage(text: string) {
+  const lines = String(text).split(/\n/);
+  return lines.map((line, i) => (
+    <React.Fragment key={i}>
+      {i > 0 && <br />}
+      {line.split(/\*\*/).map((part, j) =>
+        j % 2 === 1 ? <strong key={j}>{part}</strong> : part
+      )}
+    </React.Fragment>
+  ));
+}
 
 export default function ChatPage() {
   const pathname = usePathname();
@@ -705,12 +718,15 @@ export default function ChatPage() {
                       message.from === "user"
                         ? "1px solid rgba(129, 140, 248, 0.4)"
                         : "1px solid rgba(148,163,184,0.12)",
+                    ...(message.from === "bot" && { lineHeight: 1.5, whiteSpace: "pre-wrap" }),
                   }}
                 >
                   {message.from === "bot" && message.link ? (
                     <Link href={message.link} className="chat-ios btn-dialog btn-dialog-primary" style={{ display: "inline-block" }}>
                       {message.text || "Entrar al demo →"}
                     </Link>
+                  ) : message.from === "bot" ? (
+                    formatBotMessage(message.text)
                   ) : (
                     message.text
                   )}
