@@ -51,10 +51,10 @@ FORMATO DE COMMIT:
 | FASE 9, 10, 11 | ✅ Aprobado QA | ✅ dc1f9c7 | ⏳ Push (Henry si falla) |
 | Plan navegación + Chatbot residente (Opción B) + Usuarios demo | ✅ Aprobado QA | ✅ a76fb32 | ✅ Push OK |
 
-**Último backup:** **Completado.** Push ejecutado por Henry: **091e982..5457935** main → main (2 Mar 2026). Incluye: Instrucciones créditos/carrito Fase1, Telegram BD/setup, chatbot APIs, platform-admin, pricing.
+**Último backup:** **Commit ejecutado.** Commit **9f19b4b** (Backup Mar 2026: docs ACTUALIZAR_VPS_CON_GITHUB, tarea Coder deploy VPS assembly-prod). ⏳ **Henry:** ejecutar `git push origin main` para completar el backup.
 **Repositorio:** https://github.com/hbatista2720/assembly-2-0
 
-**¿Backup requerido ahora?** No. Backup completo (5457935). **Validación redirección por rol:** ✅ QA aprobó. Ver QA_FEEDBACK.md § "QA Validación · Redirección por rol". **Usuarios demo por plan:** ✅ Ejecutado. Ver REPORTE_USUARIOS_DEMO_POR_PLAN.md. **Siguiente:** Más pruebas (plan § "Próximas pruebas"), QA validar Dashboard Admin PH con los 5 usuarios por plan.
+**¿Backup requerido ahora?** Commit listo. Falta push (Henry). **Validación redirección por rol:** ✅ QA aprobó. Ver QA_FEEDBACK.md § "QA Validación · Redirección por rol". **Usuarios demo por plan:** ✅ Ejecutado. Ver REPORTE_USUARIOS_DEMO_POR_PLAN.md. **Siguiente:** Más pruebas (plan § "Próximas pruebas"), QA validar Dashboard Admin PH con los 5 usuarios por plan.
 
 **Reporte Coder al Contralor (últimos cambios – tema, perfil, demo, contadores):**
 - Botón **"Subir a plan real"** validado: redirige a `/pricing?from=demo` (trazabilidad).
