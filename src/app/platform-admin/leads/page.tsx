@@ -175,7 +175,7 @@ function LeadsContent() {
         </a>
         <h1 style={{ margin: "12px 0 0" }}>Funnel de Leads</h1>
         <p className="muted" style={{ marginTop: "6px" }}>
-          Prospectos interesados en Assembly 2.0 que llegan desde el chatbot de la landing, demo o CRM. Aquí los calificas y activas demos.
+          Prospectos interesados en Chat Vote que llegan desde el chatbot de la landing, demo o CRM. Aquí los calificas y activas demos.
         </p>
         <div
           style={{

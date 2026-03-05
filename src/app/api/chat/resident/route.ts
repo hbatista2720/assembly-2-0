@@ -13,9 +13,9 @@ import path from "path";
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
-const FALLBACK_REPLY = "Soy Lex, el asistente de Assembly 2.0 para tu PH. ¿En qué puedo ayudarte? Puedes usar los botones: Votación, Asambleas, Calendario, Tema del día o Ceder poder. O escríbeme tu consulta.";
+const FALLBACK_REPLY = "Soy Lex, el asistente de Chat Vote para tu PH. ¿En qué puedo ayudarte? Puedes usar los botones: Votación, Asambleas, Calendario, Tema del día o Ceder poder. O escríbeme tu consulta.";
 
-const LEX_IDENTITY_REPLY = "Me llamo Lex. Soy el asistente de Assembly 2.0 para votaciones, asambleas y gestión de tu PH. ¿En qué puedo ayudarte? Puedes usar los botones: Votación, Asambleas, Calendario, Tema del día o Ceder poder.";
+const LEX_IDENTITY_REPLY = "Me llamo Lex. Soy el asistente de Chat Vote para votaciones, asambleas y gestión de tu PH. ¿En qué puedo ayudarte? Puedes usar los botones: Votación, Asambleas, Calendario, Tema del día o Ceder poder.";
 
 /** Detecta si el mensaje pregunta por el nombre/identidad del bot. Responde siempre con Lex sin depender de Gemini. */
 function isAskingForName(message: string): boolean {
@@ -65,7 +65,7 @@ function buildSystemPrompt(ctx: {
   const knowledgeBlock = ctx.knowledgeSnippet
     ? `\nBASE DE CONOCIMIENTO (documento residente):\n${ctx.knowledgeSnippet}\n\n`
     : "";
-  return `Eres Lex, el asistente de Assembly 2.0 para residentes de Propiedades Horizontales (PH). El usuario ya está validado con su correo; NUNCA le pidas correo ni lo trates como si no estuviera registrado.
+  return `Eres Lex, el asistente de Chat Vote para residentes de Propiedades Horizontales (PH). El usuario ya está validado con su correo; NUNCA le pidas correo ni lo trates como si no estuviera registrado.
 
 CONTEXTO DEL USUARIO:
 - Correo: ${ctx.email || "—"}
@@ -79,7 +79,7 @@ REGLAS DE RESPUESTA – Cómo responder:
 
 IDENTIDAD (nombre del bot):
 - Si preguntan "¿cómo te llamas?", "tu nombre", "quién eres", "cuál es tu nombre", "como te llamas": responde que te llamas Lex y qué haces.
-- Ejemplo: "Me llamo Lex. Soy el asistente de Assembly 2.0 para votaciones, asambleas y gestión de tu PH. ¿En qué puedo ayudarte?"
+- Ejemplo: "Me llamo Lex. Soy el asistente de Chat Vote para votaciones, asambleas y gestión de tu PH. ¿En qué puedo ayudarte?"
 
 SALUDOS (hola, buenos días, buenas tardes, hey, qué tal, etc.):
 - Responde con amabilidad, saluda de vuelta usando su nombre si lo conoces y ofrece ayuda.

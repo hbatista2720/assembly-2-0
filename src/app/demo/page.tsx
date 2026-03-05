@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * FASE 10: Menú Demo (Sandbox). Punto de entrada para probar Assembly 2.0 con datos de ejemplo.
+ * FASE 10: Menú Demo (Sandbox). Punto de entrada para probar Chat Vote con datos de ejemplo.
  */
 
 export default function DemoPage() {
@@ -19,7 +19,7 @@ export default function DemoPage() {
         <span className="pill" style={{ marginBottom: "12px" }}>
           Sandbox
         </span>
-        <h1 style={{ marginTop: 0 }}>Probar Assembly 2.0 en modo demo</h1>
+        <h1 style={{ marginTop: 0 }}>Probar Chat Vote en modo demo</h1>
         <p style={{ color: "#cbd5f5", marginBottom: "24px" }}>
           Accede a un PH ficticio con asamblea de prueba, votación simulada y datos que se reinician cada 24h.
         </p>

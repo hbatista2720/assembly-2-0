@@ -4,7 +4,7 @@ config({ path: path.resolve(process.cwd(), ".env") });
 config({ path: path.resolve(process.cwd(), ".env.local") });
 import TelegramBot from "node-telegram-bot-api";
 import { registerCommands, startRegistrarmeFlow } from "./commands";
-import { sql } from "@lib/db";
+import { sql } from "../lib/db";
 
 const APP_URL =
   process.env.CHATBOT_API_URL ||
@@ -74,7 +74,7 @@ function getMivotoButtons() {
 async function sendMivotoOptions(bot: TelegramBot, chatId: number) {
   await bot.sendMessage(
     chatId,
-    `🗳️ **Tu voto en Assembly 2.0**
+    `🗳️ **Tu voto en Chat Vote**
 
 Puedes votar de 2 formas:
 ✅ **Face ID (recomendado)**: firma biométrica en tu dispositivo.
@@ -100,13 +100,19 @@ function getActionButtons(role: string) {
   return base;
 }
 
-async function getBotConfig() {
-  const [config] = await sql`
-    SELECT *
-    FROM chatbot_config
-    WHERE bot_name = 'telegram' AND is_active = TRUE
-  `;
-  return config;
+/** Obtiene la config de Telegram desde BD. Si falla la conexión, devuelve null (no lanza). */
+async function getBotConfig(): Promise<{ bot_name: string; prompts?: unknown } | null> {
+  try {
+    const [config] = await sql`
+      SELECT *
+      FROM chatbot_config
+      WHERE bot_name = 'telegram' AND is_active = TRUE
+    `;
+    return config ?? null;
+  } catch (err) {
+    console.warn("[Telegram] getBotConfig (BD no disponible):", (err as Error)?.message);
+    return null;
+  }
 }
 
 /** Verifica usuario por correo vía API de la app (usa la misma BD que la app). */
@@ -130,6 +136,12 @@ async function verifyUserByEmail(
 }
 
 function registerHandlers(bot: TelegramBot) {
+const WELCOME_START =
+  "¡Hola! 👋 Soy Lex, el asistente de Chat Vote.\n\nPara ayudarte, necesito identificarte. Envía tu correo electrónico para continuar.";
+/** Mensaje corto sin emoji por si la API de Telegram falla con el mensaje completo (encoding/red). */
+const WELCOME_START_FALLBACK = "¡Hola! Soy Lex, asistente de Chat Vote. Envía tu correo electrónico para continuar.";
+const WELCOME_START_ERROR = "¡Hola! Soy Lex. Error de conexión. Intenta más tarde.";
+
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   console.log("[Telegram] /start recibido, chatId:", chatId);
@@ -138,28 +150,20 @@ bot.onText(/\/start/, async (msg) => {
   delete chatHistory[chatId];
   delete mivotoState[chatId];
   identifyState[chatId] = { step: "awaiting_email" };
-  let config = null;
+  await getBotConfig(); // opcional: si falla no bloquea; solo para logs
   try {
-    config = await getBotConfig();
+    await bot.sendMessage(chatId, WELCOME_START);
   } catch (err) {
-    console.error("[Telegram] /start getBotConfig (BD o app):", (err as Error)?.message);
-  }
-  if (!config) {
-    console.warn("[Telegram] Sin config de chatbot_config; usando mensaje por defecto. Revisa DATABASE_URL si el bot corre en otro proceso.");
-  }
-  try {
-    await bot.sendMessage(
-      chatId,
-      `¡Hola! 👋 Soy **Lex**, el asistente de Assembly 2.0.
-
-Para ayudarte, necesito identificarte. **Envía tu correo electrónico** para continuar.`,
-      { parse_mode: "Markdown" },
-    );
-  } catch (err) {
-    console.error("[Telegram] Error enviando mensaje /start:", err);
+    const errMsg = (err as Error)?.message ?? String(err);
+    console.error("[Telegram] Error enviando mensaje /start:", errMsg);
     try {
-      await bot.sendMessage(chatId, "¡Hola! 👋 Soy Lex. No pude enviar el mensaje. Intenta más tarde.");
-    } catch (_) {}
+      await bot.sendMessage(chatId, WELCOME_START_FALLBACK);
+    } catch (err2) {
+      console.error("[Telegram] Fallback también falló:", (err2 as Error)?.message);
+      try {
+        await bot.sendMessage(chatId, WELCOME_START_ERROR);
+      } catch (_) {}
+    }
   }
 });
 
@@ -408,7 +412,7 @@ async function main() {
     process.exit(1);
   }
   const bot = new TelegramBot(token, { polling: true });
-  console.log("🤖 Chatbot Assembly 2.0 iniciado con éxito!");
+  console.log("🤖 Chatbot Chat Vote iniciado con éxito!");
   registerCommands(bot);
   registerHandlers(bot);
 }

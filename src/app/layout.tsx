@@ -4,8 +4,8 @@ import ThemeInit from "./ThemeInit";
 import { CartProvider } from "../context/CartContext";
 
 export const metadata = {
-  title: "Assembly 2.0",
-  description: "Governanza digital para PH",
+  title: "ChatVote.click",
+  description: "Governanza digital para PH · Ley 284",
 };
 
 const themeScript = `

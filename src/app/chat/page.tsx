@@ -22,7 +22,7 @@ const ABANDON_CONFIRM_PHRASE = "Si abandonar";
 const RESIDENTES_CHAT_PROMPT = "Soy Lex, chatbot para asambleas de PH (propiedades horizontales). ¿Cuál es el correo que tienes registrado en tu PH?";
 /** Saludo visible al abrir el chat tipo landing. El prompt de config no se muestra al usuario. */
 const LANDING_CHAT_GREETING =
-  "Hola, soy Lex, asistente de Assembly 2.0. ¿Qué perfil te describe mejor: Administrador PH, Junta Directiva o solo demo? Escribe o elige una opción abajo.";
+  "Hola, soy Lex, asistente de Chat Vote. ¿Qué perfil te describe mejor: Administrador PH, Junta Directiva o solo demo? Escribe o elige una opción abajo.";
 
 /** Formatea texto del bot: saltos de línea y **negrita** tipo WhatsApp. */
 function formatBotMessage(text: string) {
@@ -123,7 +123,7 @@ export default function ChatPage() {
     const email = typeof window !== "undefined" ? localStorage.getItem("assembly_resident_email") || "" : "";
     const prefix = email.split("@")[0] || "";
     const displayName = /^residente\d*$/i.test(prefix) ? `Residente ${prefix.replace(/^residente/i, "") || "1"}` : prefix || "residente";
-    setChatMessages((prev) => [...prev, { from: "bot", text: `Hola ${displayName}. Soy Lex, tu asistente para votaciones, asambleas y gestión de tu PH en Assembly 2.0.` }]);
+    setChatMessages((prev) => [...prev, { from: "bot", text: `Hola ${displayName}. Soy Lex, tu asistente para votaciones, asambleas y gestión de tu PH en Chat Vote.` }]);
   }, [residentEmailValidated, chatRole, chatMessages]);
 
   const isWaitingPin = chatRole === "residente" && chatStep === 4 && residentEmailPending;
@@ -277,7 +277,7 @@ export default function ChatPage() {
           const welcome =
             d.type === "apoderado"
               ? `Bienvenido como apoderado del PH ${phName}. Tienes ${(d.powers as unknown[])?.length ?? 0} poder(es) para votar. Soy Lex, tu asistente. ¿En qué puedo ayudarte?`
-              : `Bienvenido al chatbot de residentes del PH ${phName}. Soy Lex, tu asistente para votaciones, asambleas y gestión de tu PH en Assembly 2.0. ¿En qué puedo ayudarte?`;
+              : `Bienvenido al chatbot de residentes del PH ${phName}. Soy Lex, tu asistente para votaciones, asambleas y gestión de tu PH en Chat Vote. ¿En qué puedo ayudarte?`;
           setChatMessages((prev) => [...prev, { from: "bot", text: welcome }]);
         }
       })
@@ -460,7 +460,7 @@ export default function ChatPage() {
               } catch {}
               pushBotMessage("Validando…");
             } else if (res.ok && data?.user && data.user.role !== "RESIDENTE") {
-              pushBotMessage("Este correo está registrado en Assembly 2.0 pero no como residente de un PH. Para usar el chatbot de residentes, el administrador de tu PH debe darte de alta como residente (Propietarios/Residentes → agregar o editar y asignar rol Residente). Si ya te agregaron, usa el correo que registraron.");
+              pushBotMessage("Este correo está registrado en Chat Vote pero no como residente de un PH. Para usar el chatbot de residentes, el administrador de tu PH debe darte de alta como residente (Propietarios/Residentes → agregar o editar y asignar rol Residente). Si ya te agregaron, usa el correo que registraron.");
             } else {
               pushBotMessage(data?.error || "Código inválido o expirado. Escribe el código de nuevo o «Reenviar PIN».");
             }
@@ -641,7 +641,7 @@ export default function ChatPage() {
                   <span style={{ fontSize: "10px", padding: "3px 8px", borderRadius: "8px", background: "rgba(34,197,94,0.2)", color: "#86efac", border: "1px solid rgba(34,197,94,0.35)", fontWeight: 500 }}>Asamblea activa</span>
                 )}
               </div>
-              <div className="chat-header-subtitle">Assembly 2.0</div>
+              <div className="chat-header-subtitle">Chat Vote</div>
             </div>
           </div>
           {residentEmailValidated && chatRole === "residente" ? (

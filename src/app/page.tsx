@@ -32,7 +32,7 @@ function HomeContent() {
   const [webPrompt, setWebPrompt] = useState("Hola, soy Lex. Antes de continuar, ¿que perfil tienes?");
   /** Saludo visible al abrir el chatbot en landing. El prompt real (config) se usa en backend; no se muestra al usuario. */
   const LANDING_CHAT_GREETING =
-    "Hola, soy Lex, asistente de Assembly 2.0. ¿Qué perfil te describe mejor: Administrador PH, Junta Directiva o solo demo? Escribe o elige una opción abajo.";
+    "Hola, soy Lex, asistente de ChatVote. ¿Qué perfil te describe mejor: Administrador PH, Junta Directiva o solo demo? Escribe o elige una opción abajo.";
   const [leadData, setLeadData] = useState({
     email: "",
     role: "",
@@ -526,12 +526,12 @@ function HomeContent() {
         <div className="nav-primary">
           <div className="logo">
             <span className="logo-mark">
-              <img src="/brand/logo.v5.png" alt="Assembly 2.0" />
+              <img src="/brand/logo.v5.png" alt="ChatVote" />
             </span>
             <div>
-              <div>Assembly 2.0</div>
+              <div>ChatVote.click</div>
               <span className="muted" style={{ fontSize: "12px" }}>
-                PH Optimize
+                ChatVote · Ley 284
               </span>
             </div>
           </div>
@@ -650,7 +650,7 @@ function HomeContent() {
       <section className="card glass hero" style={{ padding: "52px" }}>
         <div className="hero-grid">
           <div>
-            <span className="pill hero-eyebrow">PH Optimize · Ley 284</span>
+            <span className="pill hero-eyebrow">ChatVote · Ley 284</span>
             <h1 className="hero-title">Plataforma inteligente para asambleas digitales de PH</h1>
             <p className="hero-subtitle">
               Asamblea virtual con quorum en tiempo real, votacion ponderada y actas certificadas. Reduce 80%
@@ -865,7 +865,7 @@ function HomeContent() {
       <section id="ahorro" className="section">
         <h2 className="section-title">Calculadora de ahorro</h2>
         <p className="section-subtitle">
-          Compara el costo tradicional vs Assembly 2.0 segun tus asambleas anuales.
+          Compara el costo tradicional vs ChatVote según tus asambleas anuales.
         </p>
         <div className="card" style={{ display: "grid", gap: "18px" }}>
           <div className="two-col" style={{ gap: "16px" }}>
@@ -1025,10 +1025,10 @@ function HomeContent() {
               </p>
             </div>
             <div className="card-list">
-              <h4 style={{ margin: "0 0 8px" }}>Ahorro con Assembly 2.0</h4>
+              <h4 style={{ margin: "0 0 8px" }}>Ahorro con ChatVote</h4>
               {[
                 {
-                  label: `Inversión Assembly/${periodLabel}: -$${(roiCalculations.planAnnualCost / periodDivisor).toLocaleString()}`,
+                  label: `Inversión ChatVote/${periodLabel}: -$${(roiCalculations.planAnnualCost / periodDivisor).toLocaleString()}`,
                   icon: "📌",
                   accent: "rgba(34, 197, 94, 0.9)",
                   glow: "rgba(34, 197, 94, 0.35)",
@@ -1118,7 +1118,7 @@ function HomeContent() {
 
       <section className="section">
         <h2 className="section-title">Testimonios reales</h2>
-        <p className="section-subtitle">Administradoras y promotoras que ya operan con Assembly 2.0.</p>
+        <p className="section-subtitle">Administradoras y promotoras que ya operan con ChatVote.</p>
         <div className="grid grid-3">
           {[
             { name: "Juan Perez", company: "Administradora Panama S.A.", quote: "Pasamos de 3 dias a 4 horas en todo el ciclo de asamblea.", accent: "rgba(99, 102, 241, 0.9)", glow: "rgba(99, 102, 241, 0.35)" },
@@ -1199,7 +1199,7 @@ function HomeContent() {
 
       <section id="precios-completos" className="section">
         <h2 className="section-title">Precios completos</h2>
-        <p className="section-subtitle">Paquetes y limites oficiales de Assembly 2.0.</p>
+        <p className="section-subtitle">Paquetes y límites oficiales de ChatVote.</p>
         <div className="pricing-grid">
           {getVisiblePlans(PLANS).map((plan) => (
             <div
@@ -1299,11 +1299,11 @@ function HomeContent() {
           >
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <span className="logo-mark">
-                <img src="/brand/logo.v5.png" alt="Assembly 2.0" />
+                <img src="/brand/logo.v5.png" alt="ChatVote" />
               </span>
               <div>
-                <strong>Assembly 2.0</strong>
-                <p style={{ margin: "6px 0 0" }}>PH Optimize · Governanza digital para PH.</p>
+                <strong>ChatVote.click</strong>
+                <p style={{ margin: "6px 0 0" }}>Governanza digital para PH.</p>
               </div>
             </div>
             <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
@@ -1352,7 +1352,7 @@ function HomeContent() {
                 </div>
                 <div>
                   <strong style={{ letterSpacing: "0.01em" }}>Lex · Asistente de Demo</strong>
-                  <div style={{ fontSize: "12px", color: "#94a3b8" }}>Ventas B2B · Assembly 2.0</div>
+                  <div style={{ fontSize: "12px", color: "#94a3b8" }}>Ventas B2B · ChatVote.click</div>
                 </div>
               </div>
               {residentEmailValidated && chatRole === "residente" ? (

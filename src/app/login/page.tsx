@@ -115,6 +115,9 @@ function LoginContent() {
         document.cookie = `assembly_role=${roleLabel}; path=/; max-age=604800`;
         if (data.user.organization_id) localStorage.setItem("assembly_organization_id", data.user.organization_id);
         if (data.user.subscription_id) localStorage.setItem("assembly_subscription_id", data.user.subscription_id);
+        if (user.is_platform_owner || user.role === "ADMIN_PLATAFORMA") {
+          localStorage.setItem("assembly_platform_admin", "1");
+        }
       } catch {
         // ignore storage errors
       }
@@ -237,10 +240,10 @@ function LoginContent() {
       <div className="card glass login-card">
         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
           <span className="logo-mark" style={{ boxShadow: "0 0 24px rgba(99, 102, 241, 0.4)" }}>
-            <img src="/brand/logo.v5.png" alt="Assembly 2.0" />
+            <img src="/brand/logo.v5.png" alt="Chat Vote" />
           </span>
           <div>
-            <strong style={{ fontSize: "17px", fontWeight: 600 }}>Assembly 2.0</strong>
+            <strong style={{ fontSize: "17px", fontWeight: 600 }}>Chat Vote</strong>
             <div className="muted" style={{ fontSize: "12px", marginTop: "2px" }}>
               Acceso seguro
             </div>
@@ -250,7 +253,7 @@ function LoginContent() {
           <div>
             <h1 style={{ marginTop: 0, fontSize: "22px", fontWeight: 700, letterSpacing: "-0.02em" }}>Acceso estratégico</h1>
             <p style={{ color: "#94a3b8", fontSize: "14px", lineHeight: 1.5, marginTop: "8px" }}>
-              Ingresa con tu correo y un código OTP para acceder al dashboard seguro de Assembly 2.0.
+              Ingresa con tu correo y un código OTP para acceder al dashboard seguro de Chat Vote.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "20px" }}>
               {[

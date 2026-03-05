@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     const ctxPrompt =
       prompts[role] ||
       prompts.landing ||
-      "Eres Lex, asistente de Assembly 2.0. Responde de forma amigable y breve en español. Ayudas con demos, leads, votaciones y asambleas de PH.";
+      "Eres Lex, asistente de Chat Vote. Responde de forma amigable y breve en español. Ayudas con demos, leads, votaciones y asambleas de PH.";
     const temperature = Number(config?.temperature) ?? 0.7;
     const maxTokens = Number(config?.max_tokens) ?? 512;
 

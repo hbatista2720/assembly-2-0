@@ -50,6 +50,14 @@ export async function getGroqApiKey(): Promise<string> {
   return (process.env.GROQ_API_KEY ?? "").trim();
 }
 
+/** Modo OTP: 'test' = PIN en chat, 'production' = PIN por correo. Env OTP_DEBUG=true fuerza test. */
+export async function getOtpMode(): Promise<"test" | "production"> {
+  if (process.env.OTP_DEBUG === "true") return "test";
+  const fromDb = await getSecret("otp_mode");
+  if (fromDb === "test" || fromDb === "production") return fromDb;
+  return "production";
+}
+
 export function maskSecret(value: string): string {
   if (!value || value.length < 8) return "***";
   return value.slice(0, 4) + "••••••••" + value.slice(-4);

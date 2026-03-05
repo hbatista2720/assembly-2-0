@@ -67,7 +67,9 @@ export default function ChatbotConfigPage() {
   const [geminiStatus, setGeminiStatus] = useState<{ geminiConfigured: boolean; model?: string } | null>(null);
   const [geminiStatusLoading, setGeminiStatusLoading] = useState(false);
   const [configTab, setConfigTab] = useState<"ajustes" | "prompts">("ajustes");
-  const [secrets, setSecrets] = useState<{ telegramMasked?: string; geminiMasked?: string; groqMasked?: string; telegramConfigured?: boolean; geminiConfigured?: boolean; groqConfigured?: boolean; ai_provider_preference?: "gemini" | "groq" } | null>(null);
+  const [secrets, setSecrets] = useState<{ telegramMasked?: string; geminiMasked?: string; groqMasked?: string; telegramConfigured?: boolean; geminiConfigured?: boolean; groqConfigured?: boolean; ai_provider_preference?: "gemini" | "groq"; otp_mode?: "test" | "production" } | null>(null);
+  const [otpMode, setOtpMode] = useState<"test" | "production">("production");
+  const [otpModeSaving, setOtpModeSaving] = useState(false);
   const [tgTokenInput, setTgTokenInput] = useState("");
   const [geminiKeyInput, setGeminiKeyInput] = useState("");
   const [groqKeyInput, setGroqKeyInput] = useState("");
@@ -311,6 +313,28 @@ export default function ChatbotConfigPage() {
     }
   }
 
+  async function saveOtpMode() {
+    setOtpModeSaving(true);
+    try {
+      const r = await fetch("/api/chatbot/secrets", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ otp_mode: otpMode }),
+      });
+      const d = await r.json();
+      if (d?.ok) {
+        toast.success(otpMode === "test" ? "Modo OTP: prueba (PIN en chat)." : "Modo OTP: producción (PIN por correo).");
+        fetchSecrets();
+      } else {
+        toast.error(d?.error || "Error al guardar");
+      }
+    } catch {
+      toast.error("Error al guardar");
+    } finally {
+      setOtpModeSaving(false);
+    }
+  }
+
   useEffect(() => {
     checkGeminiStatus();
   }, []);
@@ -330,6 +354,11 @@ export default function ChatbotConfigPage() {
       setAiProvider("gemini");
     }
   }, [secrets?.ai_provider_preference, secrets?.groqConfigured, secrets?.geminiConfigured]);
+
+  /** Cargar modo OTP guardado. */
+  useEffect(() => {
+    if (secrets?.otp_mode === "test" || secrets?.otp_mode === "production") setOtpMode(secrets.otp_mode);
+  }, [secrets?.otp_mode]);
 
   const telegramConfig = useMemo(() => configs.find((c) => c.bot_name === "telegram"), [configs]);
   const effectiveTgUsername = tgUsername || telegramConfig?.telegram_bot_username || ENV_TELEGRAM_USERNAME || "";
@@ -760,7 +789,7 @@ export default function ChatbotConfigPage() {
                                 value={prompt}
                                 onChange={(e) => updatePrompt(context, e.target.value)}
                                 rows={5}
-                                placeholder="Ej: Eres Lex, asistente de Assembly 2.0. Responde de forma amigable..."
+                                placeholder="Ej: Eres Lex, asistente de Chat Vote. Responde de forma amigable..."
                                 style={{ ...inputStyle, minHeight: "100px", resize: "vertical", width: "100%" }}
                               />
                             ) : (
@@ -910,6 +939,44 @@ export default function ChatbotConfigPage() {
           )}
         </div>
 
+      </div>
+
+      {/* Modo OTP */}
+      <div className="card" style={{ marginTop: "20px", padding: "20px" }}>
+        <h3 style={{ margin: "0 0 8px", fontSize: "16px" }}>Modo OTP (código de acceso)</h3>
+        <p className="muted" style={{ margin: "0 0 16px", fontSize: "13px" }}>
+          En <strong>prueba</strong> el PIN se muestra en el chat. En <strong>producción</strong> se envía por correo (requiere SMTP configurado).
+        </p>
+        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "center" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+            <input
+              type="radio"
+              name="otp_mode"
+              checked={otpMode === "test"}
+              onChange={() => setOtpMode("test")}
+              style={{ accentColor: "#6366f1" }}
+            />
+            <span>Prueba (PIN en chat)</span>
+          </label>
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+            <input
+              type="radio"
+              name="otp_mode"
+              checked={otpMode === "production"}
+              onChange={() => setOtpMode("production")}
+              style={{ accentColor: "#6366f1" }}
+            />
+            <span>Producción (PIN por correo)</span>
+          </label>
+          <button type="button" className="btn btn-primary" onClick={saveOtpMode} disabled={otpModeSaving}>
+            {otpModeSaving ? "Guardando…" : "Guardar"}
+          </button>
+        </div>
+        {process.env.NODE_ENV !== "production" && (
+          <p className="muted" style={{ marginTop: "12px", fontSize: "11px" }}>
+            Si <code>OTP_DEBUG=true</code> en .env, siempre se usa modo prueba.
+          </p>
+        )}
       </div>
 
       {/* Tests */}

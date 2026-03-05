@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { sql } from "../../../../lib/db";
+import { sendOtpEmail, isSmtpConfigured } from "../../../../lib/sendEmail";
+import { getOtpMode } from "../../../../lib/secrets";
 
 const OTP_TTL_MINUTES = Number(process.env.OTP_TTL_MINUTES || 10);
-const OTP_DEBUG = process.env.OTP_DEBUG === "true";
+const OTP_DEBUG_ENV = process.env.OTP_DEBUG === "true";
 const OTP_MAX_PER_HOUR = Number(process.env.OTP_MAX_PER_HOUR || 5);
-// En modo debug/demo no bloquear pruebas: límite mucho mayor
-const effectiveMaxPerHour = OTP_DEBUG ? Math.max(OTP_MAX_PER_HOUR, 50) : OTP_MAX_PER_HOUR;
 
 function generateOtp() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -40,6 +40,9 @@ export async function POST(req: Request) {
         AND attempt_type = 'otp_request'
         AND created_at > NOW() - INTERVAL '1 hour'
     `;
+    const otpMode = await getOtpMode();
+    const isTestMode = OTP_DEBUG_ENV || otpMode === "test";
+    const effectiveMaxPerHour = isTestMode ? Math.max(OTP_MAX_PER_HOUR, 50) : OTP_MAX_PER_HOUR;
     if (count >= effectiveMaxPerHour) {
       return NextResponse.json({ error: "Demasiados intentos. Intenta más tarde." }, { status: 429 });
     }
@@ -55,19 +58,56 @@ export async function POST(req: Request) {
       VALUES (${normalized}, 'otp_request', TRUE)
     `;
 
-    console.log(`[OTP] Email=${normalized} OTP=${otp}`);
+    if (isTestMode) {
+      console.log(`[OTP] Modo prueba: Email=${normalized} OTP=${otp} (no se envía por correo)`);
+      return NextResponse.json({
+        success: true,
+        message: "Código enviado",
+        otp,
+        expires_in_minutes: OTP_TTL_MINUTES,
+      });
+    }
+
+    // Modo producción: enviar PIN por correo
+    if (!isSmtpConfigured()) {
+      console.warn("[OTP] SMTP no configurado. Configure SMTP_* o use OTP_DEBUG=true para pruebas.");
+      return NextResponse.json(
+        { error: "Envío de correo no configurado. Contacte al administrador o active modo prueba (OTP_DEBUG)." },
+        { status: 503 }
+      );
+    }
+    const sent = await sendOtpEmail(normalized, otp, OTP_TTL_MINUTES);
+    if (!sent) {
+      return NextResponse.json(
+        { error: "No se pudo enviar el correo con el código. Revisa tu bandeja de spam o intenta más tarde." },
+        { status: 502 }
+      );
+    }
+    try {
+      await sql`
+        INSERT INTO email_log (to_email, subject, email_type, body_preview, success)
+        VALUES (
+          ${normalized},
+          'Código de acceso OTP',
+          'otp',
+          'PIN de 6 dígitos enviado.',
+          TRUE
+        )
+      `;
+    } catch {
+      // email_log puede no existir aún
+    }
 
     return NextResponse.json({
       success: true,
-      message: "Código enviado",
-      otp: OTP_DEBUG ? otp : undefined,
+      message: "Código enviado a tu correo",
       expires_in_minutes: OTP_TTL_MINUTES,
     });
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
     const message = err.message || String(error);
     console.error("Error request OTP:", message, err.stack);
-    const safeMessage = OTP_DEBUG ? message : "Error al generar OTP";
+    const safeMessage = OTP_DEBUG_ENV ? message : "Error al generar OTP";
     return NextResponse.json({ error: safeMessage }, { status: 500 });
   }
 }

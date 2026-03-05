@@ -15,6 +15,7 @@ export default function DashboardPage() {
     const role = typeof document !== "undefined" ? document.cookie.match(/assembly_role=([^;]+)/)?.[1]?.trim() : "";
     const isPlatformAdmin =
       role === "Admin Plataforma" ||
+      role === "admin-inteligente" ||
       (typeof localStorage !== "undefined" && localStorage.getItem("assembly_platform_admin") === "1");
     if (isPlatformAdmin) {
       router.replace("/dashboard/platform-admin");

@@ -84,6 +84,11 @@ const NavIcons: Record<string, () => JSX.Element> = {
       <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
     </svg>
   ),
+  mail: () => (
+    <svg viewBox="0 0 24 24" style={iconStyle} fill="currentColor">
+      <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
+    </svg>
+  ),
 };
 
 /** Orden: Dashboard principal primero, luego Leads, Aprobaciones, Monitor, etc. */
@@ -99,6 +104,7 @@ const NAV = [
   { href: "/platform-admin/business", label: "Métricas", iconKey: "trending" },
   { href: "/platform-admin/crm", label: "CRM", iconKey: "campaign" },
   { href: "/platform-admin/chatbot-config", label: "Chatbot", iconKey: "robot" },
+  { href: "/platform-admin/buzon", label: "Buzón correo", iconKey: "mail" },
 ];
 
 const SIDEBAR_STORAGE = "assembly_platform_admin_sidebar_collapsed";

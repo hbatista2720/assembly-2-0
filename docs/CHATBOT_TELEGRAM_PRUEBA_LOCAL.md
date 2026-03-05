@@ -78,3 +78,27 @@ Cuando ves **"Error de conexión"** o **"Error al verificar"** después de `/sta
 | **Docker** (`telegram-bot`) | Servicio `app` levantado; por defecto usa `http://app:3000`. Misma BD para app y migraciones. |
 
 Tras los cambios recientes, si el bot no puede conectar a la BD en `/start`, **aun así** te mostrará el mensaje de Lex pidiendo tu correo. Al enviar el correo, la verificación la hace la **app** vía API; si la app tiene BD correcta y el usuario existe, debería identificarte sin "Error al verificar".
+
+---
+
+## Si en la VPS ves "Error de conexión" al dar /start
+
+Ese mensaje aparece cuando el bot **no pudo enviar** el mensaje de bienvenida a Telegram. Revisa:
+
+1. **Token correcto**  
+   En la VPS, en `.env`: `TELEGRAM_BOT_TOKEN` debe ser el token del mismo bot que abres en Telegram (el de @BotFather). Si lo cambiaste en el panel, reinicia el contenedor del bot.
+
+2. **Reiniciar el bot tras cambiar .env**  
+   ```bash
+   cd /opt/assembly-2-0
+   docker compose restart telegram-bot
+   ```
+
+3. **Ver el error real en los logs**  
+   ```bash
+   docker logs assembly-telegram-bot --tail 50
+   ```  
+   Busca líneas `[Telegram] Error enviando mensaje /start:` o `Fallback también falló:`; ahí sale el motivo (token inválido, red, etc.).
+
+4. **Conectividad**  
+   Desde la VPS el contenedor debe poder llegar a `api.telegram.org`. Si hay firewall, abre salida HTTPS (443).

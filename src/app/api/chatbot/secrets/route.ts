@@ -4,15 +4,16 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "../../../../lib/db";
-import { getTelegramToken, getGeminiApiKey, getGroqApiKey, maskSecret, clearSecretsCache } from "@lib/secrets";
+import { getTelegramToken, getGeminiApiKey, getGroqApiKey, getOtpMode, maskSecret, clearSecretsCache } from "@lib/secrets";
 
 export async function GET() {
   try {
-    const [telegram, gemini, groq, prefRow] = await Promise.all([
+    const [telegram, gemini, groq, prefRow, otpMode] = await Promise.all([
       getTelegramToken(),
       getGeminiApiKey(),
       getGroqApiKey(),
       sql<{ value: string }[]>`SELECT value FROM platform_secrets WHERE key = 'ai_provider_preference' AND value IN ('gemini', 'groq') LIMIT 1`,
+      getOtpMode(),
     ]);
     const ai_provider_preference = prefRow?.[0]?.value === "groq" ? "groq" : "gemini";
     return NextResponse.json({
@@ -23,6 +24,7 @@ export async function GET() {
       groqConfigured: !!groq,
       groqMasked: groq ? maskSecret(groq) : null,
       ai_provider_preference,
+      otp_mode: otpMode,
     });
   } catch (e) {
     console.error("[chatbot/secrets GET]", e);
@@ -33,7 +35,7 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { telegram_bot_token, gemini_api_key, groq_api_key, ai_provider_preference } = body || {};
+    const { telegram_bot_token, gemini_api_key, groq_api_key, ai_provider_preference, otp_mode } = body || {};
 
     const updates: Array<{ key: string; value: string }> = [];
     if (typeof telegram_bot_token === "string" && telegram_bot_token.trim()) {
@@ -48,9 +50,12 @@ export async function PUT(req: NextRequest) {
     if (ai_provider_preference === "groq" || ai_provider_preference === "gemini") {
       updates.push({ key: "ai_provider_preference", value: ai_provider_preference });
     }
+    if (otp_mode === "test" || otp_mode === "production") {
+      updates.push({ key: "otp_mode", value: otp_mode });
+    }
 
     if (updates.length === 0) {
-      return NextResponse.json({ error: "Envía al menos uno: telegram_bot_token, gemini_api_key, groq_api_key o ai_provider_preference" }, { status: 400 });
+      return NextResponse.json({ error: "Envía al menos uno: telegram_bot_token, gemini_api_key, groq_api_key, ai_provider_preference u otp_mode" }, { status: 400 });
     }
 
     for (const { key, value } of updates) {
