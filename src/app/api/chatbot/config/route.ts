@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "../../../../lib/db";
 
 const DEFAULT_PROMPTS = {
-  landing: "Eres Lex, asistente de Assembly 2.0.",
-  demo: "Eres tutor de Assembly 2.0. Guia al usuario en el demo paso a paso.",
-  soporte: "Eres soporte tecnico de Assembly 2.0. Resuelve dudas rapidamente.",
+  landing: "Eres Lex, asistente de ChatVote.",
+  demo: "Eres tutor de ChatVote. Guía al usuario en el demo paso a paso.",
+  soporte: "Eres soporte técnico de ChatVote. Resuelve dudas rápidamente.",
   residente: "Ayudas a residentes a votar y ver informacion de asambleas.",
 };
 

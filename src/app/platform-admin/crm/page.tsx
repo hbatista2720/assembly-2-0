@@ -48,7 +48,7 @@ const DEFAULT_CAMPAIGNS: Campaign[] = [
     description: CAMPAIGN_META["Onboarding Demo"].description,
     target_stage: CAMPAIGN_META["Onboarding Demo"].target,
     frequency: CAMPAIGN_META["Onboarding Demo"].frequency,
-    email_subject: "Bienvenido a Assembly 2.0 – Guía de tu demo",
+    email_subject: "Bienvenido a ChatVote – Guía de tu demo",
     email_body: "Hola {{name}},\n\nGracias por activar tu demo. Aquí tienes el enlace para comenzar:\n\n{{demo_link}}\n\n¿Necesitas ayuda? Responde este correo.",
   },
   {
@@ -58,7 +58,7 @@ const DEFAULT_CAMPAIGNS: Campaign[] = [
     description: CAMPAIGN_META["Seguimiento Post-Demo"].description,
     target_stage: CAMPAIGN_META["Seguimiento Post-Demo"].target,
     frequency: CAMPAIGN_META["Seguimiento Post-Demo"].frequency,
-    email_subject: "Tu demo de Assembly 2.0 está por expirar",
+    email_subject: "Tu demo de ChatVote está por expirar",
     email_body: "Hola {{name}},\n\nTu período de prueba está por vencer. ¿Quieres convertirte a un plan completo?\n\n{{demo_link}}\n\nSaludos.",
   },
   {
@@ -68,8 +68,8 @@ const DEFAULT_CAMPAIGNS: Campaign[] = [
     description: CAMPAIGN_META["Reactivación de Leads"].description,
     target_stage: CAMPAIGN_META["Reactivación de Leads"].target,
     frequency: CAMPAIGN_META["Reactivación de Leads"].frequency,
-    email_subject: "Te extrañamos en Assembly 2.0",
-    email_body: "Hola {{name}},\n\nHace tiempo que no nos visitas. ¿Hay algo en lo que podamos ayudarte?\n\n{{demo_link}}\n\nEquipo Assembly 2.0",
+    email_subject: "Te extrañamos en ChatVote",
+    email_body: "Hola {{name}},\n\nHace tiempo que no nos visitas. ¿Hay algo en lo que podamos ayudarte?\n\n{{demo_link}}\n\nEquipo ChatVote",
   },
 ];
 
@@ -185,7 +185,7 @@ function CampaignForm({
           type="text"
           value={emailSubject}
           onChange={(e) => setEmailSubject(e.target.value)}
-          placeholder="Ej: Bienvenido a Assembly 2.0"
+          placeholder="Ej: Bienvenido a ChatVote"
           style={{
             padding: "10px 12px",
             borderRadius: "10px",

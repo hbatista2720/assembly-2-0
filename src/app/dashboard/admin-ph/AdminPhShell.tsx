@@ -542,7 +542,7 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
             </button>
             {!sidebarCollapsed && (
               <div className="sidebar-brand">
-                <span className="sidebar-pill">Assembly 2.0</span>
+                <span className="sidebar-pill">ChatVote</span>
                 <h3 className="sidebar-title">Admin de Comunidad</h3>
                 <p className="sidebar-subtitle">Panel de administración</p>
               </div>
@@ -822,7 +822,7 @@ function AdminPhShellContent({ children }: { children: ReactNode }) {
                   <button type="button" onClick={closeDemoWelcome} aria-label="Cerrar" style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", color: "#94a3b8", lineHeight: 1 }}>×</button>
                 </div>
                 <p style={{ margin: "0 0 12px", fontSize: "14px", lineHeight: 1.6 }}>
-                  Estás usando la <strong>versión demo</strong> de Assembly 2.0 con las siguientes condiciones:
+                  Estás usando la <strong>versión demo</strong> de ChatVote con las siguientes condiciones:
                 </p>
                 <ul style={{ margin: "0 0 16px", paddingLeft: "20px", fontSize: "14px", lineHeight: 1.7 }}>
                   <li><strong>50 residentes</strong> (propietarios/unidades)</li>

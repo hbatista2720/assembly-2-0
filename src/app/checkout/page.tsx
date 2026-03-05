@@ -24,10 +24,10 @@ function getDisplayConfig() {
   const bank = g.ach?.bankName || "Banco General";
   const type = g.ach?.accountType || "Cuenta Corriente";
   return {
-    companyName: g.ach?.accountHolder || g.yappy?.accountName || "Assembly 2.0",
+    companyName: g.ach?.accountHolder || g.yappy?.accountName || "ChatVote",
     achBankLine: type ? `${bank} - ${type}` : bank,
     achAccount: g.ach?.accountNumber || "03-01-01-146847-7",
-    yappyName: g.yappy?.accountName || g.ach?.accountHolder || "Assembly 2.0",
+    yappyName: g.yappy?.accountName || g.ach?.accountHolder || "ChatVote",
   };
 }
 

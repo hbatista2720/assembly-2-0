@@ -163,7 +163,7 @@ export default function PlatformAdminShell({ children }: { children: React.React
           </button>
           {!sidebarCollapsed && (
           <div className="sidebar-brand">
-            <span className="sidebar-pill">Assembly 2.0</span>
+            <span className="sidebar-pill">ChatVote</span>
             <h3 className="sidebar-title">Admin Plataforma</h3>
             <p className="sidebar-subtitle">Panel maestro de la operación</p>
           </div>

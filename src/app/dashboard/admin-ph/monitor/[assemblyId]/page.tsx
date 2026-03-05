@@ -756,7 +756,7 @@ export default function MonitorPage() {
     </div>
   </div>
 
-  <p class="footer">Assembly 2.0 · Informe generado desde el Monitor de asamblea. Este documento es un resumen con fines de seguimiento.</p>
+  <p class="footer">ChatVote · Informe generado desde el Monitor de asamblea. Este documento es un resumen con fines de seguimiento.</p>
   <script>window.onload=function(){window.print();}</script>
 </body>
 </html>`;

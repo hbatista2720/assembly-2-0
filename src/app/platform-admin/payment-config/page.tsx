@@ -491,7 +491,7 @@ function GatewayConfigModal({
                 type="text"
                 value={local.ach?.accountHolder ?? ""}
                 onChange={(e) => setLocal((p) => ({ ...p, ach: { accountType: p.ach?.accountType ?? "", bankName: p.ach?.bankName ?? "", accountHolder: e.target.value, accountNumber: p.ach?.accountNumber ?? "" } }))}
-                placeholder="Ej. Assembly 2.0"
+                placeholder="Ej. ChatVote"
                 style={inputStyle}
               />
             </label>
@@ -516,7 +516,7 @@ function GatewayConfigModal({
                 type="text"
                 value={local.yappy?.accountName ?? ""}
                 onChange={(e) => setLocal((p) => ({ ...p, yappy: { accountName: e.target.value, cellPhone: p.yappy?.cellPhone ?? "" } }))}
-                placeholder="Ej. Assembly 2.0"
+                placeholder="Ej. ChatVote"
                 style={inputStyle}
               />
             </label>
@@ -564,7 +564,7 @@ function GatewayConfigModal({
                 type="text"
                 value={local.ach?.accountHolder ?? ""}
                 onChange={(e) => setLocal((p) => ({ ...p, ach: { accountType: p.ach?.accountType ?? "", bankName: p.ach?.bankName ?? "", accountHolder: e.target.value, accountNumber: p.ach?.accountNumber ?? "" } }))}
-                placeholder="Ej. Assembly 2.0"
+                placeholder="Ej. ChatVote"
                 style={inputStyle}
               />
             </label>
