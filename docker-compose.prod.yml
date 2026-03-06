@@ -1,0 +1,7 @@
+# Override para producción (VPS): la app usa la imagen ya construida, sin montar el código del host.
+# Así se evita "required-server-files.json" missing y fallos de build dentro del contenedor.
+# Uso: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d app
+
+services:
+  app:
+    volumes: []
