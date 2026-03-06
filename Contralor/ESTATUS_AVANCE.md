@@ -51,10 +51,10 @@ FORMATO DE COMMIT:
 | FASE 9, 10, 11 | ✅ Aprobado QA | ✅ dc1f9c7 | ⏳ Push (Henry si falla) |
 | Plan navegación + Chatbot residente (Opción B) + Usuarios demo | ✅ Aprobado QA | ✅ a76fb32 | ✅ Push OK |
 
-**Último backup:** **Completado.** Push ejecutado por Henry: **66a34ec..46b1514** main → main (5 Mar 2026). Incluye: últimos cambios Coder (chatbot config, checkout, AdminPhShell, monitor, platform-admin), informe Contralor.
+**Último backup:** **Commit ejecutado.** Commit **2ba22f3** (Backup Mar 2026: Buzón correo email_log, migraciones, check-db-tables, OTP/Resend doc, informe Database). ⏳ **Henry:** ejecutar `git push origin main` para completar el backup.
 **Repositorio:** https://github.com/hbatista2720/assembly-2-0
 
-**¿Backup requerido ahora?** **Sí (solicitado por Database).** Base de datos validada: migración `email_log` integrada en `npm run db:migrate`; módulo Buzón de correo terminado y optimizado; `check-db-tables` incluye `email_log`. **Contralor:** Cuando Henry autorice, ejecutar commit y pedir a Henry `git push origin main`.
+**¿Backup requerido ahora?** Commit **2ba22f3** listo (Buzón correo, email_log, migraciones, informe Database). Falta push (Henry).
 
 **Reporte Database al Contralor (Mar 2026 – Buzón de correo y migraciones):**
 - Tabla **email_log** incluida en `scripts/run-migrations.cjs` (orden de migraciones). El agente DB crea la tabla al ejecutar `npm run db:migrate`.
