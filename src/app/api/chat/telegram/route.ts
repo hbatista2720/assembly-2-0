@@ -41,6 +41,14 @@ export async function POST(req: NextRequest) {
     const message = typeof body.message === "string" ? body.message.trim() : "";
     const role = typeof body.role === "string" ? body.role : "landing";
     const history = Array.isArray(body.history) ? body.history : [];
+    const residentProfile =
+      body.residentProfile && typeof body.residentProfile === "object"
+        ? {
+            organization_name: String(body.residentProfile.organization_name ?? ""),
+            unit: body.residentProfile.unit != null ? String(body.residentProfile.unit) : null,
+            resident_name: String(body.residentProfile.resident_name ?? ""),
+          }
+        : null;
 
     if (!message) {
       return NextResponse.json({ error: "message es requerido" }, { status: 400 });
@@ -74,8 +82,13 @@ export async function POST(req: NextRequest) {
       ? `\nBASE DE CONOCIMIENTO:\n${knowledge}\n\n`
       : "";
 
+    const residentContext =
+      residentProfile?.organization_name
+        ? `\nCONTEXTO DEL RESIDENTE (usa esto si pregunta por su PH o registro): Está registrado en el PH "${residentProfile.organization_name}"${residentProfile.unit ? `, unidad ${residentProfile.unit}` : ""}, nombre ${residentProfile.resident_name}. Responde con estos datos si pregunta "¿de qué PH estoy registrado?" o similar.\n`
+        : "";
+
     const systemPrompt = `${ctxPrompt}
-${knowledgeBlock}
+${knowledgeBlock}${residentContext}
 REGLAS: Responde SOLO el texto de la respuesta, sin prefijos. Sé natural y breve. Si no sabes algo, ofrece contactar soporte o usar /registrarme, /mivoto.`;
 
     let reply = "";

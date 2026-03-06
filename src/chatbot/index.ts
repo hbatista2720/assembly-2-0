@@ -35,6 +35,10 @@ const chatHistory: Record<number, Array<{ role: string; text: string }>> = {};
 const identifyState: Record<number, { step: "awaiting_email" }> = {};
 const mivotoState: Record<number, { step: "awaiting_email" }> = {};
 
+/** Perfil del residente (PH, unidad, nombre) para mensaje de bienvenida y contexto IA. */
+type ResidentProfile = { organization_name: string; unit: string | null; resident_name: string };
+const residentProfile: Record<number, ResidentProfile | null> = {};
+
 const ROLE_LABELS: Record<string, string> = {
   admin: "Administrador",
   junta: "Junta / PH",
@@ -135,6 +139,25 @@ async function verifyUserByEmail(
   }
 }
 
+/** Obtiene perfil del residente (PH, unidad, nombre) desde la app, igual que la versión web. */
+async function fetchResidentProfile(email: string): Promise<ResidentProfile | null> {
+  try {
+    const res = await fetch(`${APP_URL}/api/resident-profile?email=${encodeURIComponent(email)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.organization_name)
+      return {
+        organization_name: String(data.organization_name),
+        unit: data.unit ?? null,
+        resident_name: data.resident_name ?? email.split("@")[0],
+      };
+    return null;
+  } catch (err) {
+    console.warn("[Telegram] Error obteniendo perfil residente:", (err as Error)?.message);
+    return null;
+  }
+}
+
 function registerHandlers(bot: TelegramBot) {
 const WELCOME_START =
   "¡Hola! 👋 Soy Lex, el asistente de Chat Vote.\n\nPara ayudarte, necesito identificarte. Envía tu correo electrónico para continuar.";
@@ -149,6 +172,7 @@ bot.onText(/\/start/, async (msg) => {
   delete userEmail[chatId];
   delete chatHistory[chatId];
   delete mivotoState[chatId];
+  delete residentProfile[chatId];
   identifyState[chatId] = { step: "awaiting_email" };
   await getBotConfig(); // opcional: si falla no bloquea; solo para logs
   try {
@@ -276,11 +300,23 @@ Si no tienes Face ID o prefieres votar manualmente:
 async function getAiReply(chatId: number, message: string): Promise<string> {
   const role = userRole[chatId] || "landing";
   const history = (chatHistory[chatId] || []).slice(-10);
+  const profile = role === "residente" ? residentProfile[chatId] ?? null : null;
   try {
     const res = await fetch(`${APP_URL}/api/chat/telegram`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, role, history }),
+      body: JSON.stringify({
+        message,
+        role,
+        history,
+        residentProfile: profile
+          ? {
+              organization_name: profile.organization_name,
+              unit: profile.unit,
+              resident_name: profile.resident_name,
+            }
+          : undefined,
+      }),
     });
     const data = await res.json();
     return data.reply || "¿En qué más puedo ayudarte?";
@@ -315,10 +351,15 @@ bot.on("message", async (msg) => {
     if (user) {
       userRole[chatId] = "residente";
       userEmail[chatId] = user.email;
-      const displayName = user.email.split("@")[0];
-      await bot.sendMessage(chatId, `Hola **${displayName}** 👋 Te identifiqué. Aquí están las opciones de voto:`, {
-        parse_mode: "Markdown",
-      });
+      const profile = await fetchResidentProfile(user.email);
+      if (profile) residentProfile[chatId] = profile;
+      const phName = profile?.organization_name ?? "tu PH";
+      const displayName = profile?.resident_name ?? user.email.split("@")[0];
+      await bot.sendMessage(
+        chatId,
+        `Hola **${displayName}** 👋 Te identifiqué como residente del PH **${phName}**. Aquí están las opciones de voto:`,
+        { parse_mode: "Markdown" },
+      );
       await sendMivotoOptions(bot, chatId);
     } else {
       await bot.sendMessage(
@@ -362,16 +403,42 @@ bot.on("message", async (msg) => {
       const role = dbRoleToBot(user.role);
       userRole[chatId] = role;
       userEmail[chatId] = user.email;
-      const displayName = user.email.split("@")[0];
-      const actions = getActionButtons(role);
-      await bot.sendMessage(
-        chatId,
-        `Hola **${displayName}** 👋 Te identifiqué como ${ROLE_LABELS[role] || role}. ¿En qué te ayudo?`,
-        {
-          parse_mode: "Markdown",
-          reply_markup: { inline_keyboard: actions.map((a) => [a]) },
-        },
-      );
+
+      // Residente: obtener perfil (PH, unidad) igual que la web y mostrar bienvenida con su PH
+      if (role === "residente") {
+        const profile = await fetchResidentProfile(user.email);
+        if (profile) residentProfile[chatId] = profile;
+        else residentProfile[chatId] = null;
+        const phName = profile?.organization_name ?? "tu PH";
+        const actions = getActionButtons(role);
+        await bot.sendMessage(
+          chatId,
+          `Hola **${profile?.resident_name ?? user.email.split("@")[0]}** 👋\n\nTe identifiqué como **Residente** del PH **${phName}**.\n\nSoy Lex, tu asistente para votaciones, asambleas y gestión de tu PH en Chat Vote. ¿En qué te ayudo?`,
+          {
+            parse_mode: "Markdown",
+            reply_markup: { inline_keyboard: actions.map((a) => [a]) },
+          },
+        );
+        // Registrar canal Telegram como activo (sesión única)
+        try {
+          await fetch(`${APP_URL}/api/resident/session`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: user.email, channel: "telegram" }),
+          });
+        } catch (_) {}
+      } else {
+        const displayName = user.email.split("@")[0];
+        const actions = getActionButtons(role);
+        await bot.sendMessage(
+          chatId,
+          `Hola **${displayName}** 👋 Te identifiqué como ${ROLE_LABELS[role] || role}. ¿En qué te ayudo?`,
+          {
+            parse_mode: "Markdown",
+            reply_markup: { inline_keyboard: actions.map((a) => [a]) },
+          },
+        );
+      }
     } else {
       await bot.sendMessage(
         chatId,
