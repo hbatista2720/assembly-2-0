@@ -76,9 +76,11 @@ export async function POST(req: NextRequest) {
     if (e?.code === "42P01") return NextResponse.json({ error: "Tabla platform_campaigns no existe" }, { status: 500 });
     if (e?.code === "42703") {
       try {
+        const campaignName = String(name ?? "");
+        const isActive = body?.is_active !== false;
         const [row] = await sql`
           INSERT INTO platform_campaigns (name, is_active)
-          VALUES (${name}, ${body?.is_active !== false})
+          VALUES (${campaignName}, ${isActive})
           RETURNING id, name, is_active, last_executed_at, created_at, updated_at
         `;
         return NextResponse.json({ ...row, description: null, target_stage: null, frequency: null, email_subject: null, email_body: null });

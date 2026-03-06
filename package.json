@@ -37,7 +37,7 @@
     "@types/node": "^25.0.10",
     "@types/node-telegram-bot-api": "^0.64.13",
     "@types/nodemailer": "^6.4.17",
-    "@types/react": "^18.3.28",
+    "@types/react": "18.3.28",
     "@types/react-dom": "^18.3.7",
     "nodemon": "^3.1.11"
   }

@@ -18,6 +18,7 @@ const TABLES = [
   "invoices",
   "manual_payment_requests",
   "discount_coupons",
+  "email_log",
 ];
 
 async function main() {

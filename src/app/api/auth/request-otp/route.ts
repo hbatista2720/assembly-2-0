@@ -106,11 +106,19 @@ export async function POST(req: Request) {
       message: "Código enviado a tu correo",
       expires_in_minutes: OTP_TTL_MINUTES,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     const err = error instanceof Error ? error : new Error(String(error));
     const message = err.message || String(error);
     console.error("Error request OTP:", message, err.stack);
-    const safeMessage = OTP_DEBUG_ENV ? message : "Error al generar OTP";
+    // Mensaje amigable para errores de conexión (ej. sin base de datos en local)
+    let safeMessage = "Error al generar OTP";
+    if (OTP_DEBUG_ENV) {
+      safeMessage = message;
+    } else if (typeof error === "object" && error !== null && "name" in error && (error as Error).name === "AggregateError") {
+      safeMessage = "No se pudo conectar al servicio. Comprueba que la base de datos esté en ejecución (por ejemplo: docker compose up -d assembly-db).";
+    } else if (message.includes("ECONNREFUSED") || message.includes("connect")) {
+      safeMessage = "No se pudo conectar a la base de datos. ¿Está en ejecución?";
+    }
     return NextResponse.json({ error: safeMessage }, { status: 500 });
   }
 }

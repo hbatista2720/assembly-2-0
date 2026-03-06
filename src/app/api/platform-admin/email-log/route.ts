@@ -14,13 +14,13 @@ export async function GET() {
       ORDER BY created_at DESC
       LIMIT 200
     `;
-    return NextResponse.json(rows);
+    return NextResponse.json({ entries: rows });
   } catch (err: unknown) {
     const code = (err as { code?: string })?.code;
     if (code === "42P01") {
-      return NextResponse.json([]);
+      return NextResponse.json({ entries: [], tableMissing: true });
     }
     console.error("[email-log] Error:", err);
-    return NextResponse.json({ error: "Error al cargar historial" }, { status: 500 });
+    return NextResponse.json({ error: "Error al cargar historial", entries: [] }, { status: 500 });
   }
 }

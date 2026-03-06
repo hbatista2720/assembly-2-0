@@ -15,6 +15,7 @@ const DATABASE_URL = process.env.DATABASE_URL || "postgres://postgres:postgres@l
 const MIGRATIONS_ORDER = [
   "sql_snippets/auth_otp_local.sql",
   "sql_snippets/schema_subscriptions_base.sql",
+  "sql_snippets/108_email_log.sql",
   "src/lib/db/migrations/009_assembly_credits.sql",
   "src/lib/db/migrations/010_payment_methods.sql",
   "src/lib/db/migrations/013_paypal_tilopay_panama.sql",

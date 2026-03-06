@@ -66,7 +66,6 @@ export async function POST(req: Request) {
       }
     }
 
-    const userId = userRow.id;
     const user = {
       ...userRow,
       demo_expires_at: demoExpiresAt,
@@ -76,7 +75,7 @@ export async function POST(req: Request) {
     const [pinRecord] = await sql`
       SELECT id
       FROM auth_pins
-      WHERE user_id = ${userId}
+      WHERE user_id = ${userRow.id}
         AND pin = ${pin}
         AND used = FALSE
         AND expires_at > NOW()
@@ -111,13 +110,13 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        is_platform_owner: user.is_platform_owner,
+        id: userRow.id,
+        email: userRow.email,
+        role: userRow.role,
+        is_platform_owner: userRow.is_platform_owner ?? null,
         is_demo: user.is_demo ?? false,
-        organization_id: user.organization_id ?? null,
-        subscription_id: user.parent_subscription_id ?? null,
+        organization_id: userRow.organization_id ?? null,
+        subscription_id: userRow.parent_subscription_id ?? null,
       },
     });
   } catch (error) {

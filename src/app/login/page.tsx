@@ -43,7 +43,8 @@ function LoginContent() {
       });
       const data = await response.json();
       if (!response.ok) {
-        setError(data?.error || "No se pudo enviar el código.");
+        const msg = data?.error || "No se pudo enviar el código.";
+        setError(msg === "AggregateError" ? "Error de conexión. Comprueba que la base de datos esté en ejecución." : msg);
         setLoading(false);
         return;
       }
@@ -53,7 +54,8 @@ function LoginContent() {
       setStep("otp");
       setLoading(false);
     } catch (err) {
-      setError("No se pudo enviar el código.");
+      const msg = err instanceof Error ? err.message : "";
+      setError(msg && msg !== "AggregateError" ? msg : "No se pudo enviar el código. Comprueba que la base de datos esté en ejecución.");
       setLoading(false);
     }
   };

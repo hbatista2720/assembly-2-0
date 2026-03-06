@@ -115,10 +115,10 @@ export type BuildSummaryOptions = {
 
 /** Aplica voteValue por tema (determinístico) para que Vista Tablero filtre correctamente. */
 export function applyTopicVotes(
-  units: { id: string; voteValue: "SI" | "NO" | "ABSTENCION" | null; paymentStatus: string; isPresent?: boolean; [k: string]: unknown }[],
+  units: Unit[],
   topicId: string | null,
   topicTitle: string | null
-): typeof units {
+): Unit[] {
   if (!topicId && !topicTitle) return units;
   const seedStr = (topicId ?? "") + "|" + (topicTitle ?? "");
   if (!seedStr.trim() || seedStr === "|") return units;
