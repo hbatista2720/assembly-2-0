@@ -66,6 +66,7 @@ export async function POST(req: Request) {
       }
     }
 
+    const userId = userRow.id;
     const user = {
       ...userRow,
       demo_expires_at: demoExpiresAt,
@@ -75,7 +76,7 @@ export async function POST(req: Request) {
     const [pinRecord] = await sql`
       SELECT id
       FROM auth_pins
-      WHERE user_id = ${user.id}
+      WHERE user_id = ${userId}
         AND pin = ${pin}
         AND used = FALSE
         AND expires_at > NOW()
