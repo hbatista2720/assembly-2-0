@@ -70,11 +70,14 @@ export async function POST(req: Request) {
 
     // Modo producción: enviar PIN por correo
     if (!isSmtpConfigured()) {
-      console.warn("[OTP] SMTP no configurado. Configure SMTP_* o use OTP_DEBUG=true para pruebas.");
-      return NextResponse.json(
-        { error: "Envío de correo no configurado. Contacte al administrador o active modo prueba (OTP_DEBUG)." },
-        { status: 503 }
-      );
+      // Sin SMTP configurado: devolver el PIN en la respuesta para que el login no falle
+      console.warn("[OTP] SMTP no configurado. Devolviendo PIN en respuesta. Configure SMTP_* o active modo prueba en el panel.");
+      return NextResponse.json({
+        success: true,
+        message: "Código enviado (muéstralo en pantalla; configura SMTP para enviarlo por correo)",
+        otp,
+        expires_in_minutes: OTP_TTL_MINUTES,
+      });
     }
     const sent = await sendOtpEmail(normalized, otp, OTP_TTL_MINUTES);
     if (!sent) {

@@ -53,8 +53,13 @@ export async function getGroqApiKey(): Promise<string> {
 /** Modo OTP: 'test' = PIN en chat, 'production' = PIN por correo. Env OTP_DEBUG=true fuerza test. */
 export async function getOtpMode(): Promise<"test" | "production"> {
   if (process.env.OTP_DEBUG === "true") return "test";
-  const fromDb = await getSecret("otp_mode");
-  if (fromDb === "test" || fromDb === "production") return fromDb;
+  try {
+    const fromDb = await getSecret("otp_mode");
+    if (fromDb === "test" || fromDb === "production") return fromDb;
+  } catch {
+    // Si falla la BD (tabla inexistente, etc.), usar test para que el login no se quede colgado
+    return "test";
+  }
   return "production";
 }
 

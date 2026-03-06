@@ -330,9 +330,10 @@ function LoginContent() {
                   required
                 />
                 {debugOtp ? (
-                  <span className="muted" style={{ fontSize: "12px" }}>
-                    Código enviado (modo local): <strong>{debugOtp}</strong>
-                  </span>
+                  <p style={{ margin: "8px 0 0", padding: "10px 12px", background: "rgba(34, 197, 94, 0.15)", border: "1px solid rgba(34, 197, 94, 0.4)", borderRadius: "8px", fontSize: "14px", color: "#86efac" }}>
+                    Tu código: <strong style={{ fontSize: "18px", letterSpacing: "2px" }}>{debugOtp}</strong>
+                    <br /><span style={{ fontSize: "12px", opacity: 0.9 }}>Cópialo y pégalo en el campo de arriba.</span>
+                  </p>
                 ) : null}
               </label>
             ) : (
