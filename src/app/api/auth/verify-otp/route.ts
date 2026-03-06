@@ -30,7 +30,16 @@ export async function POST(req: Request) {
       // auth_attempts puede no existir; continuar sin rate limit
     }
 
-    const [userRow] = await sql`
+    type UserRow = {
+      id: string;
+      email: string;
+      role: string;
+      is_platform_owner: boolean | null;
+      organization_id: string | null;
+      is_demo: boolean | null;
+      parent_subscription_id: string | null;
+    };
+    const [userRow] = await sql<UserRow[]>`
       SELECT u.id, u.email, u.role, u.is_platform_owner, u.organization_id, o.is_demo, o.parent_subscription_id
       FROM users u
       LEFT JOIN organizations o ON o.id = u.organization_id
